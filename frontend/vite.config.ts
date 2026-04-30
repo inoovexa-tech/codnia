@@ -8,7 +8,7 @@ export default defineConfig({
     emptyOutDir: true,
   },
   server: {
-    port: 3000,
+    port: 3030,
     strictPort: true,
   },
 });

@@ -1,278 +1,1491 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Codnia IDE</title>
     <style>
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-      :root {
-        --bg-primary: #0c0c0c;
-        --bg-secondary: #111111;
-        --bg-tertiary: #1a1a1a;
-        --bg-hover: #222222;
-        --bg-active: #2a2a2a;
-        --border: #2a2a2a;
-        --border-light: #333333;
-        --text-primary: #ffffff;
-        --text-secondary: #888888;
-        --text-tertiary: #555555;
-        --accent: #5a5a5a;
-        --accent-blue: #0070f3;
-        --accent-green: #10b981;
-        --accent-red: #ef4444;
-        --accent-yellow: #f59e0b;
-      }
+        :root {
+            --bg-primary: #0c0c0c;
+            --bg-secondary: #111111;
+            --bg-tertiary: #1a1a1a;
+            --bg-hover: #222222;
+            --bg-active: #2a2a2a;
+            --border: #2a2a2a;
+            --border-light: #333333;
+            --text-primary: #ffffff;
+            --text-secondary: #888888;
+            --text-tertiary: #555555;
+            --accent: #5a5a5a;
+            --accent-blue: #0070f3;
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
+            --accent-yellow: #f59e0b;
+        }
 
-      html, body {
-        width: 100%;
-        height: 100%;
-        overflow: hidden;
-        background: var(--bg-primary);
-        color: var(--text-primary);
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      }
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
 
-      #app {
-        display: flex;
-        flex-direction: column;
-        width: 100%;
-        height: 100%;
-      }
+        #app {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            height: 100%;
+        }
 
-      .activity-bar {
-        display: flex;
-        flex-direction: column;
-        width: 48px;
-        background: var(--bg-secondary);
-        border-right: 1px solid var(--border);
-        padding: 8px 0;
-        gap: 4px;
-        flex-shrink: 0;
-      }
+        .main-content {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+            position: relative;
+            z-index: 1;
+        }
 
-      .activity-btn {
-        width: 32px;
-        height: 32px;
-        margin: 0 auto;
-        border: none;
-        background: transparent;
-        border-radius: 6px;
-        cursor: pointer;
-        font-size: 18px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: background 0.15s;
-      }
+        .left-sidebar {
+            width: 52px;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 8px 0;
+            gap: 4px;
+            flex-shrink: 0;
+        }
 
-      .activity-btn:hover {
-        background: var(--bg-hover);
-      }
+        .sidebar-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            width: 100%;
+        }
 
-      .activity-btn.active {
-        background: var(--bg-active);
-      }
+        .sidebar-icon {
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            color: var(--text-tertiary);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
 
-      .main-content {
-        display: flex;
-        flex: 1;
-        overflow: hidden;
-      }
+        .sidebar-icon:hover {
+            background: var(--bg-hover);
+            color: var(--text-secondary);
+        }
 
-      .sidebar {
-        width: 250px;
-        background: var(--bg-secondary);
-        border-right: 1px solid var(--border);
-        display: none;
-        flex-direction: column;
-      }
+        .sidebar-icon.active {
+            background: var(--bg-active);
+            color: var(--text-primary);
+        }
 
-      .sidebar.visible {
-        display: flex;
-      }
+        .sidebar-icon svg {
+            width: 20px;
+            height: 20px;
+        }
 
-      .sidebar-header {
-        padding: 12px 16px;
-        font-size: 11px;
-        font-weight: 600;
-        text-transform: uppercase;
-        color: var(--text-secondary);
-        letter-spacing: 0.5px;
-      }
+        .sidebar-spacer {
+            flex: 1;
+        }
 
-      .explorer-tree {
-        flex: 1;
-        overflow-y: auto;
-        padding: 0 8px;
-      }
+        .project-card {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            background: var(--bg-tertiary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
 
-      .tree-item {
-        display: flex;
-        align-items: center;
-        padding: 4px 8px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 13px;
-        gap: 6px;
-      }
+        .project-card:hover {
+            background: var(--bg-hover);
+        }
 
-      .tree-item:hover {
-        background: var(--bg-hover);
-      }
+        .project-card.active {
+            background: var(--accent-blue);
+            color: white;
+        }
 
-      .tree-item.folder {
-        font-weight: 500;
-      }
+        .add-project-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            border: 1px dashed var(--border-light);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-tertiary);
+            cursor: pointer;
+            transition: all 0.15s;
+            font-size: 18px;
+            margin-top: 4px;
+        }
 
-      .editor-area {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-      }
+        .add-project-btn:hover {
+            background: var(--bg-hover);
+            border-color: var(--accent-blue);
+            color: var(--accent-blue);
+        }
 
-      .tabs-bar {
-        display: flex;
-        height: 36px;
-        background: var(--bg-primary);
-        border-bottom: 1px solid var(--border);
-        overflow-x: auto;
-      }
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--accent-blue);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 600;
+            color: white;
+            cursor: pointer;
+        }
 
-      .tab {
-        display: flex;
-        align-items: center;
-        padding: 0 16px;
-        font-size: 13px;
-        color: var(--text-secondary);
-        border-right: 1px solid var(--border);
-        cursor: pointer;
-        gap: 8px;
-        white-space: nowrap;
-      }
+        .user-avatar:hover {
+            opacity: 0.8;
+        }
 
-      .tab:hover {
-        background: var(--bg-hover);
-      }
+        .editor-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            background: var(--bg-primary);
+            position: relative;
+        }
 
-      .tab.active {
-        color: var(--text-primary);
-        background: var(--bg-tertiary);
-        border-bottom: 2px solid var(--accent-blue);
-      }
+        .tabs-container {
+            height: 40px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            padding: 0 12px;
+            gap: 8px;
+        }
 
-      .tab .close {
-        opacity: 0;
-        font-size: 16px;
-        cursor: pointer;
-      }
+        .tabs-left {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            flex: 1;
+            overflow-x: auto;
+        }
 
-      .tab:hover .close {
-        opacity: 1;
-      }
+        .new-tab-btn {
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            color: var(--text-tertiary);
+            cursor: pointer;
+            transition: all 0.15s;
+            background: transparent;
+            border: none;
+            flex-shrink: 0;
+        }
 
-      .editor-container {
-        flex: 1;
-        overflow: hidden;
-      }
+        .new-tab-btn:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
 
-      #monaco-editor {
-        width: 100%;
-        height: 100%;
-      }
+        .new-tab-btn svg {
+            width: 16px;
+            height: 16px;
+        }
 
-      .status-bar {
-        display: flex;
-        height: 24px;
-        background: var(--accent-blue);
-        padding: 0 12px;
-        align-items: center;
-        font-size: 12px;
-        gap: 16px;
-        flex-shrink: 0;
-      }
+        .dropdown {
+            position: relative;
+        }
 
-      .status-item {
-        color: var(--text-primary);
-      }
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            margin-top: 4px;
+            min-width: 200px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 1000;
+            overflow: hidden;
+        }
 
-      .status-item.clickable:hover {
-        background: rgba(255,255,255,0.1);
-        cursor: pointer;
-      }
+        .dropdown-menu.show {
+            display: block;
+        }
 
-      .status-spacer {
-        flex: 1;
-      }
+        .dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: background 0.1s;
+        }
+
+        .dropdown-item:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .dropdown-item svg {
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+        }
+
+        .dropdown-item .shortcut {
+            margin-left: auto;
+            font-size: 11px;
+            color: var(--text-tertiary);
+        }
+
+        .dropdown-divider {
+            height: 1px;
+            background: var(--border);
+            margin: 4px 0;
+        }
+
+        .tabs-right {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .tab {
+            height: 34px;
+            padding: 0 14px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            color: var(--text-secondary);
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.1s;
+            white-space: nowrap;
+            border-radius: 4px 4px 0 0;
+        }
+
+        .tab:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .tab.active {
+            color: var(--text-primary);
+            border-bottom-color: var(--accent-blue);
+            background: var(--bg-primary);
+        }
+
+        .tab-close {
+            width: 14px;
+            height: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            opacity: 0.5;
+            font-size: 14px;
+            line-height: 1;
+        }
+
+        .tab-close:hover {
+            background: var(--bg-hover);
+            opacity: 1;
+        }
+
+        .tab-separator {
+            width: 1px;
+            height: 20px;
+            background: var(--border);
+            margin: 0 8px;
+        }
+
+        .tab-action-btn {
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            color: var(--text-tertiary);
+            cursor: pointer;
+            transition: all 0.15s;
+            position: relative;
+            background: transparent;
+            border: none;
+        }
+
+        .tab-action-btn:hover {
+            background: var(--bg-hover);
+            color: var(--text-secondary);
+        }
+
+        .tab-action-btn.active {
+            background: var(--bg-active);
+            color: var(--text-primary);
+        }
+
+        .tab-action-btn.pinned::after {
+            content: '';
+            position: absolute;
+            bottom: 2px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 4px;
+            height: 4px;
+            background: var(--accent-blue);
+            border-radius: 50%;
+        }
+
+        .tab-action-btn svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .tab-divider {
+            width: 1px;
+            height: 20px;
+            background: var(--border);
+            margin: 0 4px;
+        }
+
+        .editor-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #monaco-editor {
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .activity-bar {
+            width: 280px;
+            min-width: 280px;
+            max-width: 600px;
+            background: var(--bg-secondary);
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            position: absolute;
+            right: 0;
+            top: 40px;
+            bottom: 22px;
+            z-index: 100;
+            transition: width 0.2s, min-width 0.2s;
+        }
+
+        .activity-bar.hidden {
+            display: none !important;
+        }
+
+        .activity-header {
+            height: 48px;
+            padding: 0 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .activity-icon {
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+        }
+
+        .activity-title {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .activity-close {
+            margin-left: auto;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            color: var(--text-tertiary);
+            cursor: pointer;
+        }
+
+        .activity-close:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .activity-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+        }
+
+        .file-tree {
+            padding: 4px 0;
+        }
+
+        .tree-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .tree-item:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .tree-item.active {
+            background: var(--bg-active);
+            color: var(--text-primary);
+        }
+
+        .tree-icon {
+            width: 16px;
+            height: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            flex-shrink: 0;
+        }
+
+        .tree-item.folder {
+            font-weight: 500;
+        }
+
+        .tree-arrow {
+            width: 12px;
+            height: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 4px;
+            transition: transform 0.15s;
+            flex-shrink: 0;
+        }
+
+        .tree-arrow.expanded {
+            transform: rotate(90deg);
+        }
+
+        .tree-children {
+            padding-left: 16px;
+        }
+
+        .task-list {
+            padding: 4px 0;
+        }
+
+        .task-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .task-item:hover {
+            background: var(--bg-hover);
+        }
+
+        .task-checkbox {
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--border-light);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .task-checkbox.checked {
+            background: var(--accent-green);
+            border-color: var(--accent-green);
+            color: white;
+        }
+
+        .task-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .task-title {
+            font-size: 13px;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .task-title.completed {
+            text-decoration: line-through;
+            color: var(--text-tertiary);
+        }
+
+        .task-meta {
+            font-size: 11px;
+            color: var(--text-tertiary);
+        }
+
+        .task-tag {
+            display: inline-block;
+            padding: 2px 6px;
+            background: var(--bg-tertiary);
+            border-radius: 4px;
+            font-size: 10px;
+            color: var(--text-secondary);
+            margin-right: 4px;
+        }
+
+        .task-tag.bug { background: #ef444433; color: #ef4444; }
+        .task-tag.feature { background: #10b98133; color: #10b981; }
+        .task-tag.enhancement { background: #0070f333; color: #0070f3; }
+
+        .api-section {
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .api-section:last-child {
+            border-bottom: none;
+        }
+
+        .api-method {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 600;
+            margin-right: 8px;
+        }
+
+        .api-method.get { background: #10b98133; color: #10b981; }
+        .api-method.post { background: #f59e0b33; color: #f59e0b; }
+        .api-method.put { background: #0070f333; color: #0070f3; }
+        .api-method.delete { background: #ef444433; color: #ef4444; }
+        .api-method.patch { background: #8b5cf633; color: #8b5cf6; }
+
+        .api-endpoint {
+            font-size: 12px;
+            color: var(--text-secondary);
+            word-break: break-all;
+        }
+
+        .api-endpoint-name {
+            color: var(--text-primary);
+        }
+
+        .api-status {
+            font-size: 10px;
+            color: var(--text-tertiary);
+            margin-top: 4px;
+        }
+
+        .git-section {
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .git-section:last-child {
+            border-bottom: none;
+        }
+
+        .git-section-title {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-tertiary);
+            margin-bottom: 8px;
+        }
+
+        .git-file {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 0;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .git-file-icon {
+            width: 14px;
+            height: 14px;
+        }
+
+        .git-file.added { color: #10b981; }
+        .git-file.modified { color: #f59e0b; }
+        .git-file.deleted { color: #ef4444; }
+
+        .git-branch-current {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: var(--bg-tertiary);
+            border-radius: 6px;
+            margin-bottom: 8px;
+        }
+
+        .git-branch-name {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .git-branch-icon {
+            color: var(--accent-green);
+        }
+
+        .status-bar {
+            height: 22px;
+            background: #000000;
+            display: flex;
+            align-items: center;
+            padding: 0 12px;
+            font-size: 11px;
+            gap: 16px;
+            border-top: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--text-secondary);
+        }
+
+        .status-item:hover {
+            color: var(--text-primary);
+            cursor: pointer;
+        }
+
+        .status-item svg {
+            width: 12px;
+            height: 12px;
+        }
+
+        .status-spacer {
+            flex: 1;
+        }
+
+        .toggle-panel-btn {
+            position: absolute;
+            width: 20px;
+            height: 40px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--text-tertiary);
+            z-index: 5;
+            transition: all 0.15s;
+        }
+
+        .toggle-panel-btn:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .toggle-panel-btn.left {
+            border-right: none;
+            border-radius: 4px 0 0 4px;
+        }
+
+        .toggle-panel-btn.right {
+            border-left: none;
+            border-radius: 0 4px 4px 0;
+        }
+
+        .toggle-panel-btn svg {
+            width: 10px;
+            height: 10px;
+        }
+
+        .activity-bar-resize {
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 6px;
+            cursor: ew-resize;
+            z-index: 20;
+            background: transparent;
+            transition: background 0.15s;
+        }
+
+        .activity-bar-resize:hover,
+        .activity-bar-resize.dragging {
+            background: var(--accent-blue);
+        }
+
+        .resize-btn {
+            position: absolute;
+            left: -18px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 14px;
+            height: 32px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--text-tertiary);
+            font-size: 8px;
+            z-index: 15;
+            transition: all 0.15s;
+        }
+
+        .resize-btn:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+            border-color: var(--accent-blue);
+        }
+
+        .resize-btn svg {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--bg-hover);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--accent);
+        }
+
+        .no-file-open {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-primary);
+            color: var(--text-tertiary);
+        }
+
+        .no-file-open h2 {
+            font-size: 18px;
+            font-weight: 400;
+            margin-bottom: 8px;
+        }
+
+        .no-file-open p {
+            font-size: 13px;
+        }
+
+        .no-file-open kbd {
+            background: var(--bg-tertiary);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .tree-item.placeholder {
+            color: var(--text-tertiary);
+            font-style: italic;
+            padding: 12px;
+            text-align: center;
+        }
+
+        .tree-arrow-icon {
+            width: 8px;
+            height: 8px;
+            transition: transform 0.15s;
+        }
+
+        .tree-arrow-icon.expanded {
+            transform: rotate(90deg);
+        }
+
+        .settings-section {
+            padding: 8px 0;
+        }
+
+        .settings-item {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .settings-item:last-child {
+            border-bottom: none;
+        }
+
+        .settings-label {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .settings-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .settings-desc {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .settings-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            padding: 8px 0;
+        }
+
+        .settings-toggle span:first-child {
+            font-size: 13px;
+            color: var(--text-primary);
+        }
+
+        .settings-toggle .settings-desc {
+            font-size: 11px;
+            color: var(--text-tertiary);
+            display: block;
+            margin-top: 2px;
+        }
+
+        .settings-toggle input[type="checkbox"] {
+            display: none;
+        }
+
+        .toggle-slider {
+            width: 36px;
+            height: 20px;
+            background: var(--bg-tertiary);
+            border-radius: 10px;
+            position: relative;
+            transition: background 0.2s;
+            flex-shrink: 0;
+        }
+
+        .toggle-slider::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 16px;
+            height: 16px;
+            background: var(--text-secondary);
+            border-radius: 50%;
+            transition: transform 0.2s;
+        }
+
+        .settings-toggle input[type="checkbox"]:checked + .toggle-slider {
+            background: var(--accent-blue);
+        }
+
+        .settings-toggle input[type="checkbox"]:checked + .toggle-slider::after {
+            transform: translateX(16px);
+            background: white;
+        }
     </style>
-  </head>
-  <body>
+</head>
+<body>
     <div id="app">
-      <div class="main-content">
-        <div class="activity-bar">
-          <button class="activity-btn active" data-view="explorer" title="Explorer">📁</button>
-          <button class="activity-btn" data-view="search" title="Search">🔍</button>
-          <button class="activity-btn" data-view="git" title="Git">⎇</button>
-          <button class="activity-btn" data-view="extensions" title="Extensions">🧩</button>
-          <button class="activity-btn" data-view="settings" title="Settings">⚙</button>
+        <div class="main-content">
+            <div class="left-sidebar">
+                <div class="sidebar-section">
+                    <div class="project-card active" data-project="my-project" title="my-project">MP</div>
+                    <div class="project-card" data-project="api-service" title="api-service">AS</div>
+                    <div class="project-card" data-project="web-app" title="web-app">WA</div>
+                    <div class="add-project-btn" title="Add Project">+</div>
+                </div>
+
+                <div class="sidebar-spacer"></div>
+
+                <div class="sidebar-section">
+                    <div class="sidebar-icon" id="toggleLeftSidebar" title="Toggle Left Sidebar">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2"/>
+                            <path d="M9 3v18"/>
+                        </svg>
+                    </div>
+                    <div class="user-avatar" title="John Doe">JD</div>
+                </div>
+            </div>
+
+            <div class="editor-area">
+                <div class="tabs-container">
+                    <div class="tabs-left" id="tabsLeft">
+                        <div class="dropdown" id="newTabDropdown">
+                            <button class="new-tab-btn" id="btnNewTab" title="New Tab (Ctrl+N)">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 5v14M5 12h14"/>
+                                </svg>
+                            </button>
+                            <div class="dropdown-menu" id="newTabMenu">
+                                <div class="dropdown-item" data-action="terminal">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M4 17l6-6-6-6M12 19h8"/>
+                                    </svg>
+                                    <span>Terminal</span>
+                                    <span class="shortcut">Ctrl+`</span>
+                                </div>
+                                <div class="dropdown-divider"></div>
+                                <div class="dropdown-item" data-action="opencode">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="16 18 22 12 16 6"/>
+                                        <polyline points="8 6 2 12 8 18"/>
+                                    </svg>
+                                    <span>OpenCode</span>
+                                    <span class="shortcut">Ctrl+Shift+O</span>
+                                </div>
+                                <div class="dropdown-item" data-action="claude">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="3"/>
+                                        <path d="M12 2v4M12 18v4"/>
+                                    </svg>
+                                    <span>Claude Code</span>
+                                    <span class="shortcut">Ctrl+Shift+C</span>
+                                </div>
+                                <div class="dropdown-item" data-action="codex">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                                    </svg>
+                                    <span>Codex</span>
+                                    <span class="shortcut">Ctrl+Shift+X</span>
+                                </div>
+                                <div class="dropdown-divider"></div>
+                                <div class="dropdown-item" data-action="newfile">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                        <polyline points="14 2 14 8 20 8"/>
+                                    </svg>
+                                    <span>New File</span>
+                                    <span class="shortcut">Ctrl+N</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="tabs-right">
+                        <button class="tab-action-btn" id="btnTasks" title="Tasks">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M9 11L12 14L22 4M21 12V19C21 20.1046 20.1046 21 19 21H5C3.89543 21 3 20.1046 3 19V5C3 3.89543 3.89543 3 5 3H16"/>
+                            </svg>
+                        </button>
+                        
+                        <button class="tab-action-btn" id="btnApi" title="REST Client">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 12a9 9 0 0 1-9 9m9-9a9 9 0 0 0-9-9m9 9H3m9 9a9 9 0 0 1-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0 3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 0 1 9-9"/>
+                            </svg>
+                        </button>
+                        
+                        <button class="tab-action-btn" id="btnGit" title="Git">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="3"/>
+                                <path d="M12 2V8M12 16V22M2 12H8M16 12H22"/>
+                            </svg>
+                        </button>
+                        
+                        <div class="tab-divider"></div>
+                        
+                        <button class="tab-action-btn" id="btnSearch" title="Search">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="8"/>
+                                <path d="M21 21L16.65 16.65"/>
+                            </svg>
+                        </button>
+                        
+                        <button class="tab-action-btn pinned" id="btnExplorer" title="Explorer">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M3 7V17C3 18.1046 3.89543 19 5 19H19C20.1046 19 21 18.1046 21 17V9C21 7.89543 20.1046 7 19 7H12L9 3H5C3.89543 3 3 3.89543 3 5V7Z"/>
+                            </svg>
+                        </button>
+
+<div class="tab-divider"></div>
+                         
+                        <button class="tab-action-btn" id="btnToggleLeftSidebar" title="Toggle Left Sidebar">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                                <path d="M9 3v18"/>
+                            </svg>
+                        </button>
+
+                        <div class="tab-divider"></div>
+
+                        <button class="tab-action-btn" id="btnSettings" title="Settings">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="3"/>
+                                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="editor-panel">
+                    <div id="monaco-editor"></div>
+                </div>
+            </div>
+
+            <div class="activity-bar" id="panelExplorer" style="display: none;">
+                <div class="activity-bar-resize" id="explorerResize"></div>
+                <div class="resize-btn" onclick="togglePanelWidth('panelExplorer')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="15 18 9 12 15 6"/>
+                    </svg>
+                </div>
+                <div class="activity-header">
+                    <div class="activity-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 7V17C3 18.1046 3.89543 19 5 19H19C20.1046 19 21 18.1046 21 17V9C21 7.89543 20.1046 7 19 7H12L9 3H5C3.89543 3 3 3.89543 3 5V7Z"/>
+                        </svg>
+                    </div>
+                    <div class="activity-title">Explorer</div>
+                    <div class="activity-close" onclick="closePanel('panelExplorer')">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"/>
+                            <line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="activity-content">
+                    <div class="file-tree" id="fileTree">
+                        <div class="tree-item placeholder">Open a project to see files</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="activity-bar hidden" id="panelTasks">
+                <div class="activity-bar-resize" id="tasksResize"></div>
+                <div class="resize-btn" onclick="togglePanelWidth('panelTasks')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="15 18 9 12 15 6"/>
+                    </svg>
+                </div>
+                <div class="activity-header">
+                    <div class="activity-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 11L12 14L22 4M21 12V19C21 20.1046 20.1046 21 19 21H5C3.89543 21 3 20.1046 3 19V5C3 3.89543 3.89543 3 5 3H16"/>
+                        </svg>
+                    </div>
+                    <div class="activity-title">Tasks</div>
+                    <div class="activity-close" onclick="closePanel('panelTasks')">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"/>
+                            <line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="activity-content">
+                    <div class="task-list">
+                        <div class="task-item">
+                            <div class="task-checkbox"></div>
+                            <div class="task-content">
+                                <div class="task-title">Implement user authentication</div>
+                                <div class="task-meta">
+                                    <span class="task-tag feature">feature</span>
+                                    <span>Due: May 15</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="task-item">
+                            <div class="task-checkbox"></div>
+                            <div class="task-content">
+                                <div class="task-title">Fix memory leak in dashboard</div>
+                                <div class="task-meta">
+                                    <span class="task-tag bug">bug</span>
+                                    <span>Due: May 10</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="task-item">
+                            <div class="task-checkbox checked">✓</div>
+                            <div class="task-content">
+                                <div class="task-title completed">Update dependencies</div>
+                                <div class="task-meta">
+                                    <span class="task-tag enhancement">enhancement</span>
+                                    <span>Completed</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="activity-bar hidden" id="panelApi">
+                <div class="activity-bar-resize" id="apiResize"></div>
+                <div class="resize-btn" onclick="togglePanelWidth('panelApi')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="15 18 9 12 15 6"/>
+                    </svg>
+                </div>
+                <div class="activity-header">
+                    <div class="activity-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 12a9 9 0 0 1-9 9m9-9a9 9 0 0 0-9-9m9 9H3m9 9a9 9 0 0 1-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0 3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 0 1 9-9"/>
+                        </svg>
+                    </div>
+                    <div class="activity-title">REST Client</div>
+                    <div class="activity-close" onclick="closePanel('panelApi')">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"/>
+                            <line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="activity-content">
+                    <div class="api-section">
+                        <div class="api-method get">GET</div>
+                        <div class="api-endpoint">
+                            <span class="api-endpoint-name">/api/users</span>
+                        </div>
+                        <div class="api-status">200 OK · 234ms</div>
+                    </div>
+                    <div class="api-section">
+                        <div class="api-method post">POST</div>
+                        <div class="api-endpoint">
+                            <span class="api-endpoint-name">/api/auth/login</span>
+                        </div>
+                        <div class="api-status">201 Created · 89ms</div>
+                    </div>
+                    <div class="api-section">
+                        <div class="api-method delete">DELETE</div>
+                        <div class="api-endpoint">
+                            <span class="api-endpoint-name">/api/sessions/:id</span>
+                        </div>
+                        <div class="api-status">204 No Content · 45ms</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="activity-bar hidden" id="panelGit">
+                <div class="activity-bar-resize" id="gitResize"></div>
+                <div class="resize-btn" onclick="togglePanelWidth('panelGit')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="15 18 9 12 15 6"/>
+                    </svg>
+                </div>
+                <div class="activity-header">
+                    <div class="activity-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M12 2V8M12 16V22M2 12H8M16 12H22"/>
+                        </svg>
+                    </div>
+                    <div class="activity-title">Git</div>
+                    <div class="activity-close" onclick="closePanel('panelGit')">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"/>
+                            <line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="activity-content">
+                    <div class="git-section">
+                        <div class="git-branch-current">
+                            <svg class="git-branch-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="4"/>
+                            </svg>
+                            <span class="git-branch-name">main</span>
+                        </div>
+                    </div>
+                    <div class="git-section">
+                        <div class="git-section-title">Staged (2)</div>
+                        <div class="git-file">
+                            <span class="git-file-icon">M</span>
+                            <span>src/App.tsx</span>
+                        </div>
+                        <div class="git-file">
+                            <span class="git-file-icon">A</span>
+                            <span>src/utils/helper.ts</span>
+                        </div>
+                    </div>
+                    <div class="git-section">
+                        <div class="git-section-title">Changes (1)</div>
+                        <div class="git-file">
+                            <span class="git-file-icon modified">D</span>
+                            <span>package.json</span>
+                        </div>
+                    </div>
+                    <div class="git-section">
+                        <div class="git-section-title">Untracked (3)</div>
+                        <div class="git-file">
+                            <span class="git-file-icon" style="color: #888;">?</span>
+                            <span>src/new-component.tsx</span>
+                        </div>
+                        <div class="git-file">
+                            <span class="git-file-icon" style="color: #888;">?</span>
+                            <span>docs/api.md</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="activity-bar hidden" id="panelSettings" style="width: 400px; min-width: 400px;">
+                <div class="activity-bar-resize" id="settingsResize"></div>
+                <div class="resize-btn" onclick="togglePanelWidth('panelSettings')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="15 18 9 12 15 6"/>
+                    </svg>
+                </div>
+                <div class="activity-header">
+                    <div class="activity-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                        </svg>
+                    </div>
+                    <div class="activity-title">Settings</div>
+                    <div class="activity-close" onclick="closePanel('panelSettings')">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"/>
+                            <line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="activity-content">
+                    <div class="settings-section">
+                        <div class="settings-item">
+                            <div class="settings-label">
+                                <span class="settings-title">Editor</span>
+                                <span class="settings-desc">Customize your coding environment</span>
+                            </div>
+                        </div>
+                        <div class="settings-item">
+                            <label class="settings-toggle">
+                                <span>Minimap</span>
+                                <span class="settings-desc">Show code overview on the right</span>
+                                <input type="checkbox" id="toggleMinimap" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <div class="sidebar" id="sidebar">
-          <div class="sidebar-header">Explorer</div>
-          <div class="explorer-tree" id="explorer-tree">
-            <div class="tree-item folder">📁 codnia</div>
-            <div class="tree-item">📄 Cargo.toml</div>
-            <div class="tree-item">📄 build.rs</div>
-            <div class="tree-item">📁 src-tauri</div>
-            <div class="tree-item">📁 frontend</div>
-          </div>
+        <div class="status-bar">
+            <span class="status-item" id="statusBranch">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="4"/>
+                </svg>
+                main
+            </span>
+            <span class="status-item" id="statusProblems">0 problems</span>
+            <span class="status-spacer"></span>
+            <span class="status-item">Spaces: 4</span>
+            <span class="status-item">UTF-8</span>
+            <span class="status-item" id="statusLanguage">Plain Text</span>
+            <span class="status-item" id="statusPosition">Ln 1, Col 1</span>
         </div>
-
-        <div class="editor-area">
-          <div class="tabs-bar">
-            <div class="tab active">main.rs ×</div>
-            <div class="tab">lib.rs</div>
-          </div>
-          <div class="editor-container">
-            <div id="monaco-editor"></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="status-bar">
-        <span class="status-item">main ✓</span>
-        <span class="status-item">0 problems</span>
-        <span class="status-spacer"></span>
-        <span class="status-item">Spaces: 4</span>
-        <span class="status-item">UTF-8</span>
-        <span class="status-item">Rust</span>
-        <span class="status-item">Ln 1, Col 1</span>
-      </div>
     </div>
 
     <script type="module" src="/src/editor.ts"></script>
     <script>
-      document.querySelectorAll('.activity-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          document.querySelectorAll('.activity-btn').forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-          
-          const view = btn.dataset.view;
-          const sidebar = document.getElementById('sidebar');
-          
-          if (view === 'explorer') {
-            sidebar.classList.add('visible');
-          } else {
-            sidebar.classList.remove('visible');
-          }
+        window.togglePanel = function(panelId) {
+            const panel = document.getElementById(panelId);
+            if (panel) {
+                panel.classList.toggle('hidden');
+            }
+        };
+
+        window.closePanel = function(panelId) {
+            const panel = document.getElementById(panelId);
+            if (panel) {
+                panel.classList.add('hidden');
+            }
+        };
+
+        window.togglePanelWidth = function(panelId) {
+            const panel = document.getElementById(panelId);
+            if (panel) {
+                if (panel.style.width === '400px') {
+                    panel.style.width = '';
+                    panel.style.minWidth = '';
+                } else {
+                    panel.style.width = '400px';
+                    panel.style.minWidth = '400px';
+                }
+            }
+        };
+
+        function toggleExplorerPanel() {
+            const panel = document.getElementById('panelExplorer');
+            const btn = document.getElementById('btnExplorer');
+            if (panel) {
+                panel.style.display = panel.style.display === 'none' ? 'flex' : 'none';
+                btn?.classList.toggle('active');
+            }
+        }
+
+        document.getElementById('btnExplorer').addEventListener('click', () => toggleExplorerPanel());
+        document.getElementById('btnTasks').addEventListener('click', () => togglePanel('panelTasks'));
+        document.getElementById('btnApi').addEventListener('click', () => togglePanel('panelApi'));
+        document.getElementById('btnGit').addEventListener('click', () => togglePanel('panelGit'));
+        document.getElementById('btnSettings')?.addEventListener('click', () => {
+            const settingsPanel = document.getElementById('panelSettings');
+            if (settingsPanel) settingsPanel.classList.toggle('hidden');
         });
-      });
+
+        const leftSidebar = document.querySelector('.left-sidebar');
+        document.getElementById('toggleLeftSidebar').addEventListener('click', () => {
+            leftSidebar.classList.toggle('expanded');
+        });
+        document.getElementById('btnToggleLeftSidebar').addEventListener('click', () => {
+            leftSidebar.classList.toggle('expanded');
+        });
+
+        document.querySelectorAll('.task-checkbox').forEach(cb => {
+            cb.addEventListener('click', () => {
+                cb.classList.toggle('checked');
+                if (cb.classList.contains('checked')) {
+                    cb.textContent = '✓';
+                    const title = cb.closest('.task-item').querySelector('.task-title');
+                    if (title) title.classList.add('completed');
+                } else {
+                    cb.textContent = '';
+                    const title = cb.closest('.task-item').querySelector('.task-title');
+                    if (title) title.classList.remove('completed');
+                }
+            });
+        });
+
+        let currentResizing = null;
+
+        document.querySelectorAll('.activity-bar-resize').forEach(resize => {
+            resize.addEventListener('mousedown', (e) => {
+                currentResizing = resize.parentElement;
+                currentResizing.classList.add('dragging');
+                e.preventDefault();
+            });
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (currentResizing) {
+                const panelRect = currentResizing.getBoundingClientRect();
+                const newWidth = panelRect.right - e.clientX;
+                if (newWidth >= 280 && newWidth <= 600) {
+                    currentResizing.style.width = newWidth + 'px';
+                    currentResizing.style.minWidth = newWidth + 'px';
+                }
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (currentResizing) {
+                currentResizing.classList.remove('dragging');
+                currentResizing = null;
+            }
+        });
+
+        const newTabBtn = document.getElementById('btnNewTab');
+        const newTabMenu = document.getElementById('newTabMenu');
+        const dropdown = document.getElementById('newTabDropdown');
+
+        newTabBtn?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            newTabMenu?.classList.toggle('show');
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!dropdown?.contains(e.target)) {
+                newTabMenu?.classList.remove('show');
+            }
+        });
+
+        document.querySelectorAll('.dropdown-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const action = item.dataset.action;
+                if (window.handleNewTabAction) {
+                    window.handleNewTabAction(action);
+                }
+                newTabMenu?.classList.remove('show');
+            });
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey || e.metaKey) {
+                if (e.key === 'n' && !e.shiftKey) {
+                    e.preventDefault();
+                    newTabMenu?.classList.toggle('show');
+                } else if (e.key === '`' || (e.shiftKey && e.key === 'ö')) {
+                    e.preventDefault();
+                    if (window.handleNewTabAction) window.handleNewTabAction('terminal');
+                } else if (e.shiftKey && e.key.toLowerCase() === 'o') {
+                    e.preventDefault();
+                    if (window.handleNewTabAction) window.handleNewTabAction('opencode');
+                } else if (e.shiftKey && e.key.toLowerCase() === 'c') {
+                    e.preventDefault();
+                    if (window.handleNewTabAction) window.handleNewTabAction('claude');
+                } else if (e.shiftKey && e.key.toLowerCase() === 'x') {
+                    e.preventDefault();
+                    if (window.handleNewTabAction) window.handleNewTabAction('codex');
+                }
+            }
+        });
+
+        window.handleNewTabAction = function(action) {
+            console.log('New tab action:', action);
+        };
     </script>
-  </body>
+</body>
 </html>
