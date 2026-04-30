@@ -1,1 +1,6 @@
-/target
+target/
+src-tauri/target/
+gen/
+src-tauri/gen/
+frontend/dist/
+frontend/node_modules/
