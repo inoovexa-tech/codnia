@@ -29,15 +29,6 @@ interface DirectoryListing {
     path: string;
 }
 
-interface WorkspaceState {
-    id: string;
-    name: string;
-    path: string;
-    open_files: string[];
-    active_file: string | null;
-    expanded_folders: string[];
-}
-
 class CodniaEditor {
     private editor: monaco.editor.IStandaloneCodeEditor | null = null;
     private tabs: Tab[] = [];
@@ -296,14 +287,8 @@ class CodniaEditor {
             case 'btnExplorer':
                 this.togglePanel('panelExplorer');
                 break;
-            case 'btnTasks':
-                this.togglePanel('panelTasks');
-                break;
             case 'btnApi':
                 this.togglePanel('panelApi');
-                break;
-            case 'btnGit':
-                this.togglePanel('panelGit');
                 break;
             case 'btnSearch':
                 this.showSearchPanel();
@@ -314,7 +299,13 @@ class CodniaEditor {
     private togglePanel(panelId: string): void {
         const panel = document.getElementById(panelId);
         if (panel) {
-            panel.classList.toggle('hidden');
+            if (panel.classList.contains('hidden')) {
+                panel.classList.remove('hidden');
+                panel.style.display = 'flex';
+            } else {
+                panel.classList.add('hidden');
+                panel.style.display = 'none';
+            }
         }
     }
 
@@ -332,6 +323,10 @@ class CodniaEditor {
         if (!container) return;
 
         container.innerHTML = '';
+        this.renderFileTreeInto(entries, container);
+    }
+
+    private renderFileTreeInto(entries: FileEntry[], container: HTMLElement): void {
 
         for (const entry of entries) {
             const item = document.createElement('div');
@@ -370,7 +365,7 @@ class CodniaEditor {
                             const listing = await invoke<DirectoryListing>('list_directory', { path: entry.path });
                             const childContainer = document.createElement('div');
                             childContainer.className = 'tree-children';
-                            this.renderFileTree(listing.entries);
+                            this.renderFileTreeInto(listing.entries, childContainer);
                             item.appendChild(childContainer);
                         } catch (e) {
                             console.error('Failed to load directory:', e);
@@ -450,7 +445,6 @@ class CodniaEditor {
             'cs': 'csharp',
             'swift': 'swift',
             'kt': 'kotlin',
-            'rs': 'rust',
         };
         return langs[ext || ''] || 'plaintext';
     }

@@ -3,10 +3,12 @@
 mod core;
 
 use crate::core::file_system::{DirectoryListing, FileSystem};
+use crate::core::marketplace::{Marketplace, MarketplacePlugin, MarketplaceCategory};
 use crate::core::plugins::PluginResponse;
 use crate::core::preview::{Preview, PreviewResult, PreviewType};
 use crate::core::search::Searcher;
 use crate::core::search::SearchResult;
+use crate::core::settings::{AppSettings, Settings};
 use crate::core::terminal::TerminalInstance;
 use crate::core::workspace::{Project, WorkspaceRoot, WorkspaceState};
 use crate::core::AppState;
@@ -249,7 +251,7 @@ async fn write_terminal(
 ) -> Result<(), String> {
     let uuid = Uuid::parse_str(&id).map_err(|e| e.to_string())?;
     let app_state = state.lock().unwrap();
-    let mut terminal_manager = app_state.terminal_manager.lock().unwrap();
+    let terminal_manager = app_state.terminal_manager.lock().unwrap();
     terminal_manager.write(uuid, &data)
 }
 
@@ -442,6 +444,62 @@ async fn get_plugins(
     Ok(plugin_host.get_all_plugins())
 }
 
+#[tauri::command]
+fn get_marketplace_plugins() -> Vec<MarketplacePlugin> {
+    Marketplace::get_featured_plugins()
+}
+
+#[tauri::command]
+fn get_marketplace_categories() -> Vec<MarketplaceCategory> {
+    Marketplace::get_categories()
+}
+
+#[tauri::command]
+fn search_marketplace(query: String) -> Vec<MarketplacePlugin> {
+    Marketplace::search_plugins(query)
+}
+
+#[tauri::command]
+fn get_plugins_by_category(category: String) -> Vec<MarketplacePlugin> {
+    Marketplace::get_plugins_by_category(category)
+}
+
+#[tauri::command]
+fn install_marketplace_plugin(plugin_id: String) -> Result<String, String> {
+    Marketplace::install_plugin(plugin_id)
+}
+
+#[tauri::command]
+fn uninstall_marketplace_plugin(plugin_id: String) -> Result<String, String> {
+    Marketplace::uninstall_plugin(plugin_id)
+}
+
+#[tauri::command]
+fn publish_plugin(name: String, version: String, author: String, description: String) -> Result<String, String> {
+    Marketplace::publish_plugin(name, version, author, description)
+}
+
+#[tauri::command]
+fn get_settings() -> Result<AppSettings, String> {
+    Settings::load()
+}
+
+#[tauri::command]
+fn save_settings(settings: AppSettings) -> Result<(), String> {
+    Settings::save(&settings)
+}
+
+#[tauri::command]
+fn get_keyboard_shortcuts() -> Result<std::collections::HashMap<String, String>, String> {
+    let shortcuts = Settings::get_shortcuts()?;
+    Ok(shortcuts.shortcuts)
+}
+
+#[tauri::command]
+fn update_keyboard_shortcut(action: String, shortcut: String) -> Result<(), String> {
+    Settings::update_shortcut(action, shortcut)
+}
+
 fn main() {
     setup_logging();
     setup_panic_handler();
@@ -488,7 +546,18 @@ fn main() {
             activate_plugin,
             deactivate_plugin,
             execute_plugin_command,
-            get_plugins
+            get_plugins,
+            get_marketplace_plugins,
+            get_marketplace_categories,
+            search_marketplace,
+            get_plugins_by_category,
+            install_marketplace_plugin,
+            uninstall_marketplace_plugin,
+            publish_plugin,
+            get_settings,
+            save_settings,
+            get_keyboard_shortcuts,
+            update_keyboard_shortcut
         ])
         .setup(|app| {
             info!("Tauri app setup complete");

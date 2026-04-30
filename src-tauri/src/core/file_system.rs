@@ -156,11 +156,13 @@ impl FileSystem {
         std::fs::rename(old_path, new_path).map_err(|e| e.to_string())
     }
 
+    #[allow(dead_code)]
     pub fn get_file_extension(&self, path: &Path) -> Option<String> {
         path.extension()
             .map(|e| e.to_string_lossy().to_lowercase())
     }
 
+    #[allow(dead_code)]
     pub fn is_binary_file(&self, path: &Path) -> bool {
         if let Ok(metadata) = std::fs::metadata(path) {
             if metadata.len() > 1024 * 1024 {

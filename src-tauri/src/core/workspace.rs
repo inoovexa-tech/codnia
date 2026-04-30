@@ -170,6 +170,7 @@ impl WorkspaceManager {
         removed
     }
 
+    #[allow(dead_code)]
     pub fn get_project(&self, id: Uuid) -> Option<&Project> {
         self.projects.get(&id)
     }

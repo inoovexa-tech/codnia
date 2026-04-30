@@ -152,19 +152,172 @@
         .user-avatar {
             width: 36px;
             height: 36px;
-            border-radius: 50%;
-            background: var(--accent-blue);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 11px;
-            font-weight: 600;
-            color: white;
+            border-radius: 8px;
+            color: var(--text-tertiary);
             cursor: pointer;
+            transition: all 0.15s;
         }
 
         .user-avatar:hover {
-            opacity: 0.8;
+            background: var(--bg-hover);
+            color: var(--text-secondary);
+        }
+
+        .user-avatar.active {
+            background: var(--bg-active);
+            color: var(--text-primary);
+        }
+
+        .user-avatar svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .avatar-dropdown {
+            position: absolute;
+            bottom: 48px;
+            right: 8px;
+            min-width: 160px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+            z-index: 200;
+            overflow: hidden;
+            display: none;
+        }
+
+        .avatar-dropdown.show {
+            display: block;
+        }
+
+        .avatar-dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: background 0.1s;
+        }
+
+        .avatar-dropdown-item:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .avatar-dropdown-item svg {
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+        }
+
+        .settings-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 500;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .settings-modal-overlay.show {
+            display: flex;
+        }
+
+        .settings-modal {
+            width: 600px;
+            max-height: 70vh;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .settings-modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .settings-modal-header h2 {
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .settings-modal-close {
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            color: var(--text-tertiary);
+            cursor: pointer;
+            background: none;
+            border: none;
+        }
+
+        .settings-modal-close:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .settings-modal-body {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+        }
+
+        .settings-modal-body .settings-tabs {
+            flex-shrink: 0;
+            width: 140px;
+            border-right: 1px solid var(--border);
+            padding: 8px 0;
+        }
+
+        .settings-modal-body .settings-tab {
+            padding: 8px 16px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-left: 2px solid transparent;
+        }
+
+        .settings-modal-body .settings-tab:hover {
+            background: var(--bg-hover);
+        }
+
+        .settings-modal-body .settings-tab.active {
+            color: var(--text-primary);
+            background: var(--bg-active);
+            border-left-color: var(--accent-blue);
+        }
+
+        .settings-modal-body .settings-content-area {
+            flex: 1;
+            padding: 16px;
+        }
+
+        .left-sidebar.collapsed {
+            width: 0;
+            padding: 0;
+            overflow: hidden;
+            border-right: none;
         }
 
         .editor-area {
@@ -359,18 +512,6 @@
             color: var(--text-primary);
         }
 
-        .tab-action-btn.pinned::after {
-            content: '';
-            position: absolute;
-            bottom: 2px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 4px;
-            height: 4px;
-            background: var(--accent-blue);
-            border-radius: 50%;
-        }
-
         .tab-action-btn svg {
             width: 16px;
             height: 16px;
@@ -412,6 +553,13 @@
 
         .activity-bar.hidden {
             display: none !important;
+        }
+
+        .activity-bar.collapsed {
+            width: 0 !important;
+            min-width: 0 !important;
+            overflow: hidden;
+            border-left: none;
         }
 
         .activity-header {
@@ -519,76 +667,6 @@
             padding-left: 16px;
         }
 
-        .task-list {
-            padding: 4px 0;
-        }
-
-        .task-item {
-            display: flex;
-            align-items: flex-start;
-            gap: 10px;
-            padding: 10px 12px;
-            border-radius: 6px;
-            cursor: pointer;
-        }
-
-        .task-item:hover {
-            background: var(--bg-hover);
-        }
-
-        .task-checkbox {
-            width: 16px;
-            height: 16px;
-            border: 2px solid var(--border-light);
-            border-radius: 4px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-            margin-top: 2px;
-        }
-
-        .task-checkbox.checked {
-            background: var(--accent-green);
-            border-color: var(--accent-green);
-            color: white;
-        }
-
-        .task-content {
-            flex: 1;
-            min-width: 0;
-        }
-
-        .task-title {
-            font-size: 13px;
-            color: var(--text-primary);
-            margin-bottom: 4px;
-        }
-
-        .task-title.completed {
-            text-decoration: line-through;
-            color: var(--text-tertiary);
-        }
-
-        .task-meta {
-            font-size: 11px;
-            color: var(--text-tertiary);
-        }
-
-        .task-tag {
-            display: inline-block;
-            padding: 2px 6px;
-            background: var(--bg-tertiary);
-            border-radius: 4px;
-            font-size: 10px;
-            color: var(--text-secondary);
-            margin-right: 4px;
-        }
-
-        .task-tag.bug { background: #ef444433; color: #ef4444; }
-        .task-tag.feature { background: #10b98133; color: #10b981; }
-        .task-tag.enhancement { background: #0070f333; color: #0070f3; }
-
         .api-section {
             padding: 8px 12px;
             border-bottom: 1px solid var(--border);
@@ -627,61 +705,6 @@
             font-size: 10px;
             color: var(--text-tertiary);
             margin-top: 4px;
-        }
-
-        .git-section {
-            padding: 8px 12px;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .git-section:last-child {
-            border-bottom: none;
-        }
-
-        .git-section-title {
-            font-size: 10px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: var(--text-tertiary);
-            margin-bottom: 8px;
-        }
-
-        .git-file {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 6px 0;
-            font-size: 12px;
-            color: var(--text-secondary);
-        }
-
-        .git-file-icon {
-            width: 14px;
-            height: 14px;
-        }
-
-        .git-file.added { color: #10b981; }
-        .git-file.modified { color: #f59e0b; }
-        .git-file.deleted { color: #ef4444; }
-
-        .git-branch-current {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 12px;
-            background: var(--bg-tertiary);
-            border-radius: 6px;
-            margin-bottom: 8px;
-        }
-
-        .git-branch-name {
-            font-size: 13px;
-            font-weight: 500;
-            color: var(--text-primary);
-        }
-
-        .git-branch-icon {
-            color: var(--accent-green);
         }
 
         .status-bar {
@@ -946,6 +969,104 @@
             transform: translateX(16px);
             background: white;
         }
+
+        .settings-tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border);
+            padding: 0 12px;
+        }
+
+        .settings-tab {
+            padding: 10px 16px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.15s;
+        }
+
+        .settings-tab:hover {
+            color: var(--text-primary);
+        }
+
+        .settings-tab.active {
+            color: var(--text-primary);
+            border-bottom-color: var(--accent-blue);
+        }
+
+        .settings-content {
+            padding: 8px 0;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .settings-section-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 12px 16px 8px;
+        }
+
+        .settings-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .settings-row span {
+            font-size: 13px;
+            color: var(--text-primary);
+        }
+
+        .settings-row select,
+        .settings-input {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text-primary);
+            padding: 6px 10px;
+            font-size: 12px;
+            min-width: 120px;
+        }
+
+        .settings-row input[type="number"] {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text-primary);
+            padding: 6px 10px;
+            font-size: 12px;
+            width: 80px;
+            text-align: center;
+        }
+
+        .shortcut-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .shortcut-item span {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .shortcut-item kbd {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-size: 11px;
+            color: var(--text-primary);
+            font-family: inherit;
+        }
+
     </style>
 </head>
 <body>
@@ -962,13 +1083,32 @@
                 <div class="sidebar-spacer"></div>
 
                 <div class="sidebar-section">
-                    <div class="sidebar-icon" id="toggleLeftSidebar" title="Toggle Left Sidebar">
+                    <div class="sidebar-icon" id="btnExplorerSidebar" title="Explorer">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="3" y="3" width="18" height="18" rx="2"/>
-                            <path d="M9 3v18"/>
+                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
                         </svg>
                     </div>
-                    <div class="user-avatar" title="John Doe">JD</div>
+                </div>
+
+                <div class="sidebar-spacer"></div>
+
+                <div class="sidebar-section">
+                    <div class="user-avatar" id="userAvatar" title="Menu">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="3" y1="6" x2="21" y2="6"/>
+                            <line x1="3" y1="12" x2="21" y2="12"/>
+                            <line x1="3" y1="18" x2="21" y2="18"/>
+                        </svg>
+                        <div class="avatar-dropdown" id="avatarDropdown">
+                            <div class="avatar-dropdown-item" id="avatarSettings">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="3"/>
+                                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                                </svg>
+                                <span>Settings</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -1027,22 +1167,9 @@
                     </div>
                     
                     <div class="tabs-right">
-                        <button class="tab-action-btn" id="btnTasks" title="Tasks">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M9 11L12 14L22 4M21 12V19C21 20.1046 20.1046 21 19 21H5C3.89543 21 3 20.1046 3 19V5C3 3.89543 3.89543 3 5 3H16"/>
-                            </svg>
-                        </button>
-                        
                         <button class="tab-action-btn" id="btnApi" title="REST Client">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M21 12a9 9 0 0 1-9 9m9-9a9 9 0 0 0-9-9m9 9H3m9 9a9 9 0 0 1-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0 3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 0 1 9-9"/>
-                            </svg>
-                        </button>
-                        
-                        <button class="tab-action-btn" id="btnGit" title="Git">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="12" cy="12" r="3"/>
-                                <path d="M12 2V8M12 16V22M2 12H8M16 12H22"/>
                             </svg>
                         </button>
                         
@@ -1055,27 +1182,9 @@
                             </svg>
                         </button>
                         
-                        <button class="tab-action-btn pinned" id="btnExplorer" title="Explorer">
+                        <button class="tab-action-btn" id="btnExplorer" title="Explorer">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M3 7V17C3 18.1046 3.89543 19 5 19H19C20.1046 19 21 18.1046 21 17V9C21 7.89543 20.1046 7 19 7H12L9 3H5C3.89543 3 3 3.89543 3 5V7Z"/>
-                            </svg>
-                        </button>
-
-<div class="tab-divider"></div>
-                         
-                        <button class="tab-action-btn" id="btnToggleLeftSidebar" title="Toggle Left Sidebar">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <rect x="3" y="3" width="18" height="18" rx="2"/>
-                                <path d="M9 3v18"/>
-                            </svg>
-                        </button>
-
-                        <div class="tab-divider"></div>
-
-                        <button class="tab-action-btn" id="btnSettings" title="Settings">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="12" cy="12" r="3"/>
-                                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
                             </svg>
                         </button>
                     </div>
@@ -1088,7 +1197,7 @@
 
             <div class="activity-bar" id="panelExplorer" style="display: none;">
                 <div class="activity-bar-resize" id="explorerResize"></div>
-                <div class="resize-btn" onclick="togglePanelWidth('panelExplorer')">
+                <div class="resize-btn" onclick="togglePanelCollapse('panelExplorer')">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polyline points="15 18 9 12 15 6"/>
                     </svg>
@@ -1114,66 +1223,9 @@
                 </div>
             </div>
 
-            <div class="activity-bar hidden" id="panelTasks">
-                <div class="activity-bar-resize" id="tasksResize"></div>
-                <div class="resize-btn" onclick="togglePanelWidth('panelTasks')">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="15 18 9 12 15 6"/>
-                    </svg>
-                </div>
-                <div class="activity-header">
-                    <div class="activity-icon">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M9 11L12 14L22 4M21 12V19C21 20.1046 20.1046 21 19 21H5C3.89543 21 3 20.1046 3 19V5C3 3.89543 3.89543 3 5 3H16"/>
-                        </svg>
-                    </div>
-                    <div class="activity-title">Tasks</div>
-                    <div class="activity-close" onclick="closePanel('panelTasks')">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="18" y1="6" x2="6" y2="18"/>
-                            <line x1="6" y1="6" x2="18" y2="18"/>
-                        </svg>
-                    </div>
-                </div>
-                <div class="activity-content">
-                    <div class="task-list">
-                        <div class="task-item">
-                            <div class="task-checkbox"></div>
-                            <div class="task-content">
-                                <div class="task-title">Implement user authentication</div>
-                                <div class="task-meta">
-                                    <span class="task-tag feature">feature</span>
-                                    <span>Due: May 15</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="task-item">
-                            <div class="task-checkbox"></div>
-                            <div class="task-content">
-                                <div class="task-title">Fix memory leak in dashboard</div>
-                                <div class="task-meta">
-                                    <span class="task-tag bug">bug</span>
-                                    <span>Due: May 10</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="task-item">
-                            <div class="task-checkbox checked">✓</div>
-                            <div class="task-content">
-                                <div class="task-title completed">Update dependencies</div>
-                                <div class="task-meta">
-                                    <span class="task-tag enhancement">enhancement</span>
-                                    <span>Completed</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <div class="activity-bar hidden" id="panelApi">
                 <div class="activity-bar-resize" id="apiResize"></div>
-                <div class="resize-btn" onclick="togglePanelWidth('panelApi')">
+                <div class="resize-btn" onclick="togglePanelCollapse('panelApi')">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polyline points="15 18 9 12 15 6"/>
                     </svg>
@@ -1217,106 +1269,141 @@
                 </div>
             </div>
 
-            <div class="activity-bar hidden" id="panelGit">
-                <div class="activity-bar-resize" id="gitResize"></div>
-                <div class="resize-btn" onclick="togglePanelWidth('panelGit')">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="15 18 9 12 15 6"/>
-                    </svg>
-                </div>
-                <div class="activity-header">
-                    <div class="activity-icon">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="3"/>
-                            <path d="M12 2V8M12 16V22M2 12H8M16 12H22"/>
-                        </svg>
-                    </div>
-                    <div class="activity-title">Git</div>
-                    <div class="activity-close" onclick="closePanel('panelGit')">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="18" y1="6" x2="6" y2="18"/>
-                            <line x1="6" y1="6" x2="18" y2="18"/>
-                        </svg>
-                    </div>
-                </div>
-                <div class="activity-content">
-                    <div class="git-section">
-                        <div class="git-branch-current">
-                            <svg class="git-branch-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="12" cy="12" r="4"/>
+            <div class="settings-modal-overlay" id="settingsModal">
+                <div class="settings-modal">
+                    <div class="settings-modal-header">
+                        <h2>Settings</h2>
+                        <button class="settings-modal-close" id="settingsModalClose">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18"/>
+                                <line x1="6" y1="6" x2="18" y2="18"/>
                             </svg>
-                            <span class="git-branch-name">main</span>
-                        </div>
+                        </button>
                     </div>
-                    <div class="git-section">
-                        <div class="git-section-title">Staged (2)</div>
-                        <div class="git-file">
-                            <span class="git-file-icon">M</span>
-                            <span>src/App.tsx</span>
+                    <div class="settings-modal-body">
+                        <div class="settings-tabs">
+                            <div class="settings-tab active" data-tab="editor">Editor</div>
+                            <div class="settings-tab" data-tab="theme">Theme</div>
+                            <div class="settings-tab" data-tab="shortcuts">Keyboard</div>
+                            <div class="settings-tab" data-tab="terminal">Terminal</div>
                         </div>
-                        <div class="git-file">
-                            <span class="git-file-icon">A</span>
-                            <span>src/utils/helper.ts</span>
-                        </div>
-                    </div>
-                    <div class="git-section">
-                        <div class="git-section-title">Changes (1)</div>
-                        <div class="git-file">
-                            <span class="git-file-icon modified">D</span>
-                            <span>package.json</span>
-                        </div>
-                    </div>
-                    <div class="git-section">
-                        <div class="git-section-title">Untracked (3)</div>
-                        <div class="git-file">
-                            <span class="git-file-icon" style="color: #888;">?</span>
-                            <span>src/new-component.tsx</span>
-                        </div>
-                        <div class="git-file">
-                            <span class="git-file-icon" style="color: #888;">?</span>
-                            <span>docs/api.md</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="activity-bar hidden" id="panelSettings" style="width: 400px; min-width: 400px;">
-                <div class="activity-bar-resize" id="settingsResize"></div>
-                <div class="resize-btn" onclick="togglePanelWidth('panelSettings')">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="15 18 9 12 15 6"/>
-                    </svg>
-                </div>
-                <div class="activity-header">
-                    <div class="activity-icon">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="3"/>
-                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-                        </svg>
-                    </div>
-                    <div class="activity-title">Settings</div>
-                    <div class="activity-close" onclick="closePanel('panelSettings')">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="18" y1="6" x2="6" y2="18"/>
-                            <line x1="6" y1="6" x2="18" y2="18"/>
-                        </svg>
-                    </div>
-                </div>
-                <div class="activity-content">
-                    <div class="settings-section">
-                        <div class="settings-item">
-                            <div class="settings-label">
-                                <span class="settings-title">Editor</span>
-                                <span class="settings-desc">Customize your coding environment</span>
+                        <div class="settings-content-area">
+                            <div class="settings-content" id="settingsEditor">
+                                <div class="settings-section">
+                                    <div class="settings-section-title">Editor Settings</div>
+                                    <div class="settings-item">
+                                        <label class="settings-toggle">
+                                            <span>Minimap</span>
+                                            <span class="settings-desc">Show code overview on the right</span>
+                                            <input type="checkbox" id="toggleMinimap">
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </div>
+                                    <div class="settings-item">
+                                        <label class="settings-toggle">
+                                            <span>Line Numbers</span>
+                                            <span class="settings-desc">Show line numbers in editor</span>
+                                            <input type="checkbox" id="toggleLineNumbers" checked>
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </div>
+                                    <div class="settings-item">
+                                        <label class="settings-toggle">
+                                            <span>Word Wrap</span>
+                                            <span class="settings-desc">Wrap long lines</span>
+                                            <input type="checkbox" id="toggleWordWrap">
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="settings-section">
+                                    <div class="settings-section-title">Indentation</div>
+                                    <div class="settings-row">
+                                        <span>Tab Size</span>
+                                        <select id="tabSize">
+                                            <option value="2" selected>2 spaces</option>
+                                            <option value="4">4 spaces</option>
+                                            <option value="8">8 spaces</option>
+                                        </select>
+                                    </div>
+                                    <div class="settings-item">
+                                        <label class="settings-toggle">
+                                            <span>Insert Spaces</span>
+                                            <span class="settings-desc">Use spaces instead of tabs</span>
+                                            <input type="checkbox" id="toggleInsertSpaces" checked>
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                        <div class="settings-item">
-                            <label class="settings-toggle">
-                                <span>Minimap</span>
-                                <span class="settings-desc">Show code overview on the right</span>
-                                <input type="checkbox" id="toggleMinimap" checked>
-                                <span class="toggle-slider"></span>
-                            </label>
+                            <div class="settings-content hidden" id="settingsTheme">
+                                <div class="settings-section">
+                                    <div class="settings-section-title">Theme</div>
+                                    <div class="settings-row">
+                                        <span>Color Theme</span>
+                                        <select id="colorTheme">
+                                            <option value="dark" selected>Dark</option>
+                                            <option value="light">Light</option>
+                                            <option value="high-contrast">High Contrast</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="settings-section">
+                                    <div class="settings-section-title">Font</div>
+                                    <div class="settings-row">
+                                        <span>Font Size</span>
+                                        <input type="number" id="fontSize" value="13" min="10" max="24">
+                                    </div>
+                                    <div class="settings-row">
+                                        <span>Font Family</span>
+                                        <input type="text" id="fontFamily" value="SF Mono" class="settings-input">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="settings-content hidden" id="settingsShortcuts">
+                                <div class="settings-section">
+                                    <div class="settings-section-title">Keyboard Shortcuts</div>
+                                    <div id="shortcutsList">
+                                        <div class="shortcut-item">
+                                            <span>New Tab</span>
+                                            <kbd>Ctrl+N</kbd>
+                                        </div>
+                                        <div class="shortcut-item">
+                                            <span>Toggle Terminal</span>
+                                            <kbd>Ctrl+`</kbd>
+                                        </div>
+                                        <div class="shortcut-item">
+                                            <span>Run OpenCode</span>
+                                            <kbd>Ctrl+Shift+O</kbd>
+                                        </div>
+                                        <div class="shortcut-item">
+                                            <span>Run Claude Code</span>
+                                            <kbd>Ctrl+Shift+C</kbd>
+                                        </div>
+                                        <div class="shortcut-item">
+                                            <span>Global Search</span>
+                                            <kbd>Ctrl+Shift+F</kbd>
+                                        </div>
+                                        <div class="shortcut-item">
+                                            <span>Open Settings</span>
+                                            <kbd>Ctrl+,</kbd>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="settings-content hidden" id="settingsTerminal">
+                                <div class="settings-section">
+                                    <div class="settings-section-title">Terminal</div>
+                                    <div class="settings-row">
+                                        <span>Shell</span>
+                                        <input type="text" id="terminalShell" value="/bin/zsh" class="settings-input">
+                                    </div>
+                                    <div class="settings-row">
+                                        <span>Font Size</span>
+                                        <input type="number" id="terminalFontSize" value="13" min="10" max="24">
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1344,7 +1431,13 @@
         window.togglePanel = function(panelId) {
             const panel = document.getElementById(panelId);
             if (panel) {
-                panel.classList.toggle('hidden');
+                if (panel.classList.contains('hidden')) {
+                    panel.classList.remove('hidden');
+                    panel.style.display = 'flex';
+                } else {
+                    panel.classList.add('hidden');
+                    panel.style.display = 'none';
+                }
             }
         };
 
@@ -1352,13 +1445,18 @@
             const panel = document.getElementById(panelId);
             if (panel) {
                 panel.classList.add('hidden');
+                panel.style.display = 'none';
             }
         };
 
         window.togglePanelWidth = function(panelId) {
             const panel = document.getElementById(panelId);
             if (panel) {
-                if (panel.style.width === '400px') {
+                if (panel.classList.contains('collapsed')) {
+                    panel.classList.remove('collapsed');
+                    panel.style.width = '';
+                    panel.style.minWidth = '';
+                } else if (panel.style.width === '400px') {
                     panel.style.width = '';
                     panel.style.minWidth = '';
                 } else {
@@ -1368,45 +1466,115 @@
             }
         };
 
-        function toggleExplorerPanel() {
-            const panel = document.getElementById('panelExplorer');
-            const btn = document.getElementById('btnExplorer');
+        window.togglePanelCollapse = function(panelId) {
+            const panel = document.getElementById(panelId);
             if (panel) {
-                panel.style.display = panel.style.display === 'none' ? 'flex' : 'none';
-                btn?.classList.toggle('active');
+                panel.classList.toggle('collapsed');
+            }
+        };
+
+        function togglePanelById(panelId) {
+            const allPanels = ['panelExplorer', 'panelApi'];
+            const panel = document.getElementById(panelId);
+            if (!panel) return;
+
+            if (panel.classList.contains('hidden') || panel.style.display === 'none') {
+                allPanels.forEach(id => {
+                    if (id !== panelId) {
+                        const p = document.getElementById(id);
+                        if (p) {
+                            p.classList.add('hidden');
+                            p.style.display = 'none';
+                        }
+                    }
+                });
+                panel.classList.remove('hidden');
+                panel.style.display = 'flex';
+                panel.classList.remove('collapsed');
+                
+                document.getElementById('btnExplorerSidebar')?.classList.add('active');
+                document.getElementById('btnExplorer')?.classList.add('active');
+            } else {
+                panel.classList.add('hidden');
+                panel.style.display = 'none';
+                
+                document.getElementById('btnExplorerSidebar')?.classList.remove('active');
+                document.getElementById('btnExplorer')?.classList.remove('active');
             }
         }
 
-        document.getElementById('btnExplorer').addEventListener('click', () => toggleExplorerPanel());
-        document.getElementById('btnTasks').addEventListener('click', () => togglePanel('panelTasks'));
-        document.getElementById('btnApi').addEventListener('click', () => togglePanel('panelApi'));
-        document.getElementById('btnGit').addEventListener('click', () => togglePanel('panelGit'));
-        document.getElementById('btnSettings')?.addEventListener('click', () => {
-            const settingsPanel = document.getElementById('panelSettings');
-            if (settingsPanel) settingsPanel.classList.toggle('hidden');
+        document.getElementById('btnExplorerSidebar')?.addEventListener('click', () => {
+            togglePanelById('panelExplorer');
+        });
+        document.getElementById('btnExplorer')?.addEventListener('click', () => {
+            togglePanelById('panelExplorer');
         });
 
-        const leftSidebar = document.querySelector('.left-sidebar');
-        document.getElementById('toggleLeftSidebar').addEventListener('click', () => {
-            leftSidebar.classList.toggle('expanded');
-        });
-        document.getElementById('btnToggleLeftSidebar').addEventListener('click', () => {
-            leftSidebar.classList.toggle('expanded');
+        document.getElementById('btnApi')?.addEventListener('click', () => togglePanelById('panelApi'));
+
+        document.querySelectorAll('.settings-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.settings-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                const tabName = tab.dataset.tab;
+                document.querySelectorAll('.settings-content').forEach(content => {
+                    content.classList.add('hidden');
+                });
+                document.getElementById('settings' + tabName.charAt(0).toUpperCase() + tabName.slice(1))?.classList.remove('hidden');
+            });
         });
 
-        document.querySelectorAll('.task-checkbox').forEach(cb => {
-            cb.addEventListener('click', () => {
-                cb.classList.toggle('checked');
-                if (cb.classList.contains('checked')) {
-                    cb.textContent = '✓';
-                    const title = cb.closest('.task-item').querySelector('.task-title');
-                    if (title) title.classList.add('completed');
-                } else {
-                    cb.textContent = '';
-                    const title = cb.closest('.task-item').querySelector('.task-title');
-                    if (title) title.classList.remove('completed');
+        const settingsModal = document.getElementById('settingsModal');
+        const settingsModalClose = document.getElementById('settingsModalClose');
+        const avatarDropdown = document.getElementById('avatarDropdown');
+        const userAvatar = document.getElementById('userAvatar');
+        const avatarSettings = document.getElementById('avatarSettings');
+
+        if (userAvatar) {
+            userAvatar.addEventListener('click', (e) => {
+                e.stopPropagation();
+                avatarDropdown?.classList.toggle('show');
+            });
+        }
+
+        document.addEventListener('click', (e) => {
+            if (avatarDropdown && !userAvatar?.contains(e.target)) {
+                avatarDropdown.classList.remove('show');
+            }
+        });
+
+        if (avatarSettings) {
+            avatarSettings.addEventListener('click', () => {
+                avatarDropdown?.classList.remove('show');
+                if (settingsModal) {
+                    settingsModal.classList.add('show');
                 }
             });
+        }
+
+        if (settingsModalClose) {
+            settingsModalClose.addEventListener('click', () => {
+                settingsModal?.classList.remove('show');
+            });
+        }
+
+        if (settingsModal) {
+            settingsModal.addEventListener('click', (e) => {
+                if (e.target === settingsModal) {
+                    settingsModal.classList.remove('show');
+                }
+            });
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                settingsModal?.classList.remove('show');
+                avatarDropdown?.classList.remove('show');
+            }
+            if ((e.ctrlKey || e.metaKey) && e.key === ',') {
+                e.preventDefault();
+                settingsModal?.classList.add('show');
+            }
         });
 
         let currentResizing = null;
@@ -1441,10 +1609,15 @@
         const newTabMenu = document.getElementById('newTabMenu');
         const dropdown = document.getElementById('newTabDropdown');
 
-        newTabBtn?.addEventListener('click', (e) => {
-            e.stopPropagation();
-            newTabMenu?.classList.toggle('show');
-        });
+        if (newTabBtn) {
+            newTabBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                if (newTabMenu) {
+                    newTabMenu.classList.toggle('show');
+                }
+            });
+        }
 
         document.addEventListener('click', (e) => {
             if (!dropdown?.contains(e.target)) {

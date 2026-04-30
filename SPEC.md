@@ -615,34 +615,51 @@ pub struct PluginContext {
 
 ```
 ~/.codnia/
-├── config.toml          # User settings
+├── config.toml          # User settings (deprecated)
+├── settings.json         # New unified settings (v0.5+)
 ├── plugins/             # Installed plugins
+├── marketplace/         # Cached marketplace data
 ├── extensions/          # VS Code extensions (future)
 ├── workspaces.json      # Recent workspaces
 └── logs/               # Application logs
 ```
 
-### 6.2 Config Schema
+### 6.2 Settings Schema
 
-```toml
-[general]
-theme = "dark"
-font_size = 13
-font_family = "SF Mono"
-
-[editor]
-tab_size = 2
-insert_spaces = true
-word_wrap = "off"
-minimap = true
-
-[terminal]
-shell = "zsh"
-font_size = 13
-
-[pro]
-license_key = ""
-last_sync = "2024-01-01T00:00:00Z"
+```json
+{
+  "theme": {
+    "name": "dark",
+    "dark_mode": true,
+    "font_size": 13,
+    "font_family": "SF Mono",
+    "color_overrides": {}
+  },
+  "keyboard_shortcuts": {
+    "shortcuts": {
+      "ctrl+n": "new_tab",
+      "ctrl+`": "toggle_terminal"
+    }
+  },
+  "editor": {
+    "tab_size": 2,
+    "insert_spaces": true,
+    "word_wrap": "off",
+    "minimap_enabled": false,
+    "line_numbers": true,
+    "render_whitespace": false
+  },
+  "terminal": {
+    "shell": "/bin/zsh",
+    "font_size": 13,
+    "scrollback": 10000
+  },
+  "ui": {
+    "activity_bar_visible": true,
+    "status_bar_visible": true,
+    "sidebar_width": 52
+  }
+}
 ```
 
 ### 6.3 Workspace State
@@ -734,11 +751,11 @@ project/.codnia/
 - [x] Persistence layer (JSON config in ~/.codnia/)
 
 ### Phase 3: Ecosystem (v0.5.0 - v0.6.0)
-- [ ] Marketplace UI
-- [ ] Plugin publishing
-- [ ] Settings UI
-- [ ] Theme system
-- [ ] Keyboard shortcuts
+- [x] Marketplace UI
+- [x] Plugin publishing
+- [x] Settings UI
+- [x] Theme system
+- [x] Keyboard shortcuts
 
 ### Phase 4: Pro Features (v1.0.0)
 - [ ] Git integration (pro)

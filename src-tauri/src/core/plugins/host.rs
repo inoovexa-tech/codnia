@@ -1,8 +1,6 @@
-use crate::core::plugins::manifest::{Plugin, PluginCommand, PluginContext, PluginManifest, PluginRequest, PluginResponse};
-use serde::{Deserialize, Serialize};
+use crate::core::plugins::manifest::{Plugin, PluginManifest, PluginResponse};
 use std::collections::HashMap;
 use std::path::PathBuf;
-use uuid::Uuid;
 
 pub struct PluginHost {
     plugins: HashMap<String, Plugin>,
@@ -109,6 +107,7 @@ impl PluginHost {
         }
     }
 
+    #[allow(dead_code)]
     pub fn get_plugin(&self, plugin_id: &str) -> Option<&Plugin> {
         self.plugins.get(plugin_id)
     }
@@ -117,10 +116,12 @@ impl PluginHost {
         self.plugins.values().cloned().collect()
     }
 
+    #[allow(dead_code)]
     pub fn get_active_plugins(&self) -> Vec<Plugin> {
         self.plugins.values().filter(|p| p.is_active).cloned().collect()
     }
 
+    #[allow(dead_code)]
     pub fn uninstall_plugin(&mut self, plugin_id: &str) -> Result<(), String> {
         if let Some(mut plugin) = self.plugins.remove(plugin_id) {
             plugin.deactivate();
@@ -133,6 +134,7 @@ impl PluginHost {
         }
     }
 
+    #[allow(dead_code)]
     pub fn install_plugin(&mut self, source_path: &PathBuf, dest_dir: &PathBuf) -> Result<PluginManifest, String> {
         if !source_path.exists() {
             return Err(format!("Source plugin path does not exist: {}", source_path.display()));

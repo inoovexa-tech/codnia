@@ -94,6 +94,7 @@ impl Persistence {
         fs::write(&path, content).map_err(|e| e.to_string())
     }
 
+    #[allow(dead_code)]
     pub fn get_recent_projects(limit: usize) -> Result<Vec<RecentProject>, String> {
         let config = Self::load_config()?;
         Ok(config.recent_projects.into_iter().take(limit).collect())
@@ -118,6 +119,7 @@ impl Persistence {
         Self::save_config(&config)
     }
 
+    #[allow(dead_code)]
     pub fn remove_recent_project(path: &str) -> Result<(), String> {
         let mut config = Self::load_config()?;
         config.recent_projects.retain(|p| p.path != path);

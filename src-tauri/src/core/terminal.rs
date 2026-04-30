@@ -148,6 +148,7 @@ impl TerminalManager {
         }
     }
 
+    #[allow(dead_code)]
     pub fn get_instance(&self, id: Uuid) -> Option<&TerminalInstance> {
         self.instances.get(&id)
     }
@@ -156,6 +157,7 @@ impl TerminalManager {
         self.instances.values().cloned().collect()
     }
 
+    #[allow(dead_code)]
     pub fn is_running(&self, _id: Uuid) -> bool {
         true
     }

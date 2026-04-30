@@ -60,6 +60,7 @@ impl Plugin {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct PluginContext {
     pub workspace_id: String,
     pub editor_id: String,
@@ -67,6 +68,7 @@ pub struct PluginContext {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct PluginRequest {
     pub plugin_id: String,
     pub command: String,

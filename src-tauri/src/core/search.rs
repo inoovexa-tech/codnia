@@ -42,6 +42,7 @@ impl Searcher {
         }
     }
 
+    #[allow(dead_code)]
     pub fn with_max_depth(mut self, depth: usize) -> Self {
         self.max_depth = Some(depth);
         self
