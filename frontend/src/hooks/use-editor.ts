@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import * as monaco from "monaco-editor";
 import { readFile } from "@/lib/tauri";
 import type { Tab } from "@/types";
@@ -17,22 +17,17 @@ function getLanguage(filename: string): string {
   return langs[ext] || "plaintext";
 }
 
-function getFileIcon(filename: string): string {
-  const ext = filename.split(".").pop()?.toLowerCase() || "";
-  const icons: Record<string, string> = {
-    rs: "\u{1F980}", ts: "\u{1F4D8}", tsx: "\u269B", js: "\u{1F4DC}",
-    jsx: "\u269B", json: "\u{1F4CB}", html: "\u{1F310}", css: "\u{1F3A8}",
-    md: "\u{1F4DD}", toml: "\u2699", yaml: "\u{1F4C4}", yml: "\u{1F4C4}",
-    sh: "\u{1F5A5}", bash: "\u{1F5A5}", png: "\u{1F5BC}", jpg: "\u{1F5BC}",
-    jpeg: "\u{1F5BC}", gif: "\u{1F5BC}", svg: "\u{1F5BC}", txt: "\u{1F4C4}",
-  };
-  return icons[ext] || "\u{1F4C4}";
-}
-
 export function useEditor() {
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const [tabs, setTabs] = useState<Tab[]>([]);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
+  const tabsRef = useRef<Tab[]>([]);
+  const pendingFileRef = useRef<Tab | null>(null);
+
+  // Manter tabsRef sincronizado
+  useEffect(() => {
+    tabsRef.current = tabs;
+  }, [tabs]);
 
   const initEditor = useCallback((container: HTMLElement) => {
     if (editorRef.current) return;
@@ -57,14 +52,30 @@ export function useEditor() {
     });
 
     editorRef.current = editor;
+
+    if (pendingFileRef.current) {
+      const tab = pendingFileRef.current;
+      const uri = monaco.Uri.file(tab.path);
+      const model = monaco.editor.getModel(uri);
+      if (model) {
+        editor.setModel(model);
+      }
+      pendingFileRef.current = null;
+    }
   }, []);
 
   const openFile = useCallback(async (path: string) => {
-    if (!editorRef.current) return;
-
-    const existing = tabs.find((t) => t.path === path);
+    const currentTabs = tabsRef.current;
+    const existing = currentTabs.find((t) => t.path === path);
     if (existing) {
       setActiveTabId(existing.id);
+      if (editorRef.current) {
+        const uri = monaco.Uri.file(path);
+        const model = monaco.editor.getModel(uri);
+        if (model && editorRef.current.getModel() !== model) {
+          editorRef.current.setModel(model);
+        }
+      }
       return;
     }
 
@@ -72,8 +83,17 @@ export function useEditor() {
     const language = getLanguage(name);
     const content = await readFile(path);
 
-    const model = monaco.editor.createModel(content, language);
-    editorRef.current.setModel(model);
+    const uri = monaco.Uri.file(path);
+    let model = monaco.editor.getModel(uri);
+    if (!model) {
+      model = monaco.editor.createModel(content, language, uri);
+    } else {
+      model.setValue(content);
+    }
+
+    if (editorRef.current) {
+      editorRef.current.setModel(model);
+    }
 
     const tab: Tab = {
       id: `file-${Date.now()}`,
@@ -85,17 +105,50 @@ export function useEditor() {
 
     setTabs((prev) => [...prev, tab]);
     setActiveTabId(tab.id);
-  }, [tabs]);
+
+    if (!editorRef.current) {
+      pendingFileRef.current = tab;
+    }
+  }, []);
 
   const closeTab = useCallback(
     (tabId: string) => {
       setTabs((prev) => {
+        const closingTab = prev.find((t) => t.id === tabId);
         const idx = prev.findIndex((t) => t.id === tabId);
         const next = prev.filter((t) => t.id !== tabId);
-        if (activeTabId === tabId) {
-          const newActive = next[Math.max(0, idx - 1)]?.id || null;
-          setActiveTabId(newActive);
+
+        if (closingTab && editorRef.current) {
+          if (activeTabId === tabId) {
+            const newActive = next[Math.max(0, idx - 1)]?.id || null;
+            setActiveTabId(newActive);
+
+            if (newActive) {
+              const nextTab = next.find((t) => t.id === newActive);
+              if (nextTab) {
+                const uri = monaco.Uri.file(nextTab.path);
+                const existingModel = monaco.editor.getModel(uri);
+                if (existingModel) {
+                  editorRef.current.setModel(existingModel);
+                } else {
+                  readFile(nextTab.path).then((content) => {
+                    if (editorRef.current) {
+                      const newModel = monaco.editor.createModel(content, nextTab.language, uri);
+                      editorRef.current.setModel(newModel);
+                    }
+                  });
+                }
+              }
+            } else {
+              editorRef.current.setValue("");
+              const emptyModel = editorRef.current.getModel();
+              if (emptyModel) {
+                monaco.editor.setModelLanguage(emptyModel, "plaintext");
+              }
+            }
+          }
         }
+
         return next;
       });
     },
@@ -104,15 +157,22 @@ export function useEditor() {
 
   const activateTab = useCallback(
     async (tabId: string) => {
-      const tab = tabs.find((t) => t.id === tabId);
+      const currentTabs = tabsRef.current;
+      const tab = currentTabs.find((t) => t.id === tabId);
       if (!tab || !editorRef.current) return;
 
       setActiveTabId(tabId);
-      const content = await readFile(tab.path);
-      const model = monaco.editor.createModel(content, tab.language);
-      editorRef.current.setModel(model);
+      const uri = monaco.Uri.file(tab.path);
+      const existingModel = monaco.editor.getModel(uri);
+      if (existingModel) {
+        editorRef.current.setModel(existingModel);
+      } else {
+        const content = await readFile(tab.path);
+        const model = monaco.editor.createModel(content, tab.language, uri);
+        editorRef.current.setModel(model);
+      }
     },
-    [tabs],
+    [],
   );
 
   return {
@@ -124,6 +184,5 @@ export function useEditor() {
     closeTab,
     activateTab,
     getLanguage,
-    getFileIcon,
   };
 }
