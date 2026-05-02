@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { PanelRightOpen, PanelRightClose, Terminal, Code2, Circle, Layers, FileCode, FileText, FileType, FileJson, Globe, Paintbrush, Braces, File } from "lucide-react";
+import { PanelRightOpen, PanelRightClose, Terminal, Code2, Circle, Layers, FileCode, FileText, FileType, FileJson, Globe, Paintbrush, Braces, File, Minus, Square, X } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Sidebar } from "@/components/sidebar";
 import { ActivityBar } from "@/components/activity-bar";
 import { StatusBar } from "@/components/status-bar";
@@ -54,6 +55,35 @@ const FILE_ICON_MAP: Record<string, React.ReactNode> = {
 function getFileIcon(filename: string): React.ReactNode {
   const ext = filename.split(".").pop()?.toLowerCase() || "";
   return FILE_ICON_MAP[ext] || <File className="h-3.5 w-3.5 text-[#8b949e]" />;
+}
+
+function WindowControls() {
+  if (navigator.userAgent.includes("Mac")) return null;
+
+  const appWindow = getCurrentWindow();
+
+  return (
+    <div className="flex items-center ml-1">
+      <button
+        onClick={() => appWindow.minimize()}
+        className="w-[46px] h-full flex items-center justify-center text-[#555555] hover:text-white hover:bg-[#1a1a1a] transition-colors"
+      >
+        <Minus className="h-4 w-4" />
+      </button>
+      <button
+        onClick={() => appWindow.toggleMaximize()}
+        className="w-[46px] h-full flex items-center justify-center text-[#555555] hover:text-white hover:bg-[#1a1a1a] transition-colors"
+      >
+        <Square className="h-3.5 w-3.5" />
+      </button>
+      <button
+        onClick={() => appWindow.close()}
+        className="w-[46px] h-full flex items-center justify-center text-[#555555] hover:text-white hover:bg-[#cc0000] transition-colors"
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  );
 }
 
 export function App() {
@@ -326,6 +356,70 @@ export function App() {
 
   return (
     <div className="flex flex-col w-full h-full bg-[#000000] text-white font-[var(--font-sans)]">
+      <div className="h-8 bg-[#000000] border-b border-[#1a1a1a] flex items-center shrink-0" data-tauri-drag-region>
+        <div className="flex items-center gap-[2px] flex-1 overflow-x-auto" style={{ paddingLeft: 78, paddingRight: 12 }} data-tauri-drag-region>
+          <NewTabDropdown
+            onTerminal={handleNewTerminal}
+            onOpenCode={handleOpenCode}
+            onClaudeCode={handleClaudeCode}
+            onCodex={handleCodex}
+            onNewFile={handleNewFile}
+          />
+           {allTabs.map((tab) => {
+              const typeInfo = tab.type ? TAB_TYPE_ICONS[tab.type] : undefined;
+              const displayName = tab.isModified && !tab.type ? `${tab.name} ●` : tab.name;
+              const isActive = tab.id === activeId;
+              return (
+              <button
+                key={tab.id}
+                onClick={() => handleTabSelect(tab.id)}
+                className={`
+                  h-[34px] flex items-center gap-[6px] text-[12px] transition-colors shrink-0 cursor-pointer
+                  border border-[#222222] rounded-[6px]
+                  ${isActive
+                    ? "bg-[#111111] text-white"
+                    : "bg-transparent text-[#888888] hover:bg-[#0a0a0a] hover:text-white"
+                  }
+                `}
+                style={{ paddingLeft: 14, paddingRight: 14 }}
+              >
+                {typeInfo ? (
+                  <span className={typeInfo.color}>{typeInfo.icon}</span>
+                ) : (
+                  getFileIcon(tab.name)
+                )}
+                <span>{displayName}</span>
+                <span
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleTabClose(tab.id);
+                  }}
+                   className="ml-2 w-[20px] h-[20px] flex items-center justify-center rounded opacity-40 hover:opacity-100 hover:bg-[#222222] text-[13px] leading-none"
+                >
+                  ×
+                </span>
+              </button>
+             );
+           })}
+        </div>
+
+        <div className="flex items-center gap-1 shrink-0" style={{ paddingLeft: 8, paddingRight: 12, borderLeft: '1px solid #1a1a1a' }}>
+          <button
+            onClick={handleRightSidebarToggle}
+            className={`w-[28px] h-[28px] flex items-center justify-center rounded transition-colors ${
+              rightSidebarExpanded
+                ? "bg-[#1a1a1a] text-white"
+                : "text-[#555555] hover:bg-[#1a1a1a] hover:text-[#888888]"
+            }`}
+            title={rightSidebarExpanded ? "Collapse Panel" : "Expand Panel"}
+          >
+            {rightSidebarExpanded ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
+          </button>
+        </div>
+
+        <WindowControls />
+      </div>
+
       <div className="flex flex-1 overflow-hidden relative">
         <Sidebar
           projects={projects}
@@ -339,68 +433,6 @@ export function App() {
         />
 
         <div className="flex-1 flex flex-col min-w-0 bg-[#000000] relative">
-          <div className="h-10 bg-[#000000] border-b border-[#1a1a1a] flex items-center shrink-0">
-            <div className="flex items-center gap-[2px] flex-1 overflow-x-auto" style={{ paddingLeft: 12, paddingRight: 12 }}>
-              <NewTabDropdown
-                onTerminal={handleNewTerminal}
-                onOpenCode={handleOpenCode}
-                onClaudeCode={handleClaudeCode}
-                onCodex={handleCodex}
-                onNewFile={handleNewFile}
-              />
-               {allTabs.map((tab) => {
-                 const typeInfo = tab.type ? TAB_TYPE_ICONS[tab.type] : undefined;
-                 const displayName = tab.isModified && !tab.type ? `${tab.name} ●` : tab.name;
-                 const isActive = tab.id === activeId;
-                 return (
-                 <button
-                   key={tab.id}
-                   onClick={() => handleTabSelect(tab.id)}
-                   className={`
-                     h-[34px] flex items-center gap-[6px] text-[12px] transition-colors shrink-0 cursor-pointer
-                     border border-[#222222] rounded-[6px]
-                     ${isActive
-                       ? "bg-[#111111] text-white"
-                       : "bg-transparent text-[#888888] hover:bg-[#0a0a0a] hover:text-white"
-                     }
-                   `}
-                   style={{ paddingLeft: 14, paddingRight: 14 }}
-                 >
-                   {typeInfo ? (
-                     <span className={typeInfo.color}>{typeInfo.icon}</span>
-                   ) : (
-                     getFileIcon(tab.name)
-                   )}
-                   <span>{displayName}</span>
-                   <span
-                     onClick={(e) => {
-                       e.stopPropagation();
-                       handleTabClose(tab.id);
-                     }}
-                      className="ml-2 w-[20px] h-[20px] flex items-center justify-center rounded opacity-40 hover:opacity-100 hover:bg-[#222222] text-[13px] leading-none"
-                   >
-                     ×
-                   </span>
-                 </button>
-                );
-              })}
-            </div>
-
-            <div className="flex items-center gap-1 shrink-0" style={{ paddingLeft: 8, paddingRight: 12, borderLeft: '1px solid #1a1a1a' }}>
-              <button
-                onClick={handleRightSidebarToggle}
-                className={`w-[28px] h-[28px] flex items-center justify-center rounded transition-colors ${
-                  rightSidebarExpanded
-                    ? "bg-[#1a1a1a] text-white"
-                    : "text-[#555555] hover:bg-[#1a1a1a] hover:text-[#888888]"
-                }`}
-                title={rightSidebarExpanded ? "Collapse Panel" : "Expand Panel"}
-              >
-                {rightSidebarExpanded ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
-              </button>
-            </div>
-          </div>
-
           <div className="flex-1 flex flex-col relative">
             <div
               ref={editorContainerRef}
