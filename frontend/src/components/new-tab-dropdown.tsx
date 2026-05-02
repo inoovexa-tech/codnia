@@ -75,13 +75,14 @@ export function NewTabDropdown({ onTerminal, onOpenCode, onClaudeCode, onCodex, 
       <DropdownMenuTrigger asChild>
         <button
           className="w-[28px] h-[28px] flex items-center justify-center rounded transition-colors text-[#555555] hover:bg-[#222222] hover:text-white cursor-pointer"
+          style={{ marginLeft: 4, marginRight: 8 }}
           title="New Tab"
           type="button"
         >
           <Plus className="h-4 w-4" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" sideOffset={8} className="w-[220px]">
+      <DropdownMenuContent align="start" sideOffset={8} className="w-[220px]" style={{ padding: 6 }}>
         {menuItems.map((item) => {
           if (item.id === "separator") {
             return <DropdownMenuSeparator key="separator" />;
@@ -90,7 +91,8 @@ export function NewTabDropdown({ onTerminal, onOpenCode, onClaudeCode, onCodex, 
             <DropdownMenuItem
               key={item.id}
               onClick={() => handleSelect(item.id)}
-              className="flex items-center gap-[10px] px-[14px] py-[10px] text-[13px] cursor-pointer"
+              className="flex items-center gap-[10px] text-[13px] cursor-pointer"
+              style={{ padding: '8px 10px', borderRadius: 4 }}
             >
               {item.icon}
               <span className="flex-1">{item.label}</span>

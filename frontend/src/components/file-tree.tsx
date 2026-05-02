@@ -187,7 +187,21 @@ export function FileTree({ entries, onFileSelect, onRefresh }: FileTreeProps) {
   const rootNewInline = isRootNewFile || isRootNewDir ? inlineEdit : null;
 
   return (
-    <div className="py-1 overflow-y-auto h-full" onContextMenu={(e) => e.preventDefault()}>
+    <div className="py-1 overflow-y-auto h-full" onContextMenu={async (e) => {
+      e.preventDefault();
+      const parentPath = rootPath || "";
+      if (!parentPath) return;
+      try {
+        const items: (MenuItem | PredefinedMenuItem)[] = [
+          await MenuItem.new({ text: "New File", action: () => handleNewFile(parentPath) }),
+          await MenuItem.new({ text: "New Folder", action: () => handleNewDir(parentPath) }),
+        ];
+        const menu = await Menu.new({ items });
+        await menu.popup(new LogicalPosition(e.clientX, e.clientY));
+      } catch (err) {
+        console.error("Context menu error:", err);
+      }
+    }}>
       {rootNewInline && (
         <div
           className="flex items-center gap-1.5 py-[3px] px-3"

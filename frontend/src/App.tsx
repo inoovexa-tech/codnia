@@ -339,8 +339,8 @@ export function App() {
         />
 
         <div className="flex-1 flex flex-col min-w-0 bg-[#0c0c0c] relative">
-          <div className="h-10 bg-[#111111] border-b border-[#2a2a2a] flex items-center px-3 gap-2 shrink-0">
-            <div className="flex items-center gap-[2px] flex-1 overflow-x-auto">
+          <div className="h-10 bg-[#111111] border-b border-[#2a2a2a] flex items-center shrink-0">
+            <div className="flex items-center gap-[2px] flex-1 overflow-x-auto" style={{ paddingLeft: 12, paddingRight: 12 }}>
               <NewTabDropdown
                 onTerminal={handleNewTerminal}
                 onOpenCode={handleOpenCode}
@@ -352,21 +352,18 @@ export function App() {
                  const typeInfo = tab.type ? TAB_TYPE_ICONS[tab.type] : undefined;
                  const displayName = tab.isModified && !tab.type ? `${tab.name} ●` : tab.name;
                  return (
-                <button
-                  key={tab.id}
-                  onClick={() => handleTabSelect(tab.id)}
-                  className={`h-[34px] px-[14px] flex items-center gap-[6px] text-[12px] transition-colors shrink-0 cursor-pointer border-b-[3px] ${
-                    tab.id === activeId
-                      ? "text-white border-[#0070f3] bg-[#0c0c0c]"
-                      : "text-[#888888] border-transparent hover:bg-[#222222] hover:text-white"
-                  }`}
-                >
-                  {typeInfo ? (
-                    <span className={typeInfo.color}>{typeInfo.icon}</span>
-                  ) : (
-                    getFileIcon(tab.name)
-                  )}
-                  <span>{displayName}</span>
+                 <button
+                   key={tab.id}
+                   onClick={() => handleTabSelect(tab.id)}
+                   className={`h-[34px] flex items-center gap-[6px] text-[12px] transition-colors shrink-0 cursor-pointer border-b-[3px]`}
+                   style={{ paddingLeft: 14, paddingRight: 14 }}
+                 >
+                   {typeInfo ? (
+                     <span className={typeInfo.color}>{typeInfo.icon}</span>
+                   ) : (
+                     getFileIcon(tab.name)
+                   )}
+                   <span>{displayName}</span>
                    <span
                      onClick={(e) => {
                        e.stopPropagation();
@@ -376,12 +373,12 @@ export function App() {
                    >
                      ×
                    </span>
-                </button>
-               );
+                 </button>
+                );
               })}
             </div>
 
-            <div className="flex items-center gap-1" style={{ marginLeft: 8, paddingLeft: 8, borderLeft: '1px solid #2a2a2a' }}>
+            <div className="flex items-center gap-1 shrink-0" style={{ paddingLeft: 8, paddingRight: 12, borderLeft: '1px solid #2a2a2a' }}>
               <button
                 onClick={handleRightSidebarToggle}
                 className={`w-[28px] h-[28px] flex items-center justify-center rounded transition-colors ${
