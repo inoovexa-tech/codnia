@@ -16,6 +16,8 @@ use std::panic;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use tauri::Manager;
+use tauri::Emitter;
+use tauri::menu::{MenuBuilder, SubmenuBuilder, MenuItemBuilder};
 use tracing::{error, info, Level};
 use tracing_appender::rolling::{RollingFileAppender, Rotation};
 use tracing_subscriber::FmtSubscriber;
@@ -61,6 +63,24 @@ fn setup_panic_handler() {
 
         error!("PANIC at {}: {}", location, msg);
     }));
+}
+
+#[tauri::command]
+fn open_settings_window(app: tauri::AppHandle<tauri::Wry>) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window("settings") {
+        let _ = window.set_focus();
+        return Ok(());
+    }
+
+    tauri::WebviewWindowBuilder::new(&app, "settings", tauri::WebviewUrl::App("settings.html".into()))
+        .title("Codnia - Settings")
+        .inner_size(900.0, 680.0)
+        .min_inner_size(700.0, 540.0)
+        .center()
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
 }
 
 #[tauri::command]
@@ -207,6 +227,24 @@ async fn rename_path(old_path: String, new_path: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+async fn copy_path(src: String, dst: String) -> Result<(), String> {
+    let fs = FileSystem::new();
+    let src_path = PathBuf::from(&src);
+    if src_path.is_dir() {
+        fs.copy_dir(&src_path, &PathBuf::from(dst))
+    } else {
+        fs.copy_file(&src_path, &PathBuf::from(dst))
+    }
+}
+
+#[tauri::command]
+async fn duplicate_path(path: String) -> Result<String, String> {
+    let fs = FileSystem::new();
+    let new_path = fs.duplicate(&PathBuf::from(path))?;
+    Ok(new_path.to_string_lossy().to_string())
+}
+
+#[tauri::command]
 async fn open_in_explorer(path: String) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
@@ -236,11 +274,40 @@ async fn open_in_explorer(path: String) -> Result<(), String> {
 async fn create_terminal(
     cwd: Option<String>,
     shell: Option<String>,
+    command: Option<String>,
     state: tauri::State<'_, Arc<Mutex<AppState>>>,
+    app: tauri::AppHandle<tauri::Wry>,
 ) -> Result<TerminalInstance, String> {
-    let app_state = state.lock().unwrap();
-    let mut terminal_manager = app_state.terminal_manager.lock().unwrap();
-    terminal_manager.create_instance(cwd, shell)
+    let (instance, reader) = {
+        let app_state = state.lock().unwrap();
+        let mut terminal_manager = app_state.terminal_manager.lock().unwrap();
+        terminal_manager.create_instance(cwd, shell, command)?
+    };
+
+    let terminal_id = instance.id.to_string();
+    let app_handle = app.clone();
+    std::thread::spawn(move || {
+        let mut reader = reader.lock().unwrap();
+        let mut buffer = vec![0u8; 8192];
+        loop {
+            match reader.read(&mut buffer) {
+                Ok(0) => {
+                    let _ = app_handle.emit(&format!("terminal:{}:exit", terminal_id), ());
+                    break;
+                }
+                Ok(n) => {
+                    let data = String::from_utf8_lossy(&buffer[..n]).to_string();
+                    let _ = app_handle.emit(&format!("terminal:{}:data", terminal_id), data);
+                }
+                Err(_) => {
+                    let _ = app_handle.emit(&format!("terminal:{}:exit", terminal_id), ());
+                    break;
+                }
+            }
+        }
+    });
+
+    Ok(instance)
 }
 
 #[tauri::command]
@@ -253,18 +320,6 @@ async fn write_terminal(
     let app_state = state.lock().unwrap();
     let terminal_manager = app_state.terminal_manager.lock().unwrap();
     terminal_manager.write(uuid, &data)
-}
-
-#[tauri::command]
-async fn read_terminal(
-    id: String,
-    timeout_ms: Option<u64>,
-    state: tauri::State<'_, Arc<Mutex<AppState>>>,
-) -> Result<String, String> {
-    let uuid = Uuid::parse_str(&id).map_err(|e| e.to_string())?;
-    let app_state = state.lock().unwrap();
-    let terminal_manager = app_state.terminal_manager.lock().unwrap();
-    terminal_manager.read(uuid, timeout_ms.unwrap_or(10))
 }
 
 #[tauri::command]
@@ -485,6 +540,22 @@ fn get_settings() -> Result<AppSettings, String> {
 }
 
 #[tauri::command]
+fn get_git_branch(path: String) -> Result<String, String> {
+    let output = std::process::Command::new("git")
+        .args(["rev-parse", "--abbrev-ref", "HEAD"])
+        .current_dir(&path)
+        .output()
+        .map_err(|e| format!("Failed to run git: {}", e))?;
+
+    if !output.status.success() {
+        return Ok(String::new());
+    }
+
+    let branch = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    Ok(branch)
+}
+
+#[tauri::command]
 fn save_settings(settings: AppSettings) -> Result<(), String> {
     Settings::save(&settings)
 }
@@ -513,6 +584,7 @@ fn main() {
         .plugin(tauri_plugin_dialog::init())
         .manage(app_state)
         .invoke_handler(tauri::generate_handler![
+            open_settings_window,
             add_project,
             remove_project,
             get_projects,
@@ -528,10 +600,11 @@ fn main() {
             create_directory,
             delete_path,
             rename_path,
+            copy_path,
+            duplicate_path,
             open_in_explorer,
             create_terminal,
             write_terminal,
-            read_terminal,
             resize_terminal,
             kill_terminal,
             list_terminals,
@@ -557,10 +630,44 @@ fn main() {
             get_settings,
             save_settings,
             get_keyboard_shortcuts,
-            update_keyboard_shortcut
+            update_keyboard_shortcut,
+            get_git_branch
         ])
         .setup(|app| {
             info!("Tauri app setup complete");
+
+            let menu = MenuBuilder::new(app)
+                .item(&SubmenuBuilder::new(app, "File")
+                    .item(&MenuItemBuilder::with_id("new_file", "New File").accelerator("CmdOrCtrl+N").build(app)?)
+                    .item(&MenuItemBuilder::with_id("open_file", "Open File...").accelerator("CmdOrCtrl+O").build(app)?)
+                    .separator()
+                    .item(&MenuItemBuilder::with_id("save", "Save").accelerator("CmdOrCtrl+S").build(app)?)
+                    .item(&MenuItemBuilder::with_id("save_as", "Save As...").accelerator("CmdOrCtrl+Shift+S").build(app)?)
+                    .separator()
+                    .item(&MenuItemBuilder::with_id("close_tab", "Close Tab").accelerator("CmdOrCtrl+W").build(app)?)
+                    .build()?)
+                .item(&SubmenuBuilder::new(app, "Edit")
+                    .item(&MenuItemBuilder::with_id("undo", "Undo").accelerator("CmdOrCtrl+Z").build(app)?)
+                    .item(&MenuItemBuilder::with_id("redo", "Redo").accelerator("CmdOrCtrl+Shift+Z").build(app)?)
+                    .separator()
+                    .item(&MenuItemBuilder::with_id("cut", "Cut").accelerator("CmdOrCtrl+X").build(app)?)
+                    .item(&MenuItemBuilder::with_id("copy", "Copy").accelerator("CmdOrCtrl+C").build(app)?)
+                    .item(&MenuItemBuilder::with_id("paste", "Paste").accelerator("CmdOrCtrl+V").build(app)?)
+                    .item(&MenuItemBuilder::with_id("select_all", "Select All").accelerator("CmdOrCtrl+A").build(app)?)
+                    .build()?)
+                .item(&SubmenuBuilder::new(app, "View")
+                    .item(&MenuItemBuilder::with_id("toggle_sidebar", "Toggle Sidebar").accelerator("CmdOrCtrl+B").build(app)?)
+                    .item(&MenuItemBuilder::with_id("toggle_terminal", "Toggle Terminal").accelerator("CmdOrCtrl+`").build(app)?)
+                    .build()?)
+                .build()?;
+
+            app.set_menu(menu)?;
+
+            let handle = app.handle().clone();
+            app.on_menu_event(move |_window, event| {
+                let _ = handle.emit("menu-event", event.id.as_ref());
+            });
+
             let _window = app.get_webview_window("main");
             Ok(())
         })

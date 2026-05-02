@@ -1,4 +1,4 @@
-import { X } from "lucide-react";
+import { X, RefreshCw } from "lucide-react";
 import { FileTree } from "@/components/file-tree";
 import type { FileEntry } from "@/types";
 
@@ -6,12 +6,14 @@ interface ActivityBarProps {
   fileTree: FileEntry[];
   onFileSelect: (path: string) => void;
   onClose: () => void;
+  onRefresh?: () => void;
 }
 
 export function ActivityBar({
   fileTree,
   onFileSelect,
   onClose,
+  onRefresh,
 }: ActivityBarProps) {
   return (
     <div className="w-[280px] min-w-[280px] bg-[#111111] border-l border-[#2a2a2a] flex flex-col relative shrink-0">
@@ -19,17 +21,26 @@ export function ActivityBar({
 
       <div className="h-12 flex items-center justify-between border-b border-[#2a2a2a]" style={{ padding: "0 10px" }}>
         <span className="text-[13px] font-medium text-white tracking-wide">Explorer</span>
-        <button
-          onClick={onClose}
-          className="w-7 h-7 flex items-center justify-center rounded hover:bg-[#222222] text-[#555555] hover:text-white transition-colors"
-        >
-          <X className="h-4 w-4" />
-        </button>
+        <div className="flex items-center gap-0.5">
+          <button
+            onClick={onRefresh}
+            className="w-7 h-7 flex items-center justify-center rounded hover:bg-[#222222] text-[#555555] hover:text-white transition-colors"
+            title="Refresh"
+          >
+            <RefreshCw className="h-4 w-4" />
+          </button>
+          <button
+            onClick={onClose}
+            className="w-7 h-7 flex items-center justify-center rounded hover:bg-[#222222] text-[#555555] hover:text-white transition-colors"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-auto p-2">
         {fileTree.length > 0 ? (
-          <FileTree entries={fileTree} onFileSelect={onFileSelect} />
+          <FileTree entries={fileTree} onFileSelect={onFileSelect} onRefresh={onRefresh} />
         ) : (
           <p className="text-[#555555] text-[13px] px-3 py-8 text-center italic">Open a project to see files</p>
         )}

@@ -2,15 +2,31 @@
   "$schema": "https://schema.tauri.app/config/2/capabilities",
   "identifier": "default",
   "description": "Default capabilities for the Codnia app",
-  "windows": ["main"],
+  "windows": ["main", "settings"],
   "permissions": [
     "core:default",
     "dialog:default",
+    "dialog:allow-save",
+    "dialog:allow-message",
+    "dialog:allow-open",
     "core:window:allow-set-title",
     "core:window:allow-minimize",
     "core:window:allow-maximize",
     "core:window:allow-unmaximize",
     "core:window:allow-close",
-    "core:window:allow-start-dragging"
+    "core:window:allow-start-dragging",
+    "core:menu:default",
+    "core:menu:allow-new",
+    "core:menu:allow-popup",
+    "core:menu:allow-append",
+    "core:menu:allow-remove",
+    "core:menu:allow-set-as-app-menu",
+    "core:menu:allow-set-as-window-menu",
+    "core:menu:allow-is-enabled",
+    "core:menu:allow-set-enabled",
+    "core:menu:allow-set-text",
+    "core:menu:allow-set-accelerator",
+    "core:menu:allow-items",
+    "core:menu:allow-get"
   ]
 }

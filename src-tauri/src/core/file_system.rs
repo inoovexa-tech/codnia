@@ -156,6 +156,46 @@ impl FileSystem {
         std::fs::rename(old_path, new_path).map_err(|e| e.to_string())
     }
 
+    pub fn copy_file(&self, src: &Path, dst: &Path) -> Result<(), String> {
+        std::fs::copy(src, dst).map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    pub fn copy_dir(&self, src: &Path, dst: &Path) -> Result<(), String> {
+        let options = fs_extra::dir::CopyOptions::new().copy_inside(true).overwrite(true);
+        fs_extra::dir::copy(src, dst, &options).map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    pub fn duplicate(&self, path: &Path) -> Result<PathBuf, String> {
+        let stem = path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("file");
+        let ext = path.extension().and_then(|s| s.to_str()).unwrap_or("");
+        let parent = path.parent().unwrap_or(Path::new("."));
+
+        let mut counter = 1;
+        loop {
+            let new_name = if ext.is_empty() {
+                format!("{} copy{}", stem, if counter == 1 { String::new() } else { format!(" {}", counter) })
+            } else {
+                format!("{} copy{}.{}", stem, if counter == 1 { String::new() } else { format!(" {}", counter) }, ext)
+            };
+            let new_path = parent.join(&new_name);
+            if !new_path.exists() {
+                if path.is_dir() {
+                    let options = fs_extra::dir::CopyOptions::new().copy_inside(true);
+                    fs_extra::dir::copy(path, &new_path, &options).map_err(|e| e.to_string())?;
+                } else {
+                    std::fs::copy(path, &new_path).map_err(|e| e.to_string())?;
+                }
+                return Ok(new_path);
+            }
+            counter += 1;
+        }
+    }
+
     #[allow(dead_code)]
     pub fn get_file_extension(&self, path: &Path) -> Option<String> {
         path.extension()
