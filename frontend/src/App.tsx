@@ -476,7 +476,9 @@ export function App() {
         )}
       </div>
 
-      <StatusBar language={isTerminalType ? "Terminal" : currentLanguage} position={cursorPosition} />
+      {!isTerminalType && activeId && allTabs.length > 0 && (
+        <StatusBar language={currentLanguage} position={cursorPosition} />
+      )}
     </div>
   );
 }
