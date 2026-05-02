@@ -422,7 +422,7 @@ function TreeNode({
           <>
             <button
               onClick={handleChevronClick}
-              className="w-4 h-4 flex items-center justify-center shrink-0 hover:bg-[#333333] rounded"
+              className="w-4 h-4 flex items-center justify-center shrink-0 hover:bg-[#222222] rounded"
             >
               {expanded ? (
                 <ChevronDown className="h-3 w-3 text-text-tertiary" />
@@ -458,7 +458,7 @@ function TreeNode({
                 e.stopPropagation();
                 onNewFile(entry.path);
               }}
-              className="w-5 h-5 flex items-center justify-center rounded hover:bg-[#333333] text-text-tertiary hover:text-text-primary"
+              className="w-5 h-5 flex items-center justify-center rounded hover:bg-[#222222] text-text-tertiary hover:text-text-primary"
               title="New File"
             >
               <FilePlus className="h-3 w-3" />
@@ -468,7 +468,7 @@ function TreeNode({
                 e.stopPropagation();
                 onNewDir(entry.path);
               }}
-              className="w-5 h-5 flex items-center justify-center rounded hover:bg-[#333333] text-text-tertiary hover:text-text-primary"
+              className="w-5 h-5 flex items-center justify-center rounded hover:bg-[#222222] text-text-tertiary hover:text-text-primary"
               title="New Folder"
             >
               <FolderPlus className="h-3 w-3" />

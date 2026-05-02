@@ -325,7 +325,7 @@ export function App() {
   const displayedTerminalTabs = allTabs.filter((t) => t.type && t.type !== "file");
 
   return (
-    <div className="flex flex-col w-full h-full bg-[#0c0c0c] text-white font-[var(--font-sans)]">
+    <div className="flex flex-col w-full h-full bg-[#000000] text-white font-[var(--font-sans)]">
       <div className="flex flex-1 overflow-hidden relative">
         <Sidebar
           projects={projects}
@@ -338,8 +338,8 @@ export function App() {
           onSettingsClick={openSettingsWindow}
         />
 
-        <div className="flex-1 flex flex-col min-w-0 bg-[#0c0c0c] relative">
-          <div className="h-10 bg-[#111111] border-b border-[#2a2a2a] flex items-center shrink-0">
+        <div className="flex-1 flex flex-col min-w-0 bg-[#000000] relative">
+          <div className="h-10 bg-[#000000] border-b border-[#1a1a1a] flex items-center shrink-0">
             <div className="flex items-center gap-[2px] flex-1 overflow-x-auto" style={{ paddingLeft: 12, paddingRight: 12 }}>
               <NewTabDropdown
                 onTerminal={handleNewTerminal}
@@ -351,11 +351,19 @@ export function App() {
                {allTabs.map((tab) => {
                  const typeInfo = tab.type ? TAB_TYPE_ICONS[tab.type] : undefined;
                  const displayName = tab.isModified && !tab.type ? `${tab.name} ●` : tab.name;
+                 const isActive = tab.id === activeId;
                  return (
                  <button
                    key={tab.id}
                    onClick={() => handleTabSelect(tab.id)}
-                   className={`h-[34px] flex items-center gap-[6px] text-[12px] transition-colors shrink-0 cursor-pointer border-b-[3px]`}
+                   className={`
+                     h-[34px] flex items-center gap-[6px] text-[12px] transition-colors shrink-0 cursor-pointer
+                     border border-[#222222] rounded-[6px]
+                     ${isActive
+                       ? "bg-[#111111] text-white"
+                       : "bg-transparent text-[#888888] hover:bg-[#0a0a0a] hover:text-white"
+                     }
+                   `}
                    style={{ paddingLeft: 14, paddingRight: 14 }}
                  >
                    {typeInfo ? (
@@ -369,7 +377,7 @@ export function App() {
                        e.stopPropagation();
                        handleTabClose(tab.id);
                      }}
-                     className="ml-2 w-[20px] h-[20px] flex items-center justify-center rounded opacity-40 hover:opacity-100 hover:bg-[#333333] text-[13px] leading-none"
+                      className="ml-2 w-[20px] h-[20px] flex items-center justify-center rounded opacity-40 hover:opacity-100 hover:bg-[#222222] text-[13px] leading-none"
                    >
                      ×
                    </span>
@@ -378,13 +386,13 @@ export function App() {
               })}
             </div>
 
-            <div className="flex items-center gap-1 shrink-0" style={{ paddingLeft: 8, paddingRight: 12, borderLeft: '1px solid #2a2a2a' }}>
+            <div className="flex items-center gap-1 shrink-0" style={{ paddingLeft: 8, paddingRight: 12, borderLeft: '1px solid #1a1a1a' }}>
               <button
                 onClick={handleRightSidebarToggle}
                 className={`w-[28px] h-[28px] flex items-center justify-center rounded transition-colors ${
                   rightSidebarExpanded
-                    ? "bg-[#2a2a2a] text-white"
-                    : "text-[#555555] hover:bg-[#222222] hover:text-[#888888]"
+                    ? "bg-[#1a1a1a] text-white"
+                    : "text-[#555555] hover:bg-[#1a1a1a] hover:text-[#888888]"
                 }`}
                 title={rightSidebarExpanded ? "Collapse Panel" : "Expand Panel"}
               >
@@ -401,7 +409,7 @@ export function App() {
             />
 
             {allTabs.length === 0 || !activeId ? (
-              <div className="flex-1 flex items-center justify-center bg-[#0c0c0c]">
+              <div className="flex-1 flex items-center justify-center bg-[#000000]">
                 <div className="flex flex-col items-center gap-3 text-[#555555]">
                   <svg className="w-16 h-16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" opacity="0.3">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -416,7 +424,7 @@ export function App() {
               tab.terminalId && !killedRef.current.has(tab.terminalId) ? (
                 <div
                   key={tab.id}
-                  className="flex-1 overflow-hidden bg-[#0c0c0c]"
+                  className="flex-1 overflow-hidden bg-[#000000]"
                   style={{ display: tab.id === activeId ? "flex" : "none" }}
                 >
                   <TerminalComponent terminalId={tab.terminalId} visible={tab.id === activeId} />

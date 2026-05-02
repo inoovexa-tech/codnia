@@ -1,3 +1,5 @@
+import { Circle } from "lucide-react";
+
 interface StatusBarProps {
   language: string;
   position: string;
@@ -6,11 +8,9 @@ interface StatusBarProps {
 
 export function StatusBar({ language, position, branch = "main" }: StatusBarProps) {
   return (
-    <div className="h-[22px] bg-[#000000] flex items-center px-3 text-[11px] gap-4 border-t border-[#2a2a2a] shrink-0">
+    <div className="h-[22px] bg-[#000000] flex items-center px-3 text-[11px] gap-4 border-t border-[#1a1a1a] shrink-0">
       <span className="flex items-center gap-1.5 text-[#888888] hover:text-white cursor-pointer">
-        <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <circle cx="12" cy="12" r="4" />
-        </svg>
+        <Circle className="w-3 h-3" />
         {branch}
       </span>
       <span className="text-[#888888]">0 problems</span>

@@ -36,7 +36,7 @@ export function Sidebar({
   return (
     <div
       className={cn(
-        "bg-[#111111] border-r border-[#2a2a2a] h-full shrink-0 transition-[width] duration-200 overflow-hidden",
+        "bg-[#000000] border-r border-[#1a1a1a] h-full shrink-0 transition-[width] duration-200 overflow-hidden",
         expanded ? "w-[220px]" : "w-[52px]"
       )}
       style={{ display: "grid", gridTemplateRows: "1fr auto" }}
@@ -58,7 +58,7 @@ export function Sidebar({
                       "w-[36px] h-[36px] rounded-lg flex items-center justify-center transition-colors shrink-0 px-0",
                       isActive
                         ? "bg-[#0070f3] text-white hover:bg-[#0070f3] hover:text-white"
-                        : "bg-[#1a1a1a] text-[#888888] hover:bg-[#222222] hover:text-[#888888]"
+                        : "bg-[#111111] text-[#888888] hover:bg-[#1a1a1a] hover:text-[#888888]"
                     )}
                   >
                     <span className="text-[11px] font-semibold">
@@ -74,13 +74,13 @@ export function Sidebar({
                       "h-auto rounded-lg flex items-center transition-colors w-full justify-start px-2 py-2 gap-3",
                       isActive
                         ? "bg-[#0070f3] text-white hover:bg-[#0070f3] hover:text-white"
-                        : "bg-[#1a1a1a] text-[#888888] hover:bg-[#222222] hover:text-[#888888]"
+                        : "bg-[#111111] text-[#888888] hover:bg-[#1a1a1a] hover:text-[#888888]"
                     )}
                   >
                     <span
                       className={cn(
                         "text-[11px] font-bold shrink-0 flex items-center justify-center rounded",
-                        isActive ? "bg-white/20" : "bg-[#2a2a2a]",
+                        isActive ? "bg-white/20" : "bg-[#1a1a1a]",
                         "w-[28px] h-[28px]"
                       )}
                     >
@@ -100,7 +100,7 @@ export function Sidebar({
               variant="ghost"
               onClick={onAddProject}
               title="Add Project"
-              className="h-[36px] rounded-lg border border-dashed border-[#333333] flex items-center justify-center gap-2 text-[#555555] hover:border-[#0070f3] hover:text-[#0070f3] transition-colors w-full mt-1 px-3"
+              className="h-[36px] rounded-lg border border-dashed border-[#222222] flex items-center justify-center gap-2 text-[#555555] hover:border-[#0070f3] hover:text-[#0070f3] transition-colors w-full mt-1 px-3"
             >
               <Plus className="h-4 w-4" />
               <span className="text-[12px]">Add Project</span>
@@ -111,7 +111,7 @@ export function Sidebar({
               size="icon"
               onClick={onAddProject}
               title="Add Project"
-              className="w-[36px] h-[36px] rounded-lg border border-dashed border-[#333333] flex items-center justify-center text-[#555555] hover:border-[#0070f3] hover:text-[#0070f3] transition-colors text-lg mt-1"
+              className="w-[36px] h-[36px] rounded-lg border border-dashed border-[#222222] flex items-center justify-center text-[#555555] hover:border-[#0070f3] hover:text-[#0070f3] transition-colors text-lg mt-1"
             >
               <Plus className="h-4 w-4" />
             </Button>
@@ -120,14 +120,14 @@ export function Sidebar({
       </div>
 
       <div className={cn(
-        "w-full px-2 py-2 shrink-0 border-t border-[#2a2a2a]",
+        "w-full px-2 py-2 shrink-0 border-t border-[#1a1a1a]",
         expanded ? "flex items-center justify-between" : "flex flex-col items-center gap-1"
       )}>
         <Button
           variant="ghost"
           size="icon"
           onClick={onSettingsClick}
-          className="w-[36px] h-[36px] rounded-lg flex items-center justify-center text-[#555555] hover:bg-[#222222] hover:text-[#888888] transition-colors"
+          className="w-[36px] h-[36px] rounded-lg flex items-center justify-center text-[#555555] hover:bg-[#1a1a1a] hover:text-[#888888] transition-colors"
           title="Settings"
         >
           <Settings className="w-5 h-5" />
@@ -136,7 +136,7 @@ export function Sidebar({
           variant="ghost"
           size="icon"
           onClick={onToggleExpand}
-          className="w-[36px] h-[36px] rounded-lg flex items-center justify-center text-[#555555] hover:bg-[#222222] hover:text-[#888888] transition-colors"
+          className="w-[36px] h-[36px] rounded-lg flex items-center justify-center text-[#555555] hover:bg-[#1a1a1a] hover:text-[#888888] transition-colors"
           title={expanded ? "Collapse Sidebar" : "Expand Sidebar"}
         >
           {expanded ? <PanelLeftClose className="h-[18px] w-[18px]" /> : <PanelLeftOpen className="h-[18px] w-[18px]" />}
