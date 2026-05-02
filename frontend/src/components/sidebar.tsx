@@ -1,13 +1,16 @@
-import { Plus } from "lucide-react";
+import { Plus, PanelLeftOpen, PanelLeftClose, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import type { Project } from "@/types";
 
 interface SidebarProps {
   projects: Project[];
   activeProjectId?: string;
+  branches: Record<string, string>;
+  expanded: boolean;
+  onToggleExpand: () => void;
   onProjectSelect: (id: string) => void;
   onAddProject: () => void;
-  onExplorerClick: () => void;
   onSettingsClick: () => void;
 }
 
@@ -23,60 +26,121 @@ function getInitials(name: string): string {
 export function Sidebar({
   projects,
   activeProjectId,
+  branches,
+  expanded,
+  onToggleExpand,
   onProjectSelect,
   onAddProject,
-  onExplorerClick,
   onSettingsClick,
 }: SidebarProps) {
   return (
-    <div className="w-[52px] bg-[#111111] border-r border-[#2a2a2a] flex flex-col items-center py-2 gap-1 shrink-0">
-      <div className="flex flex-col items-center gap-1 w-full px-2">
-        {projects.map((project) => (
-          <button
-            key={project.id}
-            onClick={() => onProjectSelect(project.id)}
-            title={project.name}
-            className={cn(
-              "w-[36px] h-[36px] rounded-lg flex items-center justify-center text-[11px] font-semibold transition-colors",
-              project.id === activeProjectId
-                ? "bg-[#0070f3] text-white"
-                : "bg-[#1a1a1a] text-[#888888] hover:bg-[#222222]",
-            )}
-          >
-            {getInitials(project.name)}
-          </button>
-        ))}
-        <button
-          onClick={onAddProject}
-          title="Add Project"
-          className="w-[36px] h-[36px] rounded-lg border border-dashed border-[#333333] flex items-center justify-center text-[#555555] hover:border-[#0070f3] hover:text-[#0070f3] transition-colors text-lg mt-1"
-        >
-          <Plus className="h-4 w-4" />
-        </button>
+    <div
+      className={cn(
+        "bg-[#111111] border-r border-[#2a2a2a] h-full shrink-0 transition-[width] duration-200 overflow-hidden",
+        expanded ? "w-[220px]" : "w-[52px]"
+      )}
+      style={{ display: "grid", gridTemplateRows: "1fr auto" }}
+    >
+      <div className="w-full overflow-y-auto" style={{ padding: expanded ? "8px 10px" : "8px 6px" }}>
+        <div className={cn("flex flex-col gap-2 w-full", expanded ? "items-stretch" : "items-center")}>
+          {projects.map((project) => {
+            const branch = branches[project.id];
+            const isActive = project.id === activeProjectId;
+            const initials = getInitials(project.name);
+            return (
+              <div key={project.id} className="flex flex-col">
+                {!expanded ? (
+                  <Button
+                    variant="ghost"
+                    onClick={() => onProjectSelect(project.id)}
+                    title={project.name}
+                    className={cn(
+                      "w-[36px] h-[36px] rounded-lg flex items-center justify-center transition-colors shrink-0 px-0",
+                      isActive
+                        ? "bg-[#0070f3] text-white hover:bg-[#0070f3] hover:text-white"
+                        : "bg-[#1a1a1a] text-[#888888] hover:bg-[#222222] hover:text-[#888888]"
+                    )}
+                  >
+                    <span className="text-[11px] font-semibold">
+                      {initials}
+                    </span>
+                  </Button>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    onClick={() => onProjectSelect(project.id)}
+                    title={project.name}
+                    className={cn(
+                      "h-auto rounded-lg flex items-center transition-colors w-full justify-start px-2 py-2 gap-3",
+                      isActive
+                        ? "bg-[#0070f3] text-white hover:bg-[#0070f3] hover:text-white"
+                        : "bg-[#1a1a1a] text-[#888888] hover:bg-[#222222] hover:text-[#888888]"
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "text-[11px] font-bold shrink-0 flex items-center justify-center rounded",
+                        isActive ? "bg-white/20" : "bg-[#2a2a2a]",
+                        "w-[28px] h-[28px]"
+                      )}
+                    >
+                      {initials}
+                    </span>
+                    <div className="flex flex-col items-start min-w-0">
+                      <span className="text-[12px] font-medium truncate w-full text-left">{project.name}</span>
+                      {branch && <span className="text-[10px] opacity-60 truncate w-full text-left">{branch}</span>}
+                    </div>
+                  </Button>
+                )}
+              </div>
+            );
+          })}
+          {expanded ? (
+            <Button
+              variant="ghost"
+              onClick={onAddProject}
+              title="Add Project"
+              className="h-[36px] rounded-lg border border-dashed border-[#333333] flex items-center justify-center gap-2 text-[#555555] hover:border-[#0070f3] hover:text-[#0070f3] transition-colors w-full mt-1 px-3"
+            >
+              <Plus className="h-4 w-4" />
+              <span className="text-[12px]">Add Project</span>
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onAddProject}
+              title="Add Project"
+              className="w-[36px] h-[36px] rounded-lg border border-dashed border-[#333333] flex items-center justify-center text-[#555555] hover:border-[#0070f3] hover:text-[#0070f3] transition-colors text-lg mt-1"
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       </div>
 
-      <div className="flex-1" />
-
-      <div className="flex flex-col items-center gap-1 w-full px-2">
-        <button
-          onClick={onExplorerClick}
-          className="w-[36px] h-[36px] rounded-lg flex items-center justify-center text-[#555555] hover:bg-[#222222] hover:text-[#888888] transition-colors"
-          title="Explorer"
-        >
-          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-          </svg>
-        </button>
-        <button
+      <div className={cn(
+        "w-full px-2 py-2 shrink-0 border-t border-[#2a2a2a]",
+        expanded ? "flex items-center justify-between" : "flex flex-col items-center gap-1"
+      )}>
+        <Button
+          variant="ghost"
+          size="icon"
           onClick={onSettingsClick}
           className="w-[36px] h-[36px] rounded-lg flex items-center justify-center text-[#555555] hover:bg-[#222222] hover:text-[#888888] transition-colors"
           title="Settings"
         >
-          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="12" cy="12" r="3" />
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.604.852.997 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-          </svg>
-        </button>
+          <Settings className="w-5 h-5" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onToggleExpand}
+          className="w-[36px] h-[36px] rounded-lg flex items-center justify-center text-[#555555] hover:bg-[#222222] hover:text-[#888888] transition-colors"
+          title={expanded ? "Collapse Sidebar" : "Expand Sidebar"}
+        >
+          {expanded ? <PanelLeftClose className="h-[18px] w-[18px]" /> : <PanelLeftOpen className="h-[18px] w-[18px]" />}
+        </Button>
       </div>
     </div>
   );
