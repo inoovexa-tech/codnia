@@ -66,12 +66,14 @@ impl WorkspaceManager {
             }
         }
 
-        for tab in workspace_store.open_tabs {
-            if let Some(active_ws) = manager.active_workspace_id {
-                if let Some(ws) = manager.workspaces.get_mut(&active_ws) {
-                    ws.open_files.push(PathBuf::from(&tab.path));
-                    if ws.active_file.is_none() {
-                        ws.active_file = Some(PathBuf::from(&tab.path));
+        for (project_id, tab_list) in &workspace_store.project_tabs {
+            if let Ok(id) = Uuid::parse_str(project_id) {
+                if let Some(ws) = manager.workspaces.get_mut(&id) {
+                    for tab in tab_list {
+                        ws.open_files.push(PathBuf::from(&tab.path));
+                        if ws.active_file.is_none() {
+                            ws.active_file = Some(PathBuf::from(&tab.path));
+                        }
                     }
                 }
             }
@@ -95,8 +97,11 @@ impl WorkspaceManager {
             })
             .collect();
 
-        let open_tabs: Vec<StoredTab> = self.get_active_workspace()
-            .map(|ws| ws.open_files.iter().map(|p| StoredTab {
+        let mut project_tabs: std::collections::HashMap<String, Vec<StoredTab>> =
+            std::collections::HashMap::new();
+
+        for (id, ws) in &self.workspaces {
+            let tabs: Vec<StoredTab> = ws.open_files.iter().map(|p| StoredTab {
                 id: format!("tab-{}", p.to_string_lossy()),
                 path: p.to_string_lossy().to_string(),
                 name: p.file_name()
@@ -105,20 +110,13 @@ impl WorkspaceManager {
                 is_modified: false,
                 scroll_position: None,
                 cursor_position: None,
-            }).collect())
-            .unwrap_or_default();
-
-        let _recent_projects: Option<Vec<String>> = if self.recent_projects.is_empty() {
-            None
-        } else {
-            Some(self.recent_projects.iter()
-                .map(|p| p.to_string_lossy().to_string())
-                .collect())
-        };
+            }).collect();
+            project_tabs.insert(id.to_string(), tabs);
+        }
 
         let workspace_store = WorkspaceStore {
             projects,
-            open_tabs,
+            project_tabs,
             expanded_folders: Vec::new(),
             recent_projects: Vec::new(),
         };

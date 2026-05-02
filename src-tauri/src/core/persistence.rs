@@ -18,7 +18,7 @@ pub struct RecentProject {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct WorkspaceStore {
     pub projects: Vec<StoredProject>,
-    pub open_tabs: Vec<StoredTab>,
+    pub project_tabs: std::collections::HashMap<String, Vec<StoredTab>>,
     pub expanded_folders: Vec<String>,
     pub recent_projects: Vec<String>,
 }

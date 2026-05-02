@@ -11,7 +11,7 @@ import { useEditor } from "@/hooks/use-editor";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { createTerminal, killTerminal, showAlertDialog, openFileDialog } from "@/lib/tauri";
 import { openFolderDialog } from "@/lib/tauri";
-import type { TabType } from "@/types";
+import type { TabType, Tab } from "@/types";
 
 const COMMAND_LABELS: Record<string, string> = {
   opencode: "OpenCode",
@@ -57,7 +57,7 @@ function getFileIcon(filename: string): React.ReactNode {
 }
 
 export function App() {
-  const { editorRef, tabs, activeTabId, initEditor, openFile, newFile, saveFile, saveFileAs, closeTab, activateTab } = useEditor();
+  const { editorRef, tabs, activeTabId, initEditor, openFile, newFile, saveFile, saveFileAs, closeTab, activateTab, switchProject, markModified } = useEditor();
   const {
     projects,
     activeProject,
@@ -69,16 +69,47 @@ export function App() {
     refreshFileTree,
   } = useWorkspace();
 
-  const [allTabs, setAllTabs] = useState<import("@/types").Tab[]>([]);
+  const projectTerminalTabsRef = useRef<Map<string, Tab[]>>(new Map());
+  const projectActiveIdRef = useRef<Map<string, string | null>>(new Map());
+  const [terminalTabs, setTerminalTabs] = useState<Tab[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const killedRef = useRef<Set<string>>(new Set());
+  const currentProjectIdRef = useRef<string | null>(null);
+
+  const allTabs = [...tabs, ...terminalTabs];
 
   useEffect(() => {
-    setAllTabs((prev) => {
-      const terminalTabs = prev.filter((t) => t.type && t.type !== "file");
-      return [...tabs, ...terminalTabs];
-    });
-  }, [tabs]);
+    const newProjectId = activeProject?.id ?? null;
+    if (currentProjectIdRef.current === newProjectId) return;
+
+    if (currentProjectIdRef.current) {
+      projectTerminalTabsRef.current.set(
+        currentProjectIdRef.current,
+        terminalTabsRef.current
+      );
+      projectActiveIdRef.current.set(currentProjectIdRef.current, activeIdRef.current);
+    }
+
+    switchProject(newProjectId);
+
+    const savedTerminals = newProjectId
+      ? (projectTerminalTabsRef.current.get(newProjectId) ?? [])
+      : [];
+    setTerminalTabs(savedTerminals);
+
+    const savedActiveId = newProjectId
+      ? (projectActiveIdRef.current.get(newProjectId) ?? null)
+      : null;
+    setActiveId(savedActiveId);
+
+    currentProjectIdRef.current = newProjectId;
+  }, [activeProject?.id, switchProject]);
+
+  const terminalTabsRef = useRef<Tab[]>([]);
+  terminalTabsRef.current = terminalTabs;
+
+  const activeIdRef = useRef<string | null>(null);
+  activeIdRef.current = activeId;
 
   useEffect(() => {
     if (activeTabId) {
@@ -171,7 +202,7 @@ export function App() {
         type,
         terminalId: instance.id,
       };
-      setAllTabs((prev) => [...prev, terminalTab]);
+      setTerminalTabs((prev) => [...prev, terminalTab]);
       setActiveId(terminalTab.id);
     } catch (e: unknown) {
       if (commandOverride && COMMAND_LABELS[commandOverride]) {
@@ -191,30 +222,34 @@ export function App() {
   const handleClaudeCode = useCallback(() => createTerminalTab("claude", "claude"), [createTerminalTab]);
   const handleCodex = useCallback(() => createTerminalTab("codex", "codex"), [createTerminalTab]);
 
+  const allTabsRef = useRef<Tab[]>([]);
+  allTabsRef.current = allTabs;
+
   const handleTabSelect = useCallback((id: string) => {
     setActiveId(id);
-    const tab = allTabs.find((t) => t.id === id);
+    const tab = allTabsRef.current.find((t) => t.id === id);
     if (tab && tab.type !== "terminal" && tab.type !== "opencode" && tab.type !== "claude" && tab.type !== "codex") {
       activateTab(tab.id);
     }
-  }, [allTabs, activateTab]);
+  }, [activateTab]);
 
   const handleTabClose = useCallback((id: string) => {
-    const tab = allTabs.find((t) => t.id === id);
+    const tab = allTabsRef.current.find((t) => t.id === id);
     if (tab?.terminalId) {
       killedRef.current.add(tab.terminalId);
       killTerminal(tab.terminalId).catch(() => {});
     }
     if (tab?.type && tab.type !== "file") {
-      setAllTabs((prev) => prev.filter((t) => t.id !== id));
-      if (activeId === id) {
-        const remaining = allTabs.filter((t) => t.id !== id);
+      setTerminalTabs((prev) => prev.filter((t) => t.id !== id));
+      const activeIdVal = activeIdRef.current;
+      if (activeIdVal === id) {
+        const remaining = allTabsRef.current.filter((t) => t.id !== id);
         setActiveId(remaining.length > 0 ? remaining[remaining.length - 1].id : null);
       }
     } else {
       closeTab(id);
     }
-  }, [allTabs, activeId, closeTab]);
+  }, [closeTab]);
 
   useEffect(() => {
     loadProjects();
@@ -232,13 +267,7 @@ export function App() {
       editorRef.current?.onDidChangeModelContent(() => {
         const currentId = activeTabId;
         if (currentId) {
-          setAllTabs((prev) => {
-            const t = prev.find((tab) => tab.id === currentId);
-            if (t && !t.isModified && (!t.type || t.type === "file")) {
-              return prev.map((tab) => tab.id === currentId ? { ...tab, isModified: true } : tab);
-            }
-            return prev;
-          });
+          markModified(currentId);
         }
       });
     }
@@ -293,7 +322,7 @@ export function App() {
     return () => { unlisten.then((fn) => fn()); };
     }, [handleNewFile, handleOpenFile, handleSave, handleSaveAs, handleTabClose, handleLeftSidebarToggle, handleRightSidebarToggle, handleNewTerminal, activeId]);
 
-  const terminalTabs = allTabs.filter((t) => t.type && t.type !== "file");
+  const displayedTerminalTabs = allTabs.filter((t) => t.type && t.type !== "file");
 
   return (
     <div className="flex flex-col w-full h-full bg-[#0c0c0c] text-white font-[var(--font-sans)]">
@@ -352,7 +381,7 @@ export function App() {
               })}
             </div>
 
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1" style={{ marginLeft: 8, paddingLeft: 8, borderLeft: '1px solid #2a2a2a' }}>
               <button
                 onClick={handleRightSidebarToggle}
                 className={`w-[28px] h-[28px] flex items-center justify-center rounded transition-colors ${
@@ -386,7 +415,7 @@ export function App() {
               </div>
             ) : null}
 
-            {terminalTabs.map((tab) => (
+            {displayedTerminalTabs.map((tab) => (
               tab.terminalId && !killedRef.current.has(tab.terminalId) ? (
                 <div
                   key={tab.id}
