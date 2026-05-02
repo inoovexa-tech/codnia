@@ -1,9 +1,13 @@
+export type TabType = "file" | "terminal" | "opencode" | "claude" | "codex";
+
 export interface Tab {
   id: string;
   path: string;
   name: string;
   isModified: boolean;
   language: string;
+  type?: TabType;
+  terminalId?: string;
 }
 
 export interface Project {
@@ -42,6 +46,9 @@ export interface AppSettings {
     font_family: string;
     color_overrides: Record<string, string>;
   };
+  keyboard_shortcuts: {
+    shortcuts: Record<string, string>;
+  };
   editor: {
     tab_size: number;
     insert_spaces: boolean;
@@ -69,6 +76,21 @@ export const DEFAULT_SETTINGS: AppSettings = {
     font_size: 13,
     font_family: "SF Mono",
     color_overrides: {},
+  },
+  keyboard_shortcuts: {
+    shortcuts: {
+      "ctrl+n": "new_tab",
+      "ctrl+`": "toggle_terminal",
+      "ctrl+shift+o": "run_opencode",
+      "ctrl+shift+c": "run_claude_code",
+      "ctrl+shift+x": "run_codex",
+      "ctrl+b": "toggle_sidebar",
+      "ctrl+shift+f": "global_search",
+      "ctrl+,": "open_settings",
+      "ctrl+s": "save_file",
+      "ctrl+shift+s": "save_file_as",
+      "ctrl+w": "close_tab",
+    },
   },
   editor: {
     tab_size: 4,

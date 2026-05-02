@@ -375,7 +375,7 @@ export function App() {
                 onClick={() => handleTabSelect(tab.id)}
                 className={`
                   h-[34px] flex items-center gap-[6px] text-[12px] transition-colors shrink-0 cursor-pointer
-                  border border-[#222222] rounded-[6px]
+                  border border-[#222222] rounded-none
                   ${isActive
                     ? "bg-[#111111] text-white"
                     : "bg-transparent text-[#888888] hover:bg-[#0a0a0a] hover:text-white"
