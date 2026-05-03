@@ -105,6 +105,40 @@ export async function searchContent(root: string, query: string): Promise<[strin
   return invoke("search_content", { root, query, maxResults: 100 });
 }
 
+export async function searchFiles(root: string, query: string): Promise<string[]> {
+  return invoke("search_files", { root, query, maxResults: 100 });
+}
+
+export interface SearchMatchResult {
+  path: string;
+  line_number: number;
+  line: string;
+}
+
+export interface SearchResultData {
+  matches: SearchMatchResult[];
+  total_matches: number;
+  elapsed_ms: number;
+}
+
+export async function searchContentAdvanced(root: string, query: string, isRegex?: boolean, caseSensitive?: boolean, maxResults?: number): Promise<SearchResultData> {
+  return invoke<SearchResultData>("search_content_advanced", {
+    root,
+    query,
+    isRegex: isRegex ?? false,
+    caseSensitive: caseSensitive ?? false,
+    maxResults: maxResults ?? 200,
+  });
+}
+
+export async function searchFilesAdvanced(root: string, query: string, maxResults?: number): Promise<string[]> {
+  return invoke<string[]>("search_files_advanced", {
+    root,
+    query,
+    maxResults: maxResults ?? 100,
+  });
+}
+
 export async function getSettings(): Promise<AppSettings> {
   return invoke<AppSettings>("get_settings");
 }

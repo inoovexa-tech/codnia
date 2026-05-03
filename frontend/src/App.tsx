@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { PanelRightOpen, PanelRightClose, Terminal, Code2, Circle, Layers, FileCode, FileText, FileType, FileJson, Globe, Paintbrush, Braces, File, Minus, Square, X } from "lucide-react";
+import { PanelRightOpen, PanelRightClose, Terminal, Code2, Circle, Layers, FileCode, FileText, FileType, FileJson, Globe, Paintbrush, Braces, File, Minus, Square, X, Search } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -152,6 +152,7 @@ export function App() {
 
   const [leftSidebarExpanded, setLeftSidebarExpanded] = useState(false);
   const [rightSidebarExpanded, setRightSidebarExpanded] = useState(false);
+  const [rightSidebarTab, setRightSidebarTab] = useState<"explorer" | "search">("explorer");
   const [cursorPosition, setCursorPosition] = useState("Ln 1, Col 1");
   const [currentLanguage, setCurrentLanguage] = useState("Plain Text");
   const editorContainerRef = useRef<HTMLDivElement>(null);
@@ -189,6 +190,11 @@ export function App() {
 
   const handleRightSidebarToggle = useCallback(() => {
     setRightSidebarExpanded((prev) => !prev);
+  }, []);
+
+  const handleOpenSearch = useCallback(() => {
+    setRightSidebarTab("search");
+    setRightSidebarExpanded(true);
   }, []);
 
   const openSettingsWindow = useCallback(async () => {
@@ -317,6 +323,10 @@ export function App() {
       } else if ((e.metaKey || e.ctrlKey) && e.key === "s") {
         e.preventDefault();
         saveFile(activeProject?.path);
+      } else if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === "F") {
+        e.preventDefault();
+        setRightSidebarTab("search");
+        setRightSidebarExpanded(true);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -347,10 +357,13 @@ export function App() {
         case "toggle_terminal":
           handleNewTerminal();
           break;
+        case "global_search":
+          handleOpenSearch();
+          break;
       }
     });
     return () => { unlisten.then((fn) => fn()); };
-    }, [handleNewFile, handleOpenFile, handleSave, handleSaveAs, handleTabClose, handleLeftSidebarToggle, handleRightSidebarToggle, handleNewTerminal, activeId]);
+    }, [handleNewFile, handleOpenFile, handleSave, handleSaveAs, handleTabClose, handleLeftSidebarToggle, handleRightSidebarToggle, handleNewTerminal, handleOpenSearch, activeId]);
 
   const displayedTerminalTabs = allTabs.filter((t) => t.type && t.type !== "file");
 
@@ -404,6 +417,17 @@ export function App() {
         </div>
 
         <div className="flex items-center gap-1 shrink-0" style={{ paddingLeft: 8, paddingRight: 12, borderLeft: '1px solid #1a1a1a' }}>
+          <button
+            onClick={handleOpenSearch}
+            className={`w-[28px] h-[28px] flex items-center justify-center rounded transition-colors ${
+              rightSidebarExpanded && rightSidebarTab === "search"
+                ? "text-[#0070f3]"
+                : "text-white hover:text-white"
+            }`}
+            title="Search (Ctrl+Shift+F)"
+          >
+            <Search className="h-4 w-4" />
+          </button>
           <button
             onClick={handleRightSidebarToggle}
             className={`w-[28px] h-[28px] flex items-center justify-center rounded transition-colors ${
@@ -472,6 +496,9 @@ export function App() {
             onFileSelect={handleFileSelect}
             onClose={handleRightSidebarToggle}
             onRefresh={refreshFileTree}
+            activeProjectPath={activeProject?.path}
+            activeTab={rightSidebarTab}
+            onTabChange={setRightSidebarTab}
           />
         )}
       </div>

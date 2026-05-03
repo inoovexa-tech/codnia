@@ -367,7 +367,7 @@ async fn search_content_advanced(
     if let Some(max) = max_results {
         searcher = searcher.with_max_results(max);
     }
-    Ok(searcher.search(&PathBuf::from(root), &query, is_regex, case_sensitive))
+    Ok(searcher.search(&PathBuf::from(&root), &query, is_regex, case_sensitive))
 }
 
 #[tauri::command]
@@ -380,11 +380,7 @@ async fn search_files_advanced(
     if let Some(max) = max_results {
         searcher = searcher.with_max_results(max);
     }
-    Ok(searcher
-        .search_files(&PathBuf::from(root), &query)
-        .into_iter()
-        .map(|p| p.to_string_lossy().to_string())
-        .collect())
+    Ok(searcher.search_files(&PathBuf::from(&root), &query))
 }
 
 #[tauri::command]
@@ -658,6 +654,7 @@ fn main() {
                 .item(&SubmenuBuilder::new(app, "View")
                     .item(&MenuItemBuilder::with_id("toggle_sidebar", "Toggle Sidebar").accelerator("CmdOrCtrl+B").build(app)?)
                     .item(&MenuItemBuilder::with_id("toggle_terminal", "Toggle Terminal").accelerator("CmdOrCtrl+`").build(app)?)
+                    .item(&MenuItemBuilder::with_id("global_search", "Global Search").accelerator("CmdOrCtrl+Shift+F").build(app)?)
                     .build()?)
                 .build()?;
 
