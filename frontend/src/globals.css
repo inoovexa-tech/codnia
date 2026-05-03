@@ -92,6 +92,13 @@ html, body, #root, #app {
   background: #333333;
 }
 
+.settings-tab-content[data-state="active"] {
+  display: flex !important;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
 .monaco-editor,
 .monaco-editor .margin,
 .monaco-editor .monaco-editor-background,

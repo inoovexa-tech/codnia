@@ -31,10 +31,11 @@ TabsTrigger.displayName = TabsPrimitive.Trigger.displayName;
 const TabsContent = React.forwardRef<
   React.ComponentRef<typeof TabsPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof TabsPrimitive.Content>
->(({ className, ...props }, ref) => (
+>(({ className, style, ...props }, ref) => (
   <TabsPrimitive.Content
     ref={ref}
-    className="mt-0 focus-visible:outline-none"
+    className={["settings-tab-content overflow-y-auto", className].filter(Boolean).join(" ")}
+    style={{ flex: 1, ...style }}
     {...props}
   />
 ));

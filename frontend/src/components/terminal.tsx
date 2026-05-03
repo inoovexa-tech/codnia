@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback } from "react";
 import { Terminal as XTerm } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { onTerminalData, onTerminalExit, writeTerminal, resizeTerminal } from "@/lib/tauri";
+import { useSettings } from "@/hooks/use-settings";
 import "@xterm/xterm/css/xterm.css";
 
 interface TerminalComponentProps {
@@ -10,6 +11,7 @@ interface TerminalComponentProps {
 }
 
 export function TerminalComponent({ terminalId, visible }: TerminalComponentProps) {
+  const { settings } = useSettings();
   const containerRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<XTerm | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
@@ -34,8 +36,8 @@ export function TerminalComponent({ terminalId, visible }: TerminalComponentProp
 
     const xterm = new XTerm({
       cursorBlink: true,
-      fontSize: 13,
-      fontFamily: "'SF Mono', 'Fira Code', Consolas, monospace",
+      fontSize: settings.terminal.font_size,
+      fontFamily: settings.theme.font_family,
       theme: {
         background: "#000000",
         foreground: "#ffffff",
@@ -59,7 +61,7 @@ export function TerminalComponent({ terminalId, visible }: TerminalComponentProp
         brightWhite: "#ffffff",
       },
       allowTransparency: true,
-      scrollback: 10000,
+      scrollback: settings.terminal.scrollback,
     });
 
     const fitAddon = new FitAddon();
@@ -113,7 +115,7 @@ export function TerminalComponent({ terminalId, visible }: TerminalComponentProp
     return () => {
       resizeObserver.disconnect();
     };
-  }, [terminalId, handleResize]);
+  }, [terminalId, handleResize, settings]);
 
   useEffect(() => {
     if (xtermRef.current && visible) {

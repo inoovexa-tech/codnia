@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import * as monaco from "monaco-editor";
 import { readFile, writeFile, saveFileDialog } from "@/lib/tauri";
+import { useSettings } from "./use-settings";
 import type { Tab } from "@/types";
 
 function getLanguage(filename: string): string {
@@ -23,6 +24,7 @@ interface ProjectTabState {
 }
 
 export function useEditor() {
+  const { settings } = useSettings();
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const projectTabsRef = useRef<Map<string, ProjectTabState>>(new Map());
   const currentProjectIdRef = useRef<string | null>(null);
@@ -67,8 +69,8 @@ export function useEditor() {
   const initEditor = useCallback((container: HTMLElement) => {
     if (editorRef.current) return;
 
-    const saved = localStorage.getItem("codnia-settings");
-    const settings = saved ? JSON.parse(saved) : { minimap: false };
+    const edSettings = settings.editor;
+    const thSettings = settings.theme;
 
     monaco.editor.defineTheme("codnia-dark", {
       base: "vs-dark",
@@ -141,15 +143,16 @@ export function useEditor() {
       value: "",
       language: "plaintext",
       theme: "codnia-dark",
-      fontSize: 13,
-      fontFamily: "'SF Mono', 'Fira Code', Consolas, monospace",
-      minimap: { enabled: settings.minimap },
+      fontSize: thSettings.font_size,
+      fontFamily: thSettings.font_family,
+      minimap: { enabled: edSettings.minimap_enabled },
       automaticLayout: true,
       scrollBeyondLastLine: false,
-      lineNumbers: "on",
-      renderWhitespace: "selection",
-      tabSize: 4,
-      insertSpaces: true,
+      lineNumbers: edSettings.line_numbers ? "on" : "off",
+      renderWhitespace: edSettings.render_whitespace ? "all" : "selection",
+      wordWrap: edSettings.word_wrap as "on" | "off",
+      tabSize: edSettings.tab_size,
+      insertSpaces: edSettings.insert_spaces,
       mouseWheelZoom: false,
     });
 
@@ -164,7 +167,7 @@ export function useEditor() {
       }
       pendingFileRef.current = null;
     }
-  }, []);
+  }, [settings]);
 
   const openFile = useCallback(async (path: string) => {
     const currentTabs = tabsRef.current;
@@ -430,6 +433,22 @@ export function useEditor() {
       return prev;
     });
   }, []);
+
+  useEffect(() => {
+    if (!editorRef.current) return;
+    const ed = settings.editor;
+    const th = settings.theme;
+    editorRef.current.updateOptions({
+      fontSize: th.font_size,
+      fontFamily: th.font_family,
+      minimap: { enabled: ed.minimap_enabled },
+      lineNumbers: ed.line_numbers ? "on" : "off",
+      renderWhitespace: ed.render_whitespace ? "all" : "selection",
+      wordWrap: ed.word_wrap as "on" | "off",
+      tabSize: ed.tab_size,
+      insertSpaces: ed.insert_spaces,
+    });
+  }, [settings]);
 
   return {
     editorRef,

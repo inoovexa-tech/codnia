@@ -82,13 +82,13 @@ function ShortcutInput({
       onClick={() => setRecording(true)}
       onBlur={() => setRecording(false)}
       onKeyDown={recording ? handleKeyDown : undefined}
-      className={`min-w-[120px] text-[11px] font-[var(--font-mono)] px-3 py-1.5 border rounded-[4px] transition-colors focus:outline-none ${
+      className={`min-w-[140px] text-[11px] font-[var(--font-mono)] px-4 py-2 border rounded-[4px] transition-colors focus:outline-none ${
         recording
           ? "bg-[#1a1a1a] border-[#0070f3] text-[#0070f3]"
-          : "bg-[#111111] border-[#222222] text-[#555555] hover:border-[#333333]"
+          : "bg-[#111111] border-[#222222] text-[#888888] hover:border-[#333333]"
       }`}
     >
-      {recording ? "Press shortcut..." : formatShortcut(value)}
+      {recording ? "Press shortcut..." : formatShortcut(value) || "Click to set"}
     </button>
   );
 }
@@ -98,22 +98,13 @@ function WindowControls() {
   const appWindow = getCurrentWindow();
   return (
     <div className="flex items-center ml-1">
-      <button
-        onClick={() => appWindow.minimize()}
-        className="w-[46px] h-full flex items-center justify-center text-[#555555] hover:text-white hover:bg-[#1a1a1a] transition-colors"
-      >
+      <button onClick={() => appWindow.minimize()} className="w-[46px] h-full flex items-center justify-center text-[#555555] hover:text-white hover:bg-[#1a1a1a] transition-colors">
         <Minus className="h-4 w-4" />
       </button>
-      <button
-        onClick={() => appWindow.toggleMaximize()}
-        className="w-[46px] h-full flex items-center justify-center text-[#555555] hover:text-white hover:bg-[#1a1a1a] transition-colors"
-      >
+      <button onClick={() => appWindow.toggleMaximize()} className="w-[46px] h-full flex items-center justify-center text-[#555555] hover:text-white hover:bg-[#1a1a1a] transition-colors">
         <Square className="h-3.5 w-3.5" />
       </button>
-      <button
-        onClick={() => appWindow.close()}
-        className="w-[46px] h-full flex items-center justify-center text-[#555555] hover:text-white hover:bg-[#cc0000] transition-colors"
-      >
+      <button onClick={() => appWindow.close()} className="w-[46px] h-full flex items-center justify-center text-[#555555] hover:text-white hover:bg-[#cc0000] transition-colors">
         <X className="h-4 w-4" />
       </button>
     </div>
@@ -136,6 +127,7 @@ function App() {
       setSaving(true);
       try {
         await invoke("save_settings", { settings: next });
+        localStorage.setItem("codnia-settings", JSON.stringify(next));
       } catch (e) {
         console.error("Failed to save settings", e);
       } finally {
@@ -148,27 +140,33 @@ function App() {
   const updateShortcut = useCallback(
     (action: string, shortcut: string) => {
       if (!settings) return;
+      const oldShortcuts = { ...settings.keyboard_shortcuts.shortcuts };
+      const cleaned: Record<string, string> = {};
+      for (const [key, val] of Object.entries(oldShortcuts)) {
+        if (val !== action) cleaned[key] = val;
+      }
+      cleaned[shortcut] = action;
       const next = {
         ...settings,
         keyboard_shortcuts: {
           ...settings.keyboard_shortcuts,
-          shortcuts: {
-            ...settings.keyboard_shortcuts.shortcuts,
-            [shortcut]: action,
-          },
+          shortcuts: cleaned,
         },
       } as AppSettings;
       setSettings(next);
       setSaving(true);
-      invoke("save_settings", { settings: next }).catch(console.error).finally(() => setSaving(false));
+      invoke("save_settings", { settings: next })
+        .then(() => { localStorage.setItem("codnia-settings", JSON.stringify(next)); })
+        .catch(console.error)
+        .finally(() => setSaving(false));
     },
     [settings]
   );
 
   if (!settings) {
     return (
-      <div className="flex items-center justify-center w-full h-full bg-[#000000] text-white">
-        <p className="text-[13px] text-[#555555]">Loading...</p>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "100%", height: "100vh", background: "#000", color: "#555" }}>
+        Loading...
       </div>
     );
   }
@@ -180,15 +178,15 @@ function App() {
   }
 
   return (
-    <div className="flex flex-col w-full h-full bg-[#000000] text-white font-[var(--font-sans)]">
+    <div style={{ display: "flex", flexDirection: "column", width: "100%", height: "100vh", background: "#000", color: "#fff", fontFamily: "var(--font-sans)" }}>
       {saving && (
-        <div className="absolute top-2 right-4 bg-[#0070f3] text-white text-[11px] px-2.5 py-1 rounded-[4px] z-50">
+        <div style={{ position: "absolute", top: 8, right: 16, background: "#0070f3", color: "#fff", fontSize: 11, padding: "4px 10px", borderRadius: 4, zIndex: 50 }}>
           Saved
         </div>
       )}
 
-      <Tabs defaultValue="editor" className="flex flex-col flex-1 overflow-hidden">
-        <div className="h-8 shrink-0 border-b border-[#1a1a1a] flex items-center" data-tauri-drag-region>
+      <Tabs defaultValue="editor" style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
+        <div style={{ height: 32, flexShrink: 0, borderBottom: "1px solid #1a1a1a", display: "flex", alignItems: "center" }} data-tauri-drag-region>
           <TabsList className="flex-1" data-tauri-drag-region>
             <TabsTrigger value="editor">Editor</TabsTrigger>
             <TabsTrigger value="theme">Appearance</TabsTrigger>
@@ -200,10 +198,10 @@ function App() {
           </div>
         </div>
 
-        <TabsContent value="editor" className="flex-1 overflow-y-auto">
-          <div className="px-20 py-10">
-            <h3 className="text-[11px] font-semibold text-[#555555] uppercase tracking-widest mb-4">Editor</h3>
-            <div className="bg-[#0a0a0a] border border-[#1a1a1a] rounded-[6px]">
+        <TabsContent value="editor" style={{ flex: 1, overflowY: "auto" }}>
+          <div style={{ padding: "40px 48px 32px 48px" }}>
+            <h3 style={{ fontSize: 11, fontWeight: 600, color: "#555", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 16 }}>Editor</h3>
+            <div style={{ background: "#0a0a0a", border: "1px solid #1a1a1a", borderRadius: 6 }}>
               <SettingRow label="Minimap" description="Show code overview on the side">
                 <Switch checked={settings.editor.minimap_enabled} onCheckedChange={(checked) => update({ editor: { ...settings.editor, minimap_enabled: checked } })} />
               </SettingRow>
@@ -213,20 +211,18 @@ function App() {
               <SettingRow label="Word Wrap" description="Wrap long lines">
                 <Switch
                   checked={settings.editor.word_wrap === "on"}
-                  onCheckedChange={(checked) =>
-                    update({ editor: { ...settings.editor, word_wrap: checked ? "on" : "off" } })
-                  }
+                  onCheckedChange={(checked) => update({ editor: { ...settings.editor, word_wrap: checked ? "on" : "off" } })}
                 />
               </SettingRow>
             </div>
 
-            <h3 className="text-[11px] font-semibold text-[#555555] uppercase tracking-widest mb-4 mt-10">Indentation</h3>
-            <div className="bg-[#0a0a0a] border border-[#1a1a1a] rounded-[6px]">
+            <h3 style={{ fontSize: 11, fontWeight: 600, color: "#555", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 16, marginTop: 40 }}>Indentation</h3>
+            <div style={{ background: "#0a0a0a", border: "1px solid #1a1a1a", borderRadius: 6 }}>
               <SettingRow label="Tab Size" description="Number of spaces per indent">
                 <select
                   value={settings.editor.tab_size}
                   onChange={(e) => update({ editor: { ...settings.editor, tab_size: Number(e.target.value) } })}
-                  className="bg-[#111111] border border-[#1a1a1a] rounded-[4px] px-3 py-1.5 text-[12px] text-white focus:outline-none focus:border-[#0070f3]"
+                  style={{ background: "#111", border: "1px solid #1a1a1a", borderRadius: 4, padding: "6px 12px", fontSize: 12, color: "#fff", outline: "none" }}
                 >
                   <option value="2">2 spaces</option>
                   <option value="4">4 spaces</option>
@@ -240,10 +236,10 @@ function App() {
           </div>
         </TabsContent>
 
-        <TabsContent value="theme" className="flex-1 overflow-y-auto">
-          <div className="px-20 py-10">
-            <h3 className="text-[11px] font-semibold text-[#555555] uppercase tracking-widest mb-4">Font</h3>
-            <div className="bg-[#0a0a0a] border border-[#1a1a1a] rounded-[6px]">
+        <TabsContent value="theme" style={{ flex: 1, overflowY: "auto" }}>
+          <div style={{ padding: "40px 48px 32px 48px" }}>
+            <h3 style={{ fontSize: 11, fontWeight: 600, color: "#555", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 16 }}>Font</h3>
+            <div style={{ background: "#0a0a0a", border: "1px solid #1a1a1a", borderRadius: 6 }}>
               <SettingRow label="Font Size" description="Editor font size in pixels">
                 <input
                   type="number"
@@ -251,7 +247,7 @@ function App() {
                   max={24}
                   value={settings.theme.font_size}
                   onChange={(e) => update({ theme: { ...settings.theme, font_size: Number(e.target.value) } })}
-                  className="w-[72px] bg-[#111111] border border-[#1a1a1a] rounded-[4px] px-3 py-1.5 text-[12px] text-white text-center focus:outline-none focus:border-[#0070f3]"
+                  style={{ width: 72, background: "#111", border: "1px solid #1a1a1a", borderRadius: 4, padding: "6px 12px", fontSize: 12, color: "#fff", outline: "none", textAlign: "center" }}
                 />
               </SettingRow>
               <SettingRow label="Font Family" description="Font used in editor and UI">
@@ -259,23 +255,23 @@ function App() {
                   type="text"
                   value={settings.theme.font_family}
                   onChange={(e) => update({ theme: { ...settings.theme, font_family: e.target.value } })}
-                  className="w-60 bg-[#111111] border border-[#1a1a1a] rounded-[4px] px-3 py-1.5 text-[12px] text-white focus:outline-none focus:border-[#0070f3]"
+                  style={{ width: 240, background: "#111", border: "1px solid #1a1a1a", borderRadius: 4, padding: "6px 12px", fontSize: 12, color: "#fff", outline: "none" }}
                 />
               </SettingRow>
             </div>
           </div>
         </TabsContent>
 
-        <TabsContent value="terminal" className="flex-1 overflow-y-auto">
-          <div className="px-20 py-10">
-            <h3 className="text-[11px] font-semibold text-[#555555] uppercase tracking-widest mb-4">Terminal</h3>
-            <div className="bg-[#0a0a0a] border border-[#1a1a1a] rounded-[6px]">
+        <TabsContent value="terminal" style={{ flex: 1, overflowY: "auto" }}>
+          <div style={{ padding: "40px 48px 32px 48px" }}>
+            <h3 style={{ fontSize: 11, fontWeight: 600, color: "#555", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 16 }}>Terminal</h3>
+            <div style={{ background: "#0a0a0a", border: "1px solid #1a1a1a", borderRadius: 6 }}>
               <SettingRow label="Shell" description="Shell used for terminal sessions">
                 <input
                   type="text"
                   value={settings.terminal.shell}
                   onChange={(e) => update({ terminal: { ...settings.terminal, shell: e.target.value } })}
-                  className="w-60 bg-[#111111] border border-[#1a1a1a] rounded-[4px] px-3 py-1.5 text-[12px] text-white focus:outline-none focus:border-[#0070f3]"
+                  style={{ width: 240, background: "#111", border: "1px solid #1a1a1a", borderRadius: 4, padding: "6px 12px", fontSize: 12, color: "#fff", outline: "none" }}
                 />
               </SettingRow>
               <SettingRow label="Font Size" description="Terminal font size in pixels">
@@ -285,27 +281,23 @@ function App() {
                   max={24}
                   value={settings.terminal.font_size}
                   onChange={(e) => update({ terminal: { ...settings.terminal, font_size: Number(e.target.value) } })}
-                  className="w-[72px] bg-[#111111] border border-[#1a1a1a] rounded-[4px] px-3 py-1.5 text-[12px] text-white text-center focus:outline-none focus:border-[#0070f3]"
+                  style={{ width: 72, background: "#111", border: "1px solid #1a1a1a", borderRadius: 4, padding: "6px 12px", fontSize: 12, color: "#fff", outline: "none", textAlign: "center" }}
                 />
               </SettingRow>
             </div>
           </div>
         </TabsContent>
 
-        <TabsContent value="shortcuts" className="flex-1 overflow-y-auto">
-          <div className="px-20 py-10">
-            <h3 className="text-[11px] font-semibold text-[#555555] uppercase tracking-widest mb-4">Keyboard Shortcuts</h3>
-            <div className="bg-[#0a0a0a] border border-[#1a1a1a] rounded-[6px]">
+        <TabsContent value="shortcuts" style={{ flex: 1, overflowY: "auto" }}>
+          <div style={{ padding: "40px 48px 32px 48px" }}>
+            <h3 style={{ fontSize: 11, fontWeight: 600, color: "#555", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 16 }}>Keyboard Shortcuts</h3>
+            <div style={{ background: "#0a0a0a", border: "1px solid #1a1a1a", borderRadius: 6 }}>
               {Object.entries(SHORTCUT_LABELS).map(([action, label]) => {
                 const shortcut = actionToShortcut[action] || "";
                 return (
-                  <div key={action} className="flex items-center justify-between px-5 py-5 border-b border-[#1a1a1a] last:border-b-0">
-                    <span className="text-[13px] text-[#888888]">{label}</span>
-                    <ShortcutInput
-                      value={shortcut}
-                      onChange={(newShortcut) => updateShortcut(action, newShortcut)}
-                    />
-                  </div>
+                  <SettingRow key={action} label={label} description="">
+                    <ShortcutInput value={shortcut} onChange={(newShortcut) => updateShortcut(action, newShortcut)} />
+                  </SettingRow>
                 );
               })}
             </div>
@@ -326,12 +318,12 @@ function SettingRow({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between px-5 py-5 border-b border-[#1a1a1a] last:border-b-0">
-      <div className="min-w-0 flex-1 pr-6">
-        <p className="text-[13px] text-white leading-relaxed">{label}</p>
-        <p className="text-[11px] text-[#555555] mt-1 leading-relaxed">{description}</p>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 28px", borderBottom: "1px solid #1a1a1a" }}>
+      <div style={{ minWidth: 0, flex: 1, paddingRight: 48 }}>
+        <div style={{ fontSize: 13, color: "#fff", lineHeight: 1.5 }}>{label}</div>
+        {description && <div style={{ fontSize: 11, color: "#666", marginTop: 2, lineHeight: 1.5 }}>{description}</div>}
       </div>
-      <div className="shrink-0">
+      <div style={{ flexShrink: 0 }}>
         {children}
       </div>
     </div>

@@ -1,41 +1,63 @@
-import { useState, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import type { AppSettings } from "@/types";
 import { DEFAULT_SETTINGS } from "@/types";
-import { getSettings, saveSettings as tauriSave } from "@/lib/tauri";
+
+const STORAGE_KEY = "codnia-settings";
+
+function loadFromStorage(): AppSettings | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw) as AppSettings;
+  } catch {}
+  return null;
+}
+
+function saveToStorage(settings: AppSettings) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+  } catch {}
+}
 
 export function useSettings() {
   const [settings, setSettings] = useState<AppSettings>(() => {
-    try {
-      const saved = localStorage.getItem("codnia-settings");
-      if (saved) return { ...DEFAULT_SETTINGS, ...JSON.parse(saved) };
-    } catch {}
-    return DEFAULT_SETTINGS;
+    return loadFromStorage() ?? DEFAULT_SETTINGS;
   });
-  const [isOpen, setIsOpen] = useState(false);
 
-  const loadSettings = useCallback(async () => {
-    try {
-      const s = await getSettings();
-      setSettings(s);
-    } catch {
-      setSettings(DEFAULT_SETTINGS);
-    }
+  useEffect(() => {
+    invoke<AppSettings>("get_settings")
+      .then((s) => {
+        setSettings(s);
+        saveToStorage(s);
+      })
+      .catch(console.error);
   }, []);
 
-  const updateSettings = useCallback(
-    (partial: Partial<AppSettings>) => {
-      setSettings((prev) => {
-        const next = { ...prev, ...partial };
-        localStorage.setItem("codnia-settings", JSON.stringify(next));
-        tauriSave(next).catch(console.error);
-        return next;
-      });
+  useEffect(() => {
+    const handler = (e: StorageEvent) => {
+      if (e.key === STORAGE_KEY && e.newValue) {
+        try {
+          setSettings(JSON.parse(e.newValue) as AppSettings);
+        } catch {}
+      }
+    };
+    window.addEventListener("storage", handler);
+    return () => window.removeEventListener("storage", handler);
+  }, []);
+
+  const update = useCallback(
+    async (partial: Partial<AppSettings>) => {
+      const next = { ...settings, ...partial } as AppSettings;
+      setSettings(next);
+      saveToStorage(next);
+      try {
+        await invoke("save_settings", { settings: next });
+      } catch (e) {
+        console.error("Failed to save settings", e);
+      }
     },
-    [],
+    [settings]
   );
 
-  const openSettings = useCallback(() => setIsOpen(true), []);
-  const closeSettings = useCallback(() => setIsOpen(false), []);
-
-  return { settings, isOpen, loadSettings, updateSettings, openSettings, closeSettings };
+  return { settings, update };
 }
