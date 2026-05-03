@@ -37,7 +37,8 @@ export function TerminalComponent({ terminalId, visible }: TerminalComponentProp
     const xterm = new XTerm({
       cursorBlink: true,
       fontSize: settings.terminal.font_size,
-      fontFamily: settings.theme.font_family,
+      fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', Consolas, 'Courier New', monospace",
+      letterSpacing: 0,
       theme: {
         background: "#000000",
         foreground: "#ffffff",

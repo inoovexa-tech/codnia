@@ -357,7 +357,7 @@ export function App() {
   return (
     <div className="flex flex-col w-full h-full bg-[#000000] text-white font-[var(--font-sans)]">
       <div className="h-8 bg-[#000000] border-b border-[#1a1a1a] flex items-center shrink-0" data-tauri-drag-region>
-        <div className="flex items-center gap-[2px] flex-1 overflow-x-auto" style={{ paddingLeft: 78, paddingRight: 12 }} data-tauri-drag-region>
+        <div className="flex items-center gap-0 flex-1 overflow-x-auto" style={{ paddingLeft: 78, paddingRight: 12 }} data-tauri-drag-region>
           <NewTabDropdown
             onTerminal={handleNewTerminal}
             onOpenCode={handleOpenCode}
@@ -408,8 +408,8 @@ export function App() {
             onClick={handleRightSidebarToggle}
             className={`w-[28px] h-[28px] flex items-center justify-center rounded transition-colors ${
               rightSidebarExpanded
-                ? "bg-[#1a1a1a] text-white"
-                : "text-[#555555] hover:bg-[#1a1a1a] hover:text-[#888888]"
+                ? "text-[#0070f3]"
+                : "text-white hover:text-white"
             }`}
             title={rightSidebarExpanded ? "Collapse Panel" : "Expand Panel"}
           >

@@ -74,7 +74,7 @@ export function NewTabDropdown({ onTerminal, onOpenCode, onClaudeCode, onCodex, 
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
-          className="w-[28px] h-[28px] flex items-center justify-center rounded transition-colors text-[#555555] hover:bg-[#1a1a1a] hover:text-white cursor-pointer"
+          className="w-[28px] h-[28px] flex items-center justify-center rounded transition-colors text-white hover:text-white cursor-pointer"
           style={{ marginLeft: 4, marginRight: 8 }}
           title="New Tab"
           type="button"

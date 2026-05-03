@@ -1,6 +1,5 @@
 import { Plus, PanelLeftOpen, PanelLeftClose, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import type { Project } from "@/types";
 
 interface SidebarProps {
@@ -49,32 +48,30 @@ export function Sidebar({
             const initials = getInitials(project.name);
             return (
               <div key={project.id} className="flex flex-col">
-                {!expanded ? (
-                  <Button
-                    variant="ghost"
+                 {!expanded ? (
+                  <button
                     onClick={() => onProjectSelect(project.id)}
                     title={project.name}
                     className={cn(
-                      "w-[36px] h-[36px] rounded-lg flex items-center justify-center transition-colors shrink-0 px-0",
+                      "w-[36px] h-[36px] rounded-lg flex items-center justify-center transition-colors shrink-0",
                       isActive
-                        ? "bg-[#0070f3] text-white hover:bg-[#0070f3] hover:text-white"
-                        : "bg-[#111111] text-[#888888] hover:bg-[#1a1a1a] hover:text-[#888888]"
+                        ? "bg-[#0070f3] text-white"
+                        : "bg-[#111111] text-white"
                     )}
                   >
                     <span className="text-[11px] font-semibold">
                       {initials}
                     </span>
-                  </Button>
+                  </button>
                 ) : (
-                  <Button
-                    variant="ghost"
+                  <button
                     onClick={() => onProjectSelect(project.id)}
                     title={project.name}
                     className={cn(
                       "h-auto rounded-lg flex items-center transition-colors w-full justify-start px-2 py-2 gap-3",
                       isActive
-                        ? "bg-[#0070f3] text-white hover:bg-[#0070f3] hover:text-white"
-                        : "bg-[#111111] text-[#888888] hover:bg-[#1a1a1a] hover:text-[#888888]"
+                        ? "bg-[#0070f3] text-white"
+                        : "bg-[#111111] text-white"
                     )}
                   >
                     <span
@@ -90,31 +87,28 @@ export function Sidebar({
                       <span className="text-[12px] font-medium truncate w-full text-left">{project.name}</span>
                       {branch && <span className="text-[10px] opacity-60 truncate w-full text-left">{branch}</span>}
                     </div>
-                  </Button>
+                  </button>
                 )}
               </div>
             );
           })}
           {expanded ? (
-            <Button
-              variant="ghost"
+            <button
               onClick={onAddProject}
               title="Add Project"
-              className="h-[36px] rounded-lg border border-dashed border-[#222222] flex items-center justify-center gap-2 text-[#555555] hover:border-[#0070f3] hover:text-[#0070f3] transition-colors w-full mt-1 px-3"
+              className="h-[36px] rounded-lg border border-dashed border-[#222222] flex items-center justify-center gap-2 text-white hover:border-[#0070f3] hover:text-[#0070f3] transition-colors w-full mt-1 px-3"
             >
               <Plus className="h-4 w-4" />
               <span className="text-[12px]">Add Project</span>
-            </Button>
+            </button>
           ) : (
-            <Button
-              variant="ghost"
-              size="icon"
+            <button
               onClick={onAddProject}
               title="Add Project"
-              className="w-[36px] h-[36px] rounded-lg border border-dashed border-[#222222] flex items-center justify-center text-[#555555] hover:border-[#0070f3] hover:text-[#0070f3] transition-colors text-lg mt-1"
+              className="w-[36px] h-[36px] rounded-lg border border-dashed border-[#222222] flex items-center justify-center text-white hover:border-[#0070f3] hover:text-[#0070f3] transition-colors text-lg mt-1"
             >
               <Plus className="h-4 w-4" />
-            </Button>
+            </button>
           )}
         </div>
       </div>
@@ -123,24 +117,20 @@ export function Sidebar({
         "w-full px-2 py-2 shrink-0 border-t border-[#1a1a1a]",
         expanded ? "flex items-center justify-between" : "flex flex-col items-center gap-1"
       )}>
-        <Button
-          variant="ghost"
-          size="icon"
+        <button
           onClick={onSettingsClick}
-          className="w-[36px] h-[36px] rounded-lg flex items-center justify-center text-[#555555] hover:bg-[#1a1a1a] hover:text-[#888888] transition-colors"
-          title="Settings"
+          className="w-[36px] h-[36px] rounded-lg flex items-center justify-center text-white transition-colors"
+           title="Settings"
         >
           <Settings className="w-5 h-5" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
+        </button>
+        <button
           onClick={onToggleExpand}
-          className="w-[36px] h-[36px] rounded-lg flex items-center justify-center text-[#555555] hover:bg-[#1a1a1a] hover:text-[#888888] transition-colors"
-          title={expanded ? "Collapse Sidebar" : "Expand Sidebar"}
+          className="w-[36px] h-[36px] rounded-lg flex items-center justify-center text-white transition-colors"
+           title={expanded ? "Collapse Sidebar" : "Expand Sidebar"}
         >
           {expanded ? <PanelLeftClose className="h-[18px] w-[18px]" /> : <PanelLeftOpen className="h-[18px] w-[18px]" />}
-        </Button>
+        </button>
       </div>
     </div>
   );

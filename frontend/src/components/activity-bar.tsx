@@ -24,14 +24,14 @@ export function ActivityBar({
         <div className="flex items-center gap-0.5">
           <button
             onClick={onRefresh}
-            className="w-7 h-7 flex items-center justify-center rounded hover:bg-[#1a1a1a] text-[#555555] hover:text-white transition-colors"
+            className="w-7 h-7 flex items-center justify-center rounded text-white hover:text-white transition-colors"
             title="Refresh"
           >
             <RefreshCw className="h-4 w-4" />
           </button>
           <button
             onClick={onClose}
-            className="w-7 h-7 flex items-center justify-center rounded hover:bg-[#1a1a1a] text-[#555555] hover:text-white transition-colors"
+            className="w-7 h-7 flex items-center justify-center rounded text-white hover:text-white transition-colors"
           >
             <X className="h-4 w-4" />
           </button>

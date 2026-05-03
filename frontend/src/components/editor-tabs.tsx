@@ -22,8 +22,8 @@ function getFileIcon(filename: string): string {
 
 export function EditorTabs({ tabs, activeTabId, onTabSelect, onTabClose, onNewTab }: EditorTabsProps) {
   return (
-    <div className="h-10 bg-[#000000] border-b border-[#1a1a1a] flex items-center px-3 gap-2 shrink-0">
-      <div className="flex items-center gap-0.5 flex-1 overflow-x-auto">
+    <div className="h-10 bg-[#000000] border-b border-[#1a1a1a] flex items-center px-3 gap-0 shrink-0">
+      <div className="flex items-center gap-0 flex-1 overflow-x-auto">
         {tabs.map((tab) => (
           <button
             key={tab.id}
@@ -45,7 +45,7 @@ export function EditorTabs({ tabs, activeTabId, onTabSelect, onTabClose, onNewTa
                 e.stopPropagation();
                 onTabClose(tab.id);
               }}
-              className="ml-1 opacity-50 hover:opacity-100 text-sm leading-none"
+              className="ml-1 opacity-60 hover:opacity-100 text-sm leading-none"
             >
               <X className="h-3 w-3" />
             </span>
