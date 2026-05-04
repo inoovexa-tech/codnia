@@ -1,38 +1,52 @@
 import SwiftUI
+import AppKit
+
+class CodniaApplicationDelegate: NSObject, NSApplicationDelegate {
+    var window: NSWindow?
+    var appState = AppState()
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        let contentView = ContentView()
+            .environmentObject(appState)
+            .frame(minWidth: 900, minHeight: 600)
+
+        let hostingView = NSHostingView(rootView: contentView)
+        hostingView.frame = NSRect(x: 0, y: 0, width: 1200, height: 800)
+
+        let window = NSWindow(
+            contentRect: NSRect(x: 200, y: 200, width: 1200, height: 800),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = "Codnia"
+        window.contentView = hostingView
+        window.minSize = NSSize(width: 900, height: 600)
+        window.backgroundColor = NSColor(Color.bgPrimary)
+        window.titlebarAppearsTransparent = true
+        window.titleVisibility = .hidden
+        window.isOpaque = true
+        window.makeKeyAndOrderFront(nil)
+        window.center()
+
+        self.window = window
+
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        return true
+    }
+}
 
 @main
 struct CodniaApp: App {
-    @StateObject private var appState = AppState()
-    @State private var showSettings = false
+    @NSApplicationDelegateAdaptor(CodniaApplicationDelegate.self) var appDelegate
 
     var body: some Scene {
-        Window("Codnia", id: "main") {
-            ContentView()
-                .environmentObject(appState)
-                .frame(minWidth: 900, minHeight: 600)
-        }
-        .windowStyle(.hiddenTitleBar)
-        .commands {
-            CodniaCommands(
-                newFile: { appState.editorVM.newFile() },
-                openFile: { appState.editorVM.openFileDialog() },
-                save: { appState.editorVM.saveCurrentFile() },
-                saveAs: { appState.editorVM.saveCurrentFileAs() },
-                closeTab: { appState.editorVM.closeCurrentTab() },
-                toggleSidebar: { appState.workspaceVM.toggleSidebar() },
-                toggleTerminal: { appState.editorVM.createTerminalTab() },
-                globalSearch: {
-                    appState.editorVM.showGlobalSearch = true
-                },
-                openSettings: {
-                    showSettings = true
-                }
-            )
-        }
-
         Settings {
             SettingsView()
-                .environmentObject(appState.settings)
+                .environmentObject(appDelegate.appState.settings)
                 .frame(minWidth: 700, minHeight: 540)
         }
     }
