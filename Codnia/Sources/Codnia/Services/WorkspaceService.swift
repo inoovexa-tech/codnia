@@ -5,7 +5,7 @@ public final class WorkspaceService: ObservableObject {
     @Published public var projects: [Project] = []
     @Published public var activeProject: Project? = nil
     @Published public var fileTree: [FileEntry] = []
-    @Published public var branches: [String: String] = [:n]
+    @Published public var branches: [String: String] = [:]
 
     public init() {
         loadProjects()

@@ -3,22 +3,23 @@ import Combine
 
 @MainActor
 public final class AppState: ObservableObject {
-    @Published public var editorVM: EditorViewModel
-    @Published public var workspaceVM: WorkspaceService
-    @Published public var terminalVM: TerminalViewModel
-    @Published public var settings: SettingsService
-    @Published public var searchVM: SearchService
+    public let workspaceVM: WorkspaceService
+    public let settings: SettingsService
+    public let searchVM: SearchService
+    public let terminalVM: TerminalViewModel
+    public let editorVM: EditorViewModel
     @Published public var showGlobalSearch: Bool = false
 
     public init() {
-        self.workspaceVM = WorkspaceService()
-        self.settings = SettingsService()
-        self.searchVM = SearchService()
-        self.terminalVM = TerminalViewModel()
-        self.editorVM = EditorViewModel(
-            workspace: self.workspaceVM,
-            settings: self.settings,
-            terminal: self.terminalVM
-        )
+        let ws = WorkspaceService()
+        let s = SettingsService()
+        let sr = SearchService()
+        let tm = TerminalViewModel()
+        let ed = EditorViewModel(workspace: ws, settings: s, terminal: tm)
+        self.workspaceVM = ws
+        self.settings = s
+        self.searchVM = sr
+        self.terminalVM = tm
+        self.editorVM = ed
     }
 }

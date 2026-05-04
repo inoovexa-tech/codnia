@@ -16,13 +16,15 @@ let package = Package(
             dependencies: [
                 .product(name: "SwiftTerm", package: "SwiftTerm"),
             ],
+            path: "Codnia/Sources/Codnia",
             swiftSettings: [
-                .swiftLanguageMode(.v5)
+                .enableExperimentalFeature("StrictConcurrency")
             ]
         ),
         .testTarget(
             name: "CodniaTests",
-            dependencies: ["Codnia"]
+            dependencies: ["Codnia"],
+            path: "Codnia/Tests/CodniaTests"
         ),
     ]
 )

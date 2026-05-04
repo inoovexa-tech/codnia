@@ -243,9 +243,8 @@ struct InlineTextField: View {
             .onSubmit {
                 onConfirm(value)
             }
-            .onKeyPress(.escape) {
+            .onExitCommand {
                 onCancel()
-                return .handled
             }
     }
 }

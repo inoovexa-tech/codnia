@@ -60,7 +60,7 @@ struct ContentView: View {
                     .frame(width: activityBarWidth)
                     .background(Color.bgSecondary)
                     .overlay(
-                        ResizableDivider(width: $activityBarWidth, min: 200, max: 600),
+                        ResizableDivider(width: $activityBarWidth, minWidth: 200, maxWidth: 600),
                         alignment: .leading
                     )
                     .environmentObject(appState.workspaceVM)
@@ -104,8 +104,8 @@ enum RightSidebarTab: String, CaseIterable {
 
 struct ResizableDivider: View {
     @Binding var width: CGFloat
-    let min: CGFloat
-    let max: CGFloat
+    let minWidth: CGFloat
+    let maxWidth: CGFloat
     @State private var dragging = false
 
     var body: some View {
@@ -118,12 +118,11 @@ struct ResizableDivider: View {
                     .onChanged { value in
                         dragging = true
                         let newWidth = width - value.translation.width
-                        width = min(max(newWidth, min), max)
+                        width = Swift.min(Swift.max(newWidth, minWidth), maxWidth)
                     }
                     .onEnded { _ in
                         dragging = false
                     }
             )
-            .cursor(.resizeLeftRight)
     }
 }

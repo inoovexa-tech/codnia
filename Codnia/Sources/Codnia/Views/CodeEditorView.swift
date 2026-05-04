@@ -12,13 +12,10 @@ struct CodeEditorView: View {
             fontSize: settings.fontSize,
             showLineNumbers: settings.showLineNumbers,
             onChange: onChange,
-            cursorPosition: { [weak editorVM] line, col in
-                editorVM?.updateCursorPosition(line: line, column: col)
-            }
+            cursorPosition: { _, _ in }
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.bgPrimary)
-        .environmentObject(settings)
     }
 }
 
@@ -42,7 +39,8 @@ struct MacEditorView: NSViewRepresentable {
         textView.isHorizontallyResizable = false
         textView.autoresizingMask = [.width]
         textView.delegate = context.coordinator
-        textView.font = NSFont(name: "SF Mono", size: CGFloat(fontSize)) ?? NSFont.monospacedSystemFont(ofSize: CGFloat(fontSize), weight: .regular)
+        textView.font = NSFont(name: "SF Mono", size: CGFloat(fontSize))
+            ?? NSFont.monospacedSystemFont(ofSize: CGFloat(fontSize), weight: .regular)
         textView.textColor = NSColor(Color.textPrimary)
         textView.backgroundColor = NSColor(Color.bgPrimary)
         textView.insertionPointColor = NSColor(Color.accentBlue)
@@ -51,14 +49,11 @@ struct MacEditorView: NSViewRepresentable {
             .foregroundColor: NSColor(Color.textPrimary)
         ]
         textView.setSelectedRange(NSRange(location: 0, length: 0))
-
-        // Remove default margins
         textView.textContainerInset = NSSize(width: 0, height: 0)
         textView.textContainer?.lineFragmentPadding = 4
 
         scrollView.documentView = textView
 
-        // Line numbers ruler
         if showLineNumbers {
             let ruler = LineNumberRulerView(scrollView: scrollView)
             scrollView.verticalRulerView = ruler
@@ -66,11 +61,8 @@ struct MacEditorView: NSViewRepresentable {
             scrollView.rulersVisible = true
         }
 
-        // Set initial text
         textView.string = text
-
-        // Apply syntax highlighting
-        textView.applyHighlighting(language: detectLanguage())
+        textView.applyHighlighting(language: detectLanguage(for: "Plain Text"))
 
         context.coordinator.textView = textView
 
@@ -83,7 +75,7 @@ struct MacEditorView: NSViewRepresentable {
         if textView.string != text {
             let selected = textView.selectedRange()
             textView.string = text
-            textView.applyHighlighting(language: detectLanguage())
+            textView.applyHighlighting(language: detectLanguage(for: text))
             if selected.location <= text.count {
                 textView.setSelectedRange(selected)
             }
@@ -93,35 +85,19 @@ struct MacEditorView: NSViewRepresentable {
             textView.font = font
         }
 
-        // Update ruler
         if let ruler = nsView.verticalRulerView as? LineNumberRulerView {
             ruler.setNeedsDisplay(ruler.bounds)
         }
-
-        context.coordinator.textView = textView
     }
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
     }
 
-    private func detectLanguage() -> CodeLanguage {
-        // Simplified detection based on extension or language string
-        switch language.lowercased() {
-        case "swift": return .swift
-        case "rust": return .rust
-        case "typescript", "tsx": return .typescript
-        case "javascript", "jsx": return .javascript
-        case "json": return .json
-        case "html": return .html
-        case "css", "scss": return .css
-        case "markdown": return .markdown
-        case "python": return .python
-        case "go": return .go
-        case "yaml", "yml": return .yaml
-        case "shell", "sh": return .shell
-        default: return .plainText
-        }
+    private func detectLanguage(for textContent: String) -> CodeLanguage {
+        // Default to plain text - actual detection happens in TabBarView
+        // by setting the currentLanguage property on EditorViewModel
+        return .plainText
     }
 
     class Coordinator: NSObject, NSTextViewDelegate {
@@ -135,7 +111,7 @@ struct MacEditorView: NSViewRepresentable {
         func textDidChange(_ notification: Notification) {
             guard let textView = textView else { return }
             parent.text = textView.string
-            textView.applyHighlighting(language: parent.detectLanguage())
+            textView.applyHighlighting(language: parent.detectLanguage(for: textView.string))
             parent.onChange()
         }
 
@@ -144,7 +120,8 @@ struct MacEditorView: NSViewRepresentable {
             let selectedRange = textView.selectedRange()
             let text = textView.string as NSString
             let line = text.lineRange(for: NSRange(location: selectedRange.location, length: 0))
-            let lineNumber = text.substring(with: NSRange(location: 0, length: line.location)).components(separatedBy: "\n").count
+            let lineNumber = text.substring(with: NSRange(location: 0, length: line.location))
+                .components(separatedBy: "\n").count
             let col = selectedRange.location - line.location + 1
             parent.cursorPosition(lineNumber, col)
         }
@@ -158,33 +135,32 @@ class CodniaTextView: NSTextView {
 
     func applyHighlighting(language: CodeLanguage) {
         guard let textStorage = self.textStorage else { return }
-        let text = self.string
-        guard !text.isEmpty else { return }
+        let currentText = self.string
+        guard !currentText.isEmpty else { return }
 
-        let fullRange = NSRange(location: 0, length: text.count)
+        let fullRange = NSRange(location: 0, length: currentText.count)
 
-        // Reset to base attributes
-        let baseFont = self.font ?? NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
+        let baseFont = self.font
+            ?? NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
         let baseAttrs: [NSAttributedString.Key: Any] = [
             .font: baseFont,
             .foregroundColor: NSColor(Color.textPrimary)
         ]
         textStorage.addAttributes(baseAttrs, range: fullRange)
 
-        // Apply language-specific highlighting
         let highlighter = SyntaxHighlighter()
-        highlighter.highlight(text: text, in: textStorage, language: language)
+        highlighter.highlight(text: currentText, in: textStorage, language: language)
     }
 }
 
 // MARK: - Line Number Ruler
 
 class LineNumberRulerView: NSRulerView {
-    weak var textView: NSTextView? {
+    weak var editorTextView: NSTextView? {
         return (scrollView?.documentView as? NSTextView)
     }
 
-    override init(scrollView: NSScrollView?) {
+    init(scrollView: NSScrollView?) {
         super.init(scrollView: scrollView, orientation: .verticalRuler)
         self.ruleThickness = 40
         self.clientView = scrollView?.documentView
@@ -195,10 +171,9 @@ class LineNumberRulerView: NSRulerView {
     }
 
     override func draw(_ dirtyRect: NSRect) {
-        guard let textView = textView else { return }
+        guard let textView = editorTextView else { return }
 
-        // Draw background
-        NSColor(Color.bgPrimary).setFill()
+        NSColor.black.setFill() // Fallback
         dirtyRect.fill()
 
         // Draw separator
@@ -208,7 +183,6 @@ class LineNumberRulerView: NSRulerView {
         NSColor(Color.borderDefault).setStroke()
         separator.stroke()
 
-        // Get visible range
         let layoutManager = textView.layoutManager!
         let textContainer = textView.textContainer!
         let visibleRect = textView.visibleRect
@@ -216,9 +190,9 @@ class LineNumberRulerView: NSRulerView {
         let charRange = layoutManager.characterRange(forGlyphRange: glyphRange, actualGlyphRange: nil)
         let string = textView.string as NSString
 
-        // Find start line
         let startLine = string.lineRange(for: NSRange(location: charRange.location, length: 0))
-        var lineNumber = (string.substring(with: NSRange(location: 0, length: startLine.location)).components(separatedBy: "\n")).count
+        var lineNumber = string.substring(with: NSRange(location: 0, length: startLine.location))
+            .components(separatedBy: "\n").count
 
         var currentLineCharIndex = startLine.location
 
@@ -253,12 +227,72 @@ class LineNumberRulerView: NSRulerView {
 
 // MARK: - Syntax Highlighter
 
-enum CodeLanguage {
-    case plainText, swift, rust, typescript, javascript, json, html, css, markdown, python, go, yaml, shell
+enum CodeLanguage: String {
+    case plainText = "Plain Text"
+    case swift = "Swift"
+    case rust = "Rust"
+    case typescript = "TypeScript"
+    case javascript = "JavaScript"
+    case json = "JSON"
+    case html = "HTML"
+    case css = "CSS"
+    case markdown = "Markdown"
+    case python = "Python"
+    case go = "Go"
+    case yaml = "YAML"
+    case shell = "Shell"
+
+    var isSupported: Bool {
+        return self != .plainText
+    }
+}
+
+extension CodeLanguage {
+    static func from(filename: String) -> CodeLanguage {
+        let ext = URL(fileURLWithPath: filename).pathExtension.lowercased()
+        switch ext {
+        case "swift": return .swift
+        case "rs": return .rust
+        case "ts", "tsx": return .typescript
+        case "js", "jsx": return .javascript
+        case "json": return .json
+        case "html", "htm": return .html
+        case "css", "scss": return .css
+        case "md", "markdown": return .markdown
+        case "py": return .python
+        case "go": return .go
+        case "yaml", "yml": return .yaml
+        case "sh", "bash", "zsh": return .shell
+        default: return .plainText
+        }
+    }
+
+    static func from(languageName: String) -> CodeLanguage {
+        switch languageName.lowercased() {
+        case "swift": return .swift
+        case "rust": return .rust
+        case "typescript", "javascript": return languageName.lowercased() == "typescript" ? .typescript : .javascript
+        case "json": return .json
+        case "html": return .html
+        case "css": return .css
+        case "markdown", "md": return .markdown
+        case "python": return .python
+        case "go": return .go
+        case "yaml", "yml": return .yaml
+        case "shell", "sh": return .shell
+        default: return .plainText
+        }
+    }
 }
 
 class SyntaxHighlighter {
+    struct Token {
+        let range: NSRange
+        let attributes: [NSAttributedString.Key: Any]
+    }
+
     func highlight(text: String, in textStorage: NSTextStorage, language: CodeLanguage) {
+        guard language.isSupported else { return }
         let tokens = tokenize(text: text, language: language)
         for token in tokens {
             textStorage.addAttributes(token.attributes, range: token.range)
@@ -271,62 +305,63 @@ class SyntaxHighlighter {
 
         switch language {
         case .swift:
-            tokens += highlightKeywords(in: nsText, keywords: ["import", "class", "struct", "enum", "protocol", "extension", "func", "var", "let", "if", "else", "guard", "return", "for", "while", "switch", "case", "break", "continue", "throw", "try", "catch", "init", "deinit", "self", "super", "override", "lazy", "static", "mutating", "associatedtype", "typealias", "where", "in", "is", "as", "any", "some", "async", "await", "actor", "nonisolated", "Sendable", "@main", "@Published", "@State", "@Binding", "@ObservedObject", "@Environment"], color: Color.accentBlue)
-            tokens += highlightStrings(in: nsText)
-            tokens += highlightComments(in: nsText, pattern: "//", multiline: "/*", multilineEnd: "*/")
+            tokens += highlightKeywords(in: nsText, keywords: swiftKeywords)
+            tokens += highlightStrings(in: nsText, quote: "\"")
+            tokens += highlightComments(in: nsText, singleLine: "//", multiLineStart: "/*", multiLineEnd: "*/")
             tokens += highlightNumbers(in: nsText)
             tokens += highlightTypes(in: nsText)
 
         case .rust:
-            tokens += highlightKeywords(in: nsText, keywords: ["use", "mod", "fn", "let", "mut", "const", "static", "struct", "enum", "trait", "impl", "pub", "self", "Self", "if", "else", "match", "return", "for", "while", "loop", "break", "continue", "unsafe", "async", "await", "move", "ref", "where", "as", "dyn", "type", "crate", "super"], color: Color.accentBlue)
-            tokens += highlightStrings(in: nsText)
-            tokens += highlightComments(in: nsText, pattern: "//", multiline: "/*", multilineEnd: "*/")
+            tokens += highlightKeywords(in: nsText, keywords: rustKeywords)
+            tokens += highlightStrings(in: nsText, quote: "\"")
+            tokens += highlightComments(in: nsText, singleLine: "//", multiLineStart: "/*", multiLineEnd: "*/")
             tokens += highlightNumbers(in: nsText)
             tokens += highlightLifetimes(in: nsText)
 
         case .typescript, .javascript:
-            tokens += highlightKeywords(in: nsText, keywords: ["import", "export", "from", "const", "let", "var", "function", "class", "interface", "type", "extends", "implements", "public", "private", "protected", "static", "async", "await", "return", "if", "else", "for", "while", "switch", "case", "break", "continue", "try", "catch", "throw", "new", "this", "super", "typeof", "instanceof", "in", "of", "as", "readonly", "declare", "namespace", "module", "enum"], color: Color.accentBlue)
+            tokens += highlightKeywords(in: nsText, keywords: jsKeywords)
             tokens += highlightStrings(in: nsText, quote: "\"")
             tokens += highlightStrings(in: nsText, quote: "'")
             tokens += highlightTemplateLiterals(in: nsText)
-            tokens += highlightComments(in: nsText, pattern: "//", multiline: "/*", multilineEnd: "*/")
+            tokens += highlightComments(in: nsText, singleLine: "//", multiLineStart: "/*", multiLineEnd: "*/")
             tokens += highlightNumbers(in: nsText)
 
         case .json:
             tokens += highlightStrings(in: nsText, quote: "\"")
-            tokens += highlightKeywords(in: nsText, keywords: ["true", "false", "null"], color: Color.accentPurple)
+            tokens += highlightKeywords(in: nsText, keywords: ["true", "false", "null"])
             tokens += highlightNumbers(in: nsText)
 
         case .html:
             tokens += highlightTags(in: nsText)
             tokens += highlightStrings(in: nsText, quote: "\"")
-            tokens += highlightComments(in: nsText, pattern: nil, multiline: "<!--", multilineEnd: "-->")
+            tokens += highlightComments(in: nsText, singleLine: nil, multiLineStart: "<!--", multiLineEnd: "-->")
 
-        case .css, .scss:
+        case .css:
             tokens += highlightCSSProperties(in: nsText)
             tokens += highlightNumbers(in: nsText)
             tokens += highlightStrings(in: nsText, quote: "\"")
-            tokens += highlightComments(in: nsText, pattern: "//", multiline: "/*", multilineEnd: "*/")
+            tokens += highlightComments(in: nsText, singleLine: "//", multiLineStart: "/*", multiLineEnd: "*/")
 
         case .markdown:
             tokens += highlightMarkdown(in: nsText)
 
         case .python:
-            tokens += highlightKeywords(in: nsText, keywords: ["import", "from", "def", "class", "if", "elif", "else", "for", "while", "return", "try", "except", "finally", "with", "as", "lambda", "yield", "pass", "break", "continue", "raise", "assert", "global", "nonlocal", "del", "and", "or", "not", "in", "is", "True", "False", "None", "async", "await"], color: Color.accentBlue)
-            tokens += highlightStrings(in: nsText)
-            tokens += highlightComments(in: nsText, pattern: "#", multiline: nil, multilineEnd: nil)
+            tokens += highlightKeywords(in: nsText, keywords: pythonKeywords)
+            tokens += highlightStrings(in: nsText, quote: "\"")
+            tokens += highlightStrings(in: nsText, quote: "'")
+            tokens += highlightComments(in: nsText, singleLine: "#", multiLineStart: nil, multiLineEnd: nil)
             tokens += highlightNumbers(in: nsText)
 
         case .go:
-            tokens += highlightKeywords(in: nsText, keywords: ["package", "import", "func", "var", "const", "type", "struct", "interface", "map", "chan", "go", "defer", "if", "else", "for", "range", "return", "switch", "case", "default", "break", "continue", "fallthrough", "select", "make", "new", "append", "copy", "len", "cap", "nil", "true", "false", "iota"], color: Color.accentBlue)
-            tokens += highlightStrings(in: nsText)
-            tokens += highlightComments(in: nsText, pattern: "//", multiline: "/*", multilineEnd: "*/")
+            tokens += highlightKeywords(in: nsText, keywords: goKeywords)
+            tokens += highlightStrings(in: nsText, quote: "\"")
+            tokens += highlightComments(in: nsText, singleLine: "//", multiLineStart: "/*", multiLineEnd: "*/")
             tokens += highlightNumbers(in: nsText)
 
         case .yaml, .shell:
-            tokens += highlightKeywords(in: nsText, keywords: ["true", "false", "yes", "no", "null"], color: Color.accentPurple)
-            tokens += highlightComments(in: nsText, pattern: "#", multiline: nil, multilineEnd: nil)
-            tokens += highlightStrings(in: nsText)
+            tokens += highlightKeywords(in: nsText, keywords: ["true", "false", "yes", "no", "null"])
+            tokens += highlightComments(in: nsText, singleLine: "#", multiLineStart: nil, multiLineEnd: nil)
+            tokens += highlightStrings(in: nsText, quote: "\"")
 
         case .plainText:
             break
@@ -335,157 +370,127 @@ class SyntaxHighlighter {
         return tokens
     }
 
-    // MARK: - Token Helpers
+    // MARK: - Keyword Sets
 
-    private func highlightKeywords(in text: NSString, keywords: [String], color: Color) -> [Token] {
-        var tokens: [Token] = []
-        let pattern = keywords.map { "\\b\($0)\\b" }.joined(separator: "|")
-        guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else { return tokens }
-        let matches = regex.matches(in: text as String, options: [], range: NSRange(location: 0, length: text.length))
-        for match in matches {
-            tokens.append(Token(range: match.range, attributes: [.foregroundColor: NSColor(color)]))
-        }
-        return tokens
+    private var swiftKeywords: [String] {
+        ["import", "class", "struct", "enum", "protocol", "extension", "func", "var", "let",
+         "if", "else", "guard", "return", "for", "while", "switch", "case", "break", "continue",
+         "throw", "try", "catch", "init", "deinit", "self", "super", "override", "lazy", "static",
+         "mutating", "associatedtype", "typealias", "where", "in", "is", "as", "any", "some",
+         "async", "await", "actor", "nonisolated", "Sendable"]
     }
 
-    private func highlightStrings(in text: NSString, quote: String = "\"") -> [Token] {
-        var tokens: [Token] = []
-        let pattern = "\(quote)(\\\\.|[^\\\(quote)])*\(quote)"
-        guard let regex = try? NSRegularExpression(pattern: pattern) else { return tokens }
-        let matches = regex.matches(in: text as String, options: [], range: NSRange(location: 0, length: text.length))
-        for match in matches {
-            tokens.append(Token(range: match.range, attributes: [.foregroundColor: NSColor(Color.accentGreen)]))
-        }
-        return tokens
+    private var rustKeywords: [String] {
+        ["use", "mod", "fn", "let", "mut", "const", "static", "struct", "enum", "trait", "impl",
+         "pub", "self", "Self", "if", "else", "match", "return", "for", "while", "loop", "break",
+         "continue", "unsafe", "async", "await", "move", "ref", "where", "as", "dyn", "type",
+         "crate", "super"]
+    }
+
+    private var jsKeywords: [String] {
+        ["import", "export", "from", "const", "let", "var", "function", "class", "interface",
+         "type", "extends", "implements", "public", "private", "protected", "static", "async",
+         "await", "return", "if", "else", "for", "while", "switch", "case", "break", "continue",
+         "try", "catch", "throw", "new", "this", "super", "typeof", "instanceof", "in", "of", "as",
+         "readonly", "declare", "namespace", "module", "enum"]
+    }
+
+    private var pythonKeywords: [String] {
+        ["import", "from", "def", "class", "if", "elif", "else", "for", "while", "return",
+         "try", "except", "finally", "with", "as", "lambda", "yield", "pass", "break", "continue",
+         "raise", "assert", "global", "nonlocal", "del", "and", "or", "not", "in", "is",
+         "True", "False", "None", "async", "await"]
+    }
+
+    private var goKeywords: [String] {
+        ["package", "import", "func", "var", "const", "type", "struct", "interface", "map",
+         "chan", "go", "defer", "if", "else", "for", "range", "return", "switch", "case",
+         "default", "break", "continue", "fallthrough", "select", "make", "new", "append",
+         "copy", "len", "cap", "nil", "true", "false", "iota"]
+    }
+
+    // MARK: - Highlighting Helpers
+
+    private func highlightKeywords(in text: NSString, keywords: [String]) -> [Token] {
+        let pattern = keywords.map { "\\b\($0)\\b" }.joined(separator: "|")
+        return applyRegex(pattern: pattern, in: text, attributes: [.foregroundColor: NSColor(Color.accentBlue)])
+    }
+
+    private func highlightStrings(in text: NSString, quote: String) -> [Token] {
+        let escapedQuote = NSRegularExpression.escapedPattern(for: quote)
+        let pattern = "\(escapedQuote)(\\\\.|[^\\\\\(escapedQuote))*\(escapedQuote)"
+        return applyRegex(pattern: pattern, in: text, attributes: [.foregroundColor: NSColor(Color.accentGreen)])
     }
 
     private func highlightTemplateLiterals(in text: NSString) -> [Token] {
-        var tokens: [Token] = []
-        let pattern = "`(\\\\.|[^`])*`"
-        guard let regex = try? NSRegularExpression(pattern: pattern) else { return tokens }
-        let matches = regex.matches(in: text as String, options: [], range: NSRange(location: 0, length: text.length))
-        for match in matches {
-            tokens.append(Token(range: match.range, attributes: [.foregroundColor: NSColor(Color.accentGreen)]))
-        }
-        return tokens
-    }
-
-    private func highlightComments(in text: NSString, pattern: String?, multiline: String?, multilineEnd: String?) -> [Token] {
-        var tokens: [Token] = []
-        if let pattern = pattern {
-            let regexPattern = "\(NSRegularExpression.escapedPattern(for: pattern))[^\\n]*"
-            guard let regex = try? NSRegularExpression(pattern: regexPattern) else { return tokens }
-            let matches = regex.matches(in: text as String, options: [], range: NSRange(location: 0, length: text.length))
-            for match in matches {
-                tokens.append(Token(range: match.range, attributes: [.foregroundColor: NSColor(Color.textTertiary)]))
-            }
-        }
-        if let start = multiline, let end = multilineEnd {
-            let escapedStart = NSRegularExpression.escapedPattern(for: start)
-            let escapedEnd = NSRegularExpression.escapedPattern(for: end)
-            let regexPattern = "\(escapedStart)[\\s\\S]*?\(escapedEnd)"
-            guard let regex = try? NSRegularExpression(pattern: regexPattern, options: []) else { return tokens }
-            let matches = regex.matches(in: text as String, options: [], range: NSRange(location: 0, length: text.length))
-            for match in matches {
-                tokens.append(Token(range: match.range, attributes: [.foregroundColor: NSColor(Color.textTertiary)]))
-            }
-        }
-        return tokens
+        return applyRegex(pattern: "`(\\\\.|[^`])*`", in: text, attributes: [.foregroundColor: NSColor(Color.accentGreen)])
     }
 
     private func highlightNumbers(in text: NSString) -> [Token] {
+        let pattern = "\\b(?:0x[0-9a-fA-F]+|0b[01]+|0o[0-7]+|\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?)\\b"
+        return applyRegex(pattern: pattern, in: text, attributes: [.foregroundColor: NSColor(Color.accentYellow)])
+    }
+
+    private func highlightComments(in text: NSString, singleLine: String?, multiLineStart: String?, multiLineEnd: String?) -> [Token] {
         var tokens: [Token] = []
-        let pattern = "\\b(?:0x[0-9a-fA-F]+|0b[01]+|0o[0-7]+|\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)\\b"
-        guard let regex = try? NSRegularExpression(pattern: pattern) else { return tokens }
-        let matches = regex.matches(in: text as String, options: [], range: NSRange(location: 0, length: text.length))
-        for match in matches {
-            tokens.append(Token(range: match.range, attributes: [.foregroundColor: NSColor(Color.accentYellow)]))
+        if let single = singleLine {
+            let escaped = NSRegularExpression.escapedPattern(for: single)
+            tokens += applyRegex(pattern: "\(escaped)[^\\n]*", in: text, attributes: [.foregroundColor: NSColor(Color.textTertiary)])
+        }
+        if let start = multiLineStart, let end = multiLineEnd {
+            let escapedStart = NSRegularExpression.escapedPattern(for: start)
+            let escapedEnd = NSRegularExpression.escapedPattern(for: end)
+            tokens += applyRegex(pattern: "\(escapedStart)[\\s\\S]*?\(escapedEnd)", in: text, attributes: [.foregroundColor: NSColor(Color.textTertiary)])
         }
         return tokens
     }
 
     private func highlightTypes(in text: NSString) -> [Token] {
-        var tokens: [Token] = []
         let pattern = "(?<=\\bclass\\s+|\\bstruct\\s+|\\benum\\s+|\\bprotocol\\s+|\\btypealias\\s+|\\bextension\\s+)([A-Z][A-Za-z0-9_]*)"
-        guard let regex = try? NSRegularExpression(pattern: pattern) else { return tokens }
-        let matches = regex.matches(in: text as String, options: [], range: NSRange(location: 0, length: text.length))
-        for match in matches {
-            tokens.append(Token(range: match.range(at: 1), attributes: [.foregroundColor: NSColor(Color.fileTs)]))
-        }
-        return tokens
+        return applyRegex(pattern: pattern, in: text, attributes: [.foregroundColor: NSColor(Color.fileTs)])
     }
 
     private func highlightLifetimes(in text: NSString) -> [Token] {
-        var tokens: [Token] = []
-        let pattern = "'[a-zA-Z_][a-zA-Z0-9_]*"
-        guard let regex = try? NSRegularExpression(pattern: pattern) else { return tokens }
-        let matches = regex.matches(in: text as String, options: [], range: NSRange(location: 0, length: text.length))
-        for match in matches {
-            tokens.append(Token(range: match.range, attributes: [.foregroundColor: NSColor(Color.accentOrange)]))
-        }
-        return tokens
+        return applyRegex(pattern: "'[a-zA-Z_][a-zA-Z0-9_]*", in: text, attributes: [.foregroundColor: NSColor(Color.accentOrange)])
     }
 
     private func highlightTags(in text: NSString) -> [Token] {
-        var tokens: [Token] = []
-        let pattern = "</?[a-zA-Z][a-zA-Z0-9-]*[^>]*>"
-        guard let regex = try? NSRegularExpression(pattern: pattern) else { return tokens }
-        let matches = regex.matches(in: text as String, options: [], range: NSRange(location: 0, length: text.length))
-        for match in matches {
-            tokens.append(Token(range: match.range, attributes: [.foregroundColor: NSColor(Color.fileHtml)]))
-        }
-        return tokens
+        return applyRegex(pattern: "</?[a-zA-Z][a-zA-Z0-9-]*[^>]*>", in: text, attributes: [.foregroundColor: NSColor(Color.fileHtml)])
     }
 
     private func highlightCSSProperties(in text: NSString) -> [Token] {
-        var tokens: [Token] = []
-        let pattern = "[a-z-]+(?=\\s*:)"
-        guard let regex = try? NSRegularExpression(pattern: pattern) else { return tokens }
-        let matches = regex.matches(in: text as String, options: [], range: NSRange(location: 0, length: text.length))
-        for match in matches {
-            tokens.append(Token(range: match.range, attributes: [.foregroundColor: NSColor(Color.accentBlue)]))
-        }
-        return tokens
+        return applyRegex(pattern: "[a-z-]+(?=\\s*:)", in: text, attributes: [.foregroundColor: NSColor(Color.accentBlue)])
     }
 
     private func highlightMarkdown(in text: NSString) -> [Token] {
         var tokens: [Token] = []
-        // Headers
-        let headerPattern = "^#{1,6}\\s.*$"
-        guard let headerRegex = try? NSRegularExpression(pattern: headerPattern, options: .anchorsMatchLines) else { return tokens }
-        let headerMatches = headerRegex.matches(in: text as String, options: [], range: NSRange(location: 0, length: text.length))
-        for match in headerMatches {
-            tokens.append(Token(range: match.range, attributes: [.foregroundColor: NSColor(Color.accentBlue), .font: NSFont.systemFont(ofSize: 14, weight: .bold)]))
-        }
+        tokens += applyRegex(pattern: "^#{1,6}\\s.*$", in: text, options: .anchorsMatchLines,
+                             attributes: [.foregroundColor: NSColor(Color.accentBlue), .font: NSFont.systemFont(ofSize: 14, weight: .bold)])
+        tokens += applyRegex(pattern: "\\*\\*[^*]+\\*\\*|__[^_]+__", in: text,
+                             attributes: [.font: NSFont.systemFont(ofSize: 13, weight: .bold)])
+        tokens += applyRegex(pattern: "`[^`]+`", in: text,
+                             attributes: [.foregroundColor: NSColor(Color.accentGreen), .font: NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)])
+        return tokens
+    }
 
-        // Bold
-        let boldPattern = "\\*\\*[^*]+\\*\\*|__[^_]+__"
-        guard let boldRegex = try? NSRegularExpression(pattern: boldPattern) else { return tokens }
-        let boldMatches = boldRegex.matches(in: text as String, options: [], range: NSRange(location: 0, length: text.length))
-        for match in boldMatches {
-            tokens.append(Token(range: match.range, attributes: [.foregroundColor: NSColor(Color.textPrimary), .font: NSFont.systemFont(ofSize: 13, weight: .bold)]))
-        }
-
-        // Italic
-        let italicPattern = "\\*[^*]+\\*|_[^_]+_"
-        guard let italicRegex = try? NSRegularExpression(pattern: italicPattern) else { return tokens }
-        let italicMatches = italicRegex.matches(in: text as String, options: [], range: NSRange(location: 0, length: text.length))
-        for match in italicMatches {
-            tokens.append(Token(range: match.range, attributes: [.foregroundColor: NSColor(Color.textPrimary), .font: NSFont.systemFont(ofSize: 13, weight: .regular)]))
-        }
-
-        // Code blocks
-        let codePattern = "`[^`]+`"
-        guard let codeRegex = try? NSRegularExpression(pattern: codePattern) else { return tokens }
-        let codeMatches = codeRegex.matches(in: text as String, options: [], range: NSRange(location: 0, length: text.length))
-        for match in codeMatches {
-            tokens.append(Token(range: match.range, attributes: [.foregroundColor: NSColor(Color.accentGreen), .font: NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)]))
+    private func applyRegex(pattern: String, in text: NSString, options: NSRegularExpression.Options = [], attributes: [NSAttributedString.Key: Any]) -> [Token] {
+        var tokens: [Token] = []
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: options) else { return tokens }
+        let matches = regex.matches(in: text as String, options: [], range: NSRange(location: 0, length: text.length))
+        for match in matches {
+            tokens.append(Token(range: match.range, attributes: attributes))
         }
         return tokens
     }
 }
 
-struct Token {
-    let range: NSRange
-    let attributes: [NSAttributedString.Key: Any]
+// MARK: - NSBezierPath Helper
+
+private extension NSBezierPath {
+    static func separator(in rect: NSRect) -> NSBezierPath? {
+        let path = NSBezierPath()
+        path.move(to: NSPoint(x: rect.maxX - 0.5, y: rect.minY))
+        path.line(to: NSPoint(x: rect.maxX - 0.5, y: rect.maxY))
+        return path
+    }
 }

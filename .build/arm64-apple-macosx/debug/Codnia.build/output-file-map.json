@@ -1,0 +1,187 @@
+{
+  "": {
+    "swift-dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/master.swiftdeps"
+  },
+  "/Users/inoovexa/Workspaces/codnia/Codnia/Sources/Codnia/CodniaApp.swift": {
+    "dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/CodniaApp.d",
+    "object": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/CodniaApp.swift.o",
+    "swiftmodule": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/CodniaApp~partial.swiftmodule",
+    "swift-dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/CodniaApp.swiftdeps",
+    "diagnostics": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/CodniaApp.dia"
+  },
+  "/Users/inoovexa/Workspaces/codnia/Codnia/Sources/Codnia/Extensions/Color+Theme.swift": {
+    "dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/Color+Theme.d",
+    "object": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/Color+Theme.swift.o",
+    "swiftmodule": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/Color+Theme~partial.swiftmodule",
+    "swift-dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/Color+Theme.swiftdeps",
+    "diagnostics": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/Color+Theme.dia"
+  },
+  "/Users/inoovexa/Workspaces/codnia/Codnia/Sources/Codnia/Models/FileEntry.swift": {
+    "dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/FileEntry.d",
+    "object": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/FileEntry.swift.o",
+    "swiftmodule": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/FileEntry~partial.swiftmodule",
+    "swift-dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/FileEntry.swiftdeps",
+    "diagnostics": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/FileEntry.dia"
+  },
+  "/Users/inoovexa/Workspaces/codnia/Codnia/Sources/Codnia/Models/Project.swift": {
+    "dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/Project.d",
+    "object": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/Project.swift.o",
+    "swiftmodule": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/Project~partial.swiftmodule",
+    "swift-dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/Project.swiftdeps",
+    "diagnostics": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/Project.dia"
+  },
+  "/Users/inoovexa/Workspaces/codnia/Codnia/Sources/Codnia/Models/Tab.swift": {
+    "dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/Tab.d",
+    "object": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/Tab.swift.o",
+    "swiftmodule": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/Tab~partial.swiftmodule",
+    "swift-dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/Tab.swiftdeps",
+    "diagnostics": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/Tab.dia"
+  },
+  "/Users/inoovexa/Workspaces/codnia/Codnia/Sources/Codnia/Services/FileSystemService.swift": {
+    "dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/FileSystemService.d",
+    "object": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/FileSystemService.swift.o",
+    "swiftmodule": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/FileSystemService~partial.swiftmodule",
+    "swift-dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/FileSystemService.swiftdeps",
+    "diagnostics": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/FileSystemService.dia"
+  },
+  "/Users/inoovexa/Workspaces/codnia/Codnia/Sources/Codnia/Services/GitService.swift": {
+    "dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/GitService.d",
+    "object": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/GitService.swift.o",
+    "swiftmodule": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/GitService~partial.swiftmodule",
+    "swift-dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/GitService.swiftdeps",
+    "diagnostics": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/GitService.dia"
+  },
+  "/Users/inoovexa/Workspaces/codnia/Codnia/Sources/Codnia/Services/SearchService.swift": {
+    "dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/SearchService.d",
+    "object": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/SearchService.swift.o",
+    "swiftmodule": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/SearchService~partial.swiftmodule",
+    "swift-dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/SearchService.swiftdeps",
+    "diagnostics": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/SearchService.dia"
+  },
+  "/Users/inoovexa/Workspaces/codnia/Codnia/Sources/Codnia/Services/SettingsService.swift": {
+    "dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/SettingsService.d",
+    "object": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/SettingsService.swift.o",
+    "swiftmodule": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/SettingsService~partial.swiftmodule",
+    "swift-dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/SettingsService.swiftdeps",
+    "diagnostics": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/SettingsService.dia"
+  },
+  "/Users/inoovexa/Workspaces/codnia/Codnia/Sources/Codnia/Services/TerminalService.swift": {
+    "dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/TerminalService.d",
+    "object": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/TerminalService.swift.o",
+    "swiftmodule": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/TerminalService~partial.swiftmodule",
+    "swift-dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/TerminalService.swiftdeps",
+    "diagnostics": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/TerminalService.dia"
+  },
+  "/Users/inoovexa/Workspaces/codnia/Codnia/Sources/Codnia/Services/WorkspaceService.swift": {
+    "dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/WorkspaceService.d",
+    "object": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/WorkspaceService.swift.o",
+    "swiftmodule": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/WorkspaceService~partial.swiftmodule",
+    "swift-dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/WorkspaceService.swiftdeps",
+    "diagnostics": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/WorkspaceService.dia"
+  },
+  "/Users/inoovexa/Workspaces/codnia/Codnia/Sources/Codnia/ViewModels/AppState.swift": {
+    "dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/AppState.d",
+    "object": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/AppState.swift.o",
+    "swiftmodule": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/AppState~partial.swiftmodule",
+    "swift-dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/AppState.swiftdeps",
+    "diagnostics": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/AppState.dia"
+  },
+  "/Users/inoovexa/Workspaces/codnia/Codnia/Sources/Codnia/ViewModels/EditorViewModel.swift": {
+    "dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/EditorViewModel.d",
+    "object": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/EditorViewModel.swift.o",
+    "swiftmodule": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/EditorViewModel~partial.swiftmodule",
+    "swift-dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/EditorViewModel.swiftdeps",
+    "diagnostics": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/EditorViewModel.dia"
+  },
+  "/Users/inoovexa/Workspaces/codnia/Codnia/Sources/Codnia/ViewModels/TerminalViewModel.swift": {
+    "dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/TerminalViewModel.d",
+    "object": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/TerminalViewModel.swift.o",
+    "swiftmodule": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/TerminalViewModel~partial.swiftmodule",
+    "swift-dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/TerminalViewModel.swiftdeps",
+    "diagnostics": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/TerminalViewModel.dia"
+  },
+  "/Users/inoovexa/Workspaces/codnia/Codnia/Sources/Codnia/Views/ActivityBarView.swift": {
+    "dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/ActivityBarView.d",
+    "object": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/ActivityBarView.swift.o",
+    "swiftmodule": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/ActivityBarView~partial.swiftmodule",
+    "swift-dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/ActivityBarView.swiftdeps",
+    "diagnostics": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/ActivityBarView.dia"
+  },
+  "/Users/inoovexa/Workspaces/codnia/Codnia/Sources/Codnia/Views/CodeEditorView.swift": {
+    "dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/CodeEditorView.d",
+    "object": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/CodeEditorView.swift.o",
+    "swiftmodule": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/CodeEditorView~partial.swiftmodule",
+    "swift-dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/CodeEditorView.swiftdeps",
+    "diagnostics": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/CodeEditorView.dia"
+  },
+  "/Users/inoovexa/Workspaces/codnia/Codnia/Sources/Codnia/Views/ContentView.swift": {
+    "dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/ContentView.d",
+    "object": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/ContentView.swift.o",
+    "swiftmodule": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/ContentView~partial.swiftmodule",
+    "swift-dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/ContentView.swiftdeps",
+    "diagnostics": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/ContentView.dia"
+  },
+  "/Users/inoovexa/Workspaces/codnia/Codnia/Sources/Codnia/Views/EditorAreaView.swift": {
+    "dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/EditorAreaView.d",
+    "object": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/EditorAreaView.swift.o",
+    "swiftmodule": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/EditorAreaView~partial.swiftmodule",
+    "swift-dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/EditorAreaView.swiftdeps",
+    "diagnostics": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/EditorAreaView.dia"
+  },
+  "/Users/inoovexa/Workspaces/codnia/Codnia/Sources/Codnia/Views/FileTreeView.swift": {
+    "dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/FileTreeView.d",
+    "object": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/FileTreeView.swift.o",
+    "swiftmodule": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/FileTreeView~partial.swiftmodule",
+    "swift-dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/FileTreeView.swiftdeps",
+    "diagnostics": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/FileTreeView.dia"
+  },
+  "/Users/inoovexa/Workspaces/codnia/Codnia/Sources/Codnia/Views/GlobalSearchView.swift": {
+    "dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/GlobalSearchView.d",
+    "object": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/GlobalSearchView.swift.o",
+    "swiftmodule": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/GlobalSearchView~partial.swiftmodule",
+    "swift-dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/GlobalSearchView.swiftdeps",
+    "diagnostics": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/GlobalSearchView.dia"
+  },
+  "/Users/inoovexa/Workspaces/codnia/Codnia/Sources/Codnia/Views/MarkdownPreviewView.swift": {
+    "dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/MarkdownPreviewView.d",
+    "object": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/MarkdownPreviewView.swift.o",
+    "swiftmodule": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/MarkdownPreviewView~partial.swiftmodule",
+    "swift-dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/MarkdownPreviewView.swiftdeps",
+    "diagnostics": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/MarkdownPreviewView.dia"
+  },
+  "/Users/inoovexa/Workspaces/codnia/Codnia/Sources/Codnia/Views/SettingsView.swift": {
+    "dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/SettingsView.d",
+    "object": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/SettingsView.swift.o",
+    "swiftmodule": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/SettingsView~partial.swiftmodule",
+    "swift-dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/SettingsView.swiftdeps",
+    "diagnostics": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/SettingsView.dia"
+  },
+  "/Users/inoovexa/Workspaces/codnia/Codnia/Sources/Codnia/Views/SidebarView.swift": {
+    "dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/SidebarView.d",
+    "object": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/SidebarView.swift.o",
+    "swiftmodule": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/SidebarView~partial.swiftmodule",
+    "swift-dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/SidebarView.swiftdeps",
+    "diagnostics": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/SidebarView.dia"
+  },
+  "/Users/inoovexa/Workspaces/codnia/Codnia/Sources/Codnia/Views/StatusBarView.swift": {
+    "dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/StatusBarView.d",
+    "object": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/StatusBarView.swift.o",
+    "swiftmodule": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/StatusBarView~partial.swiftmodule",
+    "swift-dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/StatusBarView.swiftdeps",
+    "diagnostics": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/StatusBarView.dia"
+  },
+  "/Users/inoovexa/Workspaces/codnia/Codnia/Sources/Codnia/Views/TabBarView.swift": {
+    "dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/TabBarView.d",
+    "object": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/TabBarView.swift.o",
+    "swiftmodule": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/TabBarView~partial.swiftmodule",
+    "swift-dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/TabBarView.swiftdeps",
+    "diagnostics": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/TabBarView.dia"
+  },
+  "/Users/inoovexa/Workspaces/codnia/Codnia/Sources/Codnia/Views/TerminalView.swift": {
+    "dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/TerminalView.d",
+    "object": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/TerminalView.swift.o",
+    "swiftmodule": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/TerminalView~partial.swiftmodule",
+    "swift-dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/TerminalView.swiftdeps",
+    "diagnostics": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/TerminalView.dia"
+  }
+}

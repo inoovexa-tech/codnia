@@ -3,8 +3,8 @@ import Combine
 
 public final class TerminalService: ObservableObject {
     @Published public var instances: [TerminalInstance] = []
-    private var processes: [String: Process] = [:n]
-    private var pipes: [String: (output: Pipe, input: Pipe)] = [:n]
+    private var processes: [String: Process] = [:]
+    private var pipes: [String: (output: Pipe, input: Pipe)] = [:]
 
     public init() {}
 

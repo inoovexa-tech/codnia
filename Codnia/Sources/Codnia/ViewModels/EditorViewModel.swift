@@ -15,7 +15,7 @@ public final class EditorViewModel: ObservableObject {
     private let terminal: TerminalViewModel
     private let fs = FileSystemService.shared
     private var cancellables = Set<AnyCancellable>()
-    private var fileContents: [String: String] = [:n] // tabId -> original content
+    private var fileContents: [String: String] = [:] // tabId -> original content
 
     public init(workspace: WorkspaceService, settings: SettingsService, terminal: TerminalViewModel) {
         self.workspace = workspace
