@@ -290,67 +290,23 @@ async fn create_terminal(
     state: tauri::State<'_, Arc<Mutex<AppState>>>,
     app: tauri::AppHandle<tauri::Wry>,
 ) -> Result<TerminalInstance, String> {
+    let terminal_manager = state.lock().unwrap().terminal_manager.clone();
     let (instance, reader) = {
-        let app_state = state.lock().unwrap();
-        let mut terminal_manager = app_state.terminal_manager.lock().unwrap();
+        let mut terminal_manager = terminal_manager.lock().unwrap();
         terminal_manager.create_instance(cwd, shell, command)?
     };
 
     let terminal_id_str = instance.id.to_string();
     let event_data = format!("terminal:{}:data", terminal_id_str);
     let event_exit = format!("terminal:{}:exit", terminal_id_str);
-    let app_handle_emit = app.clone();
+    let app_handle = app.clone();
     std::thread::spawn(move || {
         let mut reader = reader.lock().unwrap();
-        let mut buffer = vec![0u8; 8192];
-        let (tx, rx): (std::sync::mpsc::Sender<String>, std::sync::mpsc::Receiver<String>) = std::sync::mpsc::channel();
-
-        let emit_handle = app_handle_emit;
-        std::thread::spawn(move || {
-            let mut pending = String::new();
-            loop {
-                match rx.recv_timeout(std::time::Duration::from_millis(8)) {
-                    Ok(data) => {
-                        pending.push_str(&data);
-                        while pending.len() < 32768 {
-                            match rx.try_recv() {
-                                Ok(d) => pending.push_str(&d),
-                                Err(std::sync::mpsc::TryRecvError::Empty) => break,
-                                Err(std::sync::mpsc::TryRecvError::Disconnected) => {
-                                    if !pending.is_empty() {
-                                        let _ = emit_handle.emit(&event_data, &pending);
-                                    }
-                                    let _ = emit_handle.emit(&event_exit, ());
-                                    return;
-                                }
-                            }
-                        }
-                        if !pending.is_empty() {
-                            let _ = emit_handle.emit(&event_data, &pending);
-                            pending.clear();
-                        }
-                    }
-                    Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
-                        if !pending.is_empty() {
-                            let _ = emit_handle.emit(&event_data, &pending);
-                            pending.clear();
-                        }
-                    }
-                    Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
-                        if !pending.is_empty() {
-                            let _ = emit_handle.emit(&event_data, &pending);
-                        }
-                        let _ = emit_handle.emit(&event_exit, ());
-                        return;
-                    }
-                }
-            }
-        });
-
+        let mut buffer = vec![0u8; 65536];
         loop {
             match reader.read(&mut buffer) {
                 Ok(0) => {
-                    drop(tx);
+                    let _ = app_handle.emit(&event_exit, ());
                     break;
                 }
                 Ok(n) => {
@@ -358,10 +314,10 @@ async fn create_terminal(
                         Ok(s) => s.to_string(),
                         Err(_) => String::from_utf8_lossy(&buffer[..n]).to_string(),
                     };
-                    let _ = tx.send(data);
+                    let _ = app_handle.emit(&event_data, data);
                 }
                 Err(_) => {
-                    drop(tx);
+                    let _ = app_handle.emit(&event_exit, ());
                     break;
                 }
             }
@@ -378,8 +334,8 @@ async fn write_terminal(
     state: tauri::State<'_, Arc<Mutex<AppState>>>,
 ) -> Result<(), String> {
     let uuid = Uuid::parse_str(&id).map_err(|e| e.to_string())?;
-    let app_state = state.lock().unwrap();
-    let terminal_manager = app_state.terminal_manager.lock().unwrap();
+    let terminal_manager = state.lock().unwrap().terminal_manager.clone();
+    let terminal_manager = terminal_manager.lock().unwrap();
     terminal_manager.write(uuid, &data)
 }
 
@@ -391,8 +347,8 @@ async fn resize_terminal(
     state: tauri::State<'_, Arc<Mutex<AppState>>>,
 ) -> Result<(), String> {
     let uuid = Uuid::parse_str(&id).map_err(|e| e.to_string())?;
-    let app_state = state.lock().unwrap();
-    let mut terminal_manager = app_state.terminal_manager.lock().unwrap();
+    let terminal_manager = state.lock().unwrap().terminal_manager.clone();
+    let mut terminal_manager = terminal_manager.lock().unwrap();
     terminal_manager.resize(uuid, rows, cols)
 }
 
@@ -402,8 +358,8 @@ async fn kill_terminal(
     state: tauri::State<'_, Arc<Mutex<AppState>>>,
 ) -> Result<(), String> {
     let uuid = Uuid::parse_str(&id).map_err(|e| e.to_string())?;
-    let app_state = state.lock().unwrap();
-    let mut terminal_manager = app_state.terminal_manager.lock().unwrap();
+    let terminal_manager = state.lock().unwrap().terminal_manager.clone();
+    let mut terminal_manager = terminal_manager.lock().unwrap();
     terminal_manager.kill(uuid)
 }
 
@@ -411,8 +367,8 @@ async fn kill_terminal(
 async fn list_terminals(
     state: tauri::State<'_, Arc<Mutex<AppState>>>,
 ) -> Result<Vec<TerminalInstance>, String> {
-    let app_state = state.lock().unwrap();
-    let terminal_manager = app_state.terminal_manager.lock().unwrap();
+    let terminal_manager = state.lock().unwrap().terminal_manager.clone();
+    let terminal_manager = terminal_manager.lock().unwrap();
     Ok(terminal_manager.get_all_instances())
 }
 

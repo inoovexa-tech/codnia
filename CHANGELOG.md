@@ -1,3 +1,10 @@
+## [0.2.3] — 2026-05-04
+
+### Fixed
+- Terminal commands no longer hold the global AppState mutex — only the terminal_manager mutex is locked, eliminating contention with other subsystems (file tree, workspace, etc.)
+- PTY read buffer increased from 8KB to 64KB for better throughput with TUI apps
+- Reverted mpsc batching approach — direct emit is faster for interactive terminals
+
 ## [0.2.2] — 2026-05-04
 
 ### Fixed
