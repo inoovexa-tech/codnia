@@ -65,9 +65,7 @@ export function FileTree({ entries, onFileSelect, onRefresh }: FileTreeProps) {
   );
 
   const handleRename = useCallback((entry: FileEntry) => {
-    const parentPath = entry.is_directory
-      ? entry.path
-      : entry.path.substring(0, entry.path.lastIndexOf("/"));
+    const parentPath = entry.path.substring(0, entry.path.lastIndexOf("/"));
     setInlineEdit({
       type: "rename",
       path: entry.path,

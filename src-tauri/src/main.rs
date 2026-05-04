@@ -296,7 +296,9 @@ async fn create_terminal(
         terminal_manager.create_instance(cwd, shell, command)?
     };
 
-    let terminal_id = instance.id.to_string();
+    let terminal_id_str = instance.id.to_string();
+    let event_data = format!("terminal:{}:data", terminal_id_str);
+    let event_exit = format!("terminal:{}:exit", terminal_id_str);
     let app_handle = app.clone();
     std::thread::spawn(move || {
         let mut reader = reader.lock().unwrap();
@@ -304,15 +306,18 @@ async fn create_terminal(
         loop {
             match reader.read(&mut buffer) {
                 Ok(0) => {
-                    let _ = app_handle.emit(&format!("terminal:{}:exit", terminal_id), ());
+                    let _ = app_handle.emit(&event_exit, ());
                     break;
                 }
                 Ok(n) => {
-                    let data = String::from_utf8_lossy(&buffer[..n]).to_string();
-                    let _ = app_handle.emit(&format!("terminal:{}:data", terminal_id), data);
+                    let data = match String::from_utf8(buffer[..n].to_vec()) {
+                        Ok(s) => s,
+                        Err(_) => String::from_utf8_lossy(&buffer[..n]).to_string(),
+                    };
+                    let _ = app_handle.emit(&event_data, data);
                 }
                 Err(_) => {
-                    let _ = app_handle.emit(&format!("terminal:{}:exit", terminal_id), ());
+                    let _ = app_handle.emit(&event_exit, ());
                     break;
                 }
             }

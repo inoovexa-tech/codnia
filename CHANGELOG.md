@@ -1,3 +1,14 @@
+## [0.2.1] — 2026-05-04
+
+### Fixed
+- Terminal no longer duplicates/triples characters when typing — removed React.StrictMode and fixed effect lifecycle to prevent double-mounting xterm instances
+- Terminal processes (opencode, etc.) no longer crash when switching tabs — useEffect now depends only on terminalId
+- PTY reader thread optimized — event names pre-computed, UTF-8 fast path avoids unnecessary allocations
+- xterm instance properly disposed on unmount, preventing memory leaks
+- File tree rename now correctly computes parent path for directories (was nesting renamed dir inside itself)
+- Project rename now shows a proper modal dialog instead of broken `window.prompt` (which doesn't work in Tauri native windows)
+- Rename modal uses inline styles via createPortal to ensure correct spacing regardless of sidebar overflow/width constraints
+
 ## [0.2.0] — 2026-05-04
 
 ### Fixed

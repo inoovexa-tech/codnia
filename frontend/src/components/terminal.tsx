@@ -1,42 +1,35 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef } from "react";
 import { Terminal as XTerm } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { onTerminalData, onTerminalExit, writeTerminal, resizeTerminal } from "@/lib/tauri";
-import { useSettings } from "@/hooks/use-settings";
 import "@xterm/xterm/css/xterm.css";
 
 interface TerminalComponentProps {
   terminalId: string;
   visible: boolean;
+  fontSize: number;
+  scrollback: number;
 }
 
-export function TerminalComponent({ terminalId, visible }: TerminalComponentProps) {
-  const { settings } = useSettings();
+export function TerminalComponent({ terminalId, visible, fontSize, scrollback }: TerminalComponentProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<XTerm | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const unlistenDataRef = useRef<(() => void) | null>(null);
   const unlistenExitRef = useRef<(() => void) | null>(null);
-  const initRef = useRef(false);
+  const visibleRef = useRef(visible);
+  const terminalIdRef = useRef(terminalId);
 
-  const handleResize = useCallback(() => {
-    if (fitAddonRef.current && xtermRef.current && visible) {
-      try {
-        fitAddonRef.current.fit();
-        resizeTerminal(terminalId, xtermRef.current.rows, xtermRef.current.cols).catch(() => {});
-      } catch {
-        // ignore fit errors when invisible
-      }
-    }
-  }, [terminalId, visible]);
+  visibleRef.current = visible;
+  terminalIdRef.current = terminalId;
 
   useEffect(() => {
-    if (!containerRef.current || initRef.current) return;
-    initRef.current = true;
+    const el = containerRef.current;
+    if (!el) return;
 
     const xterm = new XTerm({
       cursorBlink: true,
-      fontSize: settings.terminal.font_size,
+      fontSize,
       fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', Consolas, 'Courier New', monospace",
       letterSpacing: 0,
       theme: {
@@ -62,12 +55,12 @@ export function TerminalComponent({ terminalId, visible }: TerminalComponentProp
         brightWhite: "#ffffff",
       },
       allowTransparency: true,
-      scrollback: settings.terminal.scrollback,
+      scrollback,
     });
 
     const fitAddon = new FitAddon();
     xterm.loadAddon(fitAddon);
-    xterm.open(containerRef.current);
+    xterm.open(el);
 
     xtermRef.current = xterm;
     fitAddonRef.current = fitAddon;
@@ -81,20 +74,20 @@ export function TerminalComponent({ terminalId, visible }: TerminalComponentProp
       }
     }, 100);
 
-    xterm.onData(async (data) => {
-      try {
-        await writeTerminal(terminalId, data);
-      } catch {
-        // terminal might be closed
-      }
+    const dataDisposable = xterm.onData((data) => {
+      writeTerminal(terminalIdRef.current, data).catch(() => {});
     });
 
     const resizeObserver = new ResizeObserver(() => {
-      handleResize();
+      if (fitAddonRef.current && xtermRef.current) {
+        try {
+          fitAddonRef.current.fit();
+        } catch {
+          // ignore
+        }
+      }
     });
-    if (containerRef.current) {
-      resizeObserver.observe(containerRef.current);
-    }
+    resizeObserver.observe(el);
 
     onTerminalData(terminalId, (data: string) => {
       if (xtermRef.current) {
@@ -114,24 +107,8 @@ export function TerminalComponent({ terminalId, visible }: TerminalComponentProp
     });
 
     return () => {
+      dataDisposable.dispose();
       resizeObserver.disconnect();
-    };
-  }, [terminalId, handleResize, settings]);
-
-  useEffect(() => {
-    if (xtermRef.current && visible) {
-      setTimeout(() => {
-        try {
-          fitAddonRef.current?.fit();
-        } catch {
-          // ignore
-        }
-      }, 10);
-    }
-  }, [visible]);
-
-  useEffect(() => {
-    return () => {
       if (unlistenDataRef.current) {
         unlistenDataRef.current();
         unlistenDataRef.current = null;
@@ -140,8 +117,24 @@ export function TerminalComponent({ terminalId, visible }: TerminalComponentProp
         unlistenExitRef.current();
         unlistenExitRef.current = null;
       }
+      xterm.dispose();
+      xtermRef.current = null;
+      fitAddonRef.current = null;
     };
-  }, []);
+  }, [terminalId]);
+
+  useEffect(() => {
+    if (visible && xtermRef.current && fitAddonRef.current) {
+      setTimeout(() => {
+        try {
+          fitAddonRef.current!.fit();
+          resizeTerminal(terminalId, xtermRef.current!.rows, xtermRef.current!.cols).catch(() => {});
+        } catch {
+          // ignore
+        }
+      }, 10);
+    }
+  }, [visible, terminalId]);
 
   return (
     <div

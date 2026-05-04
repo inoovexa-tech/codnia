@@ -31,7 +31,7 @@ const DialogContent = React.forwardRef<
       {...props}
     >
       {children}
-      <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none">
+      <DialogPrimitive.Close className="absolute right-5 top-5 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none">
         <X className="h-4 w-4 text-white" />
       </DialogPrimitive.Close>
     </DialogPrimitive.Content>
@@ -40,7 +40,7 @@ const DialogContent = React.forwardRef<
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
 const DialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className="flex items-center justify-between px-5 py-4 border-b border-[#1a1a1a]" {...props} />
+  <div className="flex items-center justify-between px-6 py-5 border-b border-[#1a1a1a]" {...props} />
 );
 
 const DialogTitle = React.forwardRef<

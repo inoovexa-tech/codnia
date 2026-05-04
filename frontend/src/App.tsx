@@ -12,6 +12,7 @@ import { useEditor } from "@/hooks/use-editor";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { createTerminal, killTerminal, showAlertDialog, openFileDialog } from "@/lib/tauri";
 import { openFolderDialog } from "@/lib/tauri";
+import { useSettings } from "@/hooks/use-settings";
 import type { TabType, Tab } from "@/types";
 
 const COMMAND_LABELS: Record<string, string> = {
@@ -98,6 +99,8 @@ export function App() {
     setActive,
     refreshFileTree,
   } = useWorkspace();
+
+  const { settings } = useSettings();
 
   const projectTerminalTabsRef = useRef<Map<string, Tab[]>>(new Map());
   const projectActiveIdRef = useRef<Map<string, string | null>>(new Map());
@@ -485,7 +488,7 @@ export function App() {
                   className="flex-1 overflow-hidden bg-[#000000]"
                   style={{ display: tab.id === activeId ? "flex" : "none" }}
                 >
-                  <TerminalComponent terminalId={tab.terminalId} visible={tab.id === activeId} />
+                  <TerminalComponent terminalId={tab.terminalId} visible={tab.id === activeId} fontSize={settings.terminal.font_size} scrollback={settings.terminal.scrollback} />
                 </div>
               ) : null
             ))}
