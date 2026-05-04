@@ -299,25 +299,69 @@ async fn create_terminal(
     let terminal_id_str = instance.id.to_string();
     let event_data = format!("terminal:{}:data", terminal_id_str);
     let event_exit = format!("terminal:{}:exit", terminal_id_str);
-    let app_handle = app.clone();
+    let app_handle_emit = app.clone();
     std::thread::spawn(move || {
         let mut reader = reader.lock().unwrap();
         let mut buffer = vec![0u8; 8192];
+        let (tx, rx): (std::sync::mpsc::Sender<String>, std::sync::mpsc::Receiver<String>) = std::sync::mpsc::channel();
+
+        let emit_handle = app_handle_emit;
+        std::thread::spawn(move || {
+            let mut pending = String::new();
+            loop {
+                match rx.recv_timeout(std::time::Duration::from_millis(8)) {
+                    Ok(data) => {
+                        pending.push_str(&data);
+                        while pending.len() < 32768 {
+                            match rx.try_recv() {
+                                Ok(d) => pending.push_str(&d),
+                                Err(std::sync::mpsc::TryRecvError::Empty) => break,
+                                Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                                    if !pending.is_empty() {
+                                        let _ = emit_handle.emit(&event_data, &pending);
+                                    }
+                                    let _ = emit_handle.emit(&event_exit, ());
+                                    return;
+                                }
+                            }
+                        }
+                        if !pending.is_empty() {
+                            let _ = emit_handle.emit(&event_data, &pending);
+                            pending.clear();
+                        }
+                    }
+                    Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
+                        if !pending.is_empty() {
+                            let _ = emit_handle.emit(&event_data, &pending);
+                            pending.clear();
+                        }
+                    }
+                    Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
+                        if !pending.is_empty() {
+                            let _ = emit_handle.emit(&event_data, &pending);
+                        }
+                        let _ = emit_handle.emit(&event_exit, ());
+                        return;
+                    }
+                }
+            }
+        });
+
         loop {
             match reader.read(&mut buffer) {
                 Ok(0) => {
-                    let _ = app_handle.emit(&event_exit, ());
+                    drop(tx);
                     break;
                 }
                 Ok(n) => {
-                    let data = match String::from_utf8(buffer[..n].to_vec()) {
-                        Ok(s) => s,
+                    let data = match std::str::from_utf8(&buffer[..n]) {
+                        Ok(s) => s.to_string(),
                         Err(_) => String::from_utf8_lossy(&buffer[..n]).to_string(),
                     };
-                    let _ = app_handle.emit(&event_data, data);
+                    let _ = tx.send(data);
                 }
                 Err(_) => {
-                    let _ = app_handle.emit(&event_exit, ());
+                    drop(tx);
                     break;
                 }
             }

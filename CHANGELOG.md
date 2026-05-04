@@ -1,3 +1,9 @@
+## [0.2.2] — 2026-05-04
+
+### Fixed
+- Terminal output batching via mpsc channel — PTY reads are now coalesced before emitting to the frontend, reducing IPC overhead by ~10-50x for TUI apps like opencode
+- Significantly faster terminal rendering in release builds — small escape sequences are batched into fewer events instead of flooding the frontend
+
 ## [0.2.1] — 2026-05-04
 
 ### Fixed
