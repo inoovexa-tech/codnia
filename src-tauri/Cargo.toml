@@ -25,7 +25,6 @@ pulldown-cmark = "0.9"
 toml = "0.8"
 
 [profile.release]
-strip = true
 lto = true
 codegen-units = 1
 panic = "abort"

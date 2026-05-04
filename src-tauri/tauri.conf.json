@@ -5,6 +5,7 @@
   "identifier": "com.codnia.ide",
   "build": {
     "devUrl": "http://localhost:3030",
+    "frontendDist": "../frontend/dist",
     "beforeDevCommand": "cd /Users/inoovexa/Workspaces/codnia/frontend && npm run dev",
     "beforeBuildCommand": "cd /Users/inoovexa/Workspaces/codnia/frontend && npm run build"
   },
@@ -27,7 +28,14 @@
     }
   },
   "bundle": {
-    "active": false,
-    "icon": []
+    "active": true,
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico",
+      "icons/icon.png"
+    ]
   }
 }

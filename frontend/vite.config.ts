@@ -19,6 +19,10 @@ export default defineConfig({
     outDir: 'dist',
     emptyOutDir: true,
     rollupOptions: {
+      input: {
+        main: 'index.html',
+        settings: 'settings.html',
+      },
       output: {
         manualChunks: {
           monaco: ['monaco-editor'],

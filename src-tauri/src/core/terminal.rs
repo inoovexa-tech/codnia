@@ -1,10 +1,8 @@
-use portable_pty::{native_pty_system, CommandBuilder, PtySize, Child};
+use portable_pty::{native_pty_system, CommandBuilder, PtySize, Child, MasterPty};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::sync::{Arc, Mutex};
-use std::thread;
-use std::time::Duration;
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -19,6 +17,7 @@ pub struct TerminalManager {
     children: HashMap<Uuid, Box<dyn Child + Send>>,
     writers: HashMap<Uuid, Arc<Mutex<Box<dyn Write + Send>>>>,
     readers: HashMap<Uuid, Arc<Mutex<Box<dyn Read + Send>>>>,
+    ptys: HashMap<Uuid, Box<dyn MasterPty + Send>>,
     size: PtySize,
 }
 
@@ -29,6 +28,7 @@ impl TerminalManager {
             children: HashMap::new(),
             writers: HashMap::new(),
             readers: HashMap::new(),
+            ptys: HashMap::new(),
             size: PtySize {
                 rows: 24,
                 cols: 80,
@@ -38,14 +38,10 @@ impl TerminalManager {
         }
     }
 
-    pub fn create_instance(&mut self, cwd: Option<String>, shell: Option<String>) -> Result<TerminalInstance, String> {
+    pub fn create_instance(&mut self, cwd: Option<String>, shell: Option<String>, command: Option<String>) -> Result<(TerminalInstance, Arc<Mutex<Box<dyn Read + Send>>>), String> {
         let pty_system = native_pty_system();
 
         let pair = pty_system.openpty(self.size).map_err(|e| e.to_string())?;
-
-        let shell = shell.unwrap_or_else(|| {
-            std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".to_string())
-        });
 
         let cwd = cwd.unwrap_or_else(|| {
             std::env::current_dir()
@@ -53,9 +49,27 @@ impl TerminalManager {
                 .unwrap_or_else(|_| "/".to_string())
         });
 
-        let mut cmd = CommandBuilder::new(&shell);
-        cmd.cwd(&cwd);
-        cmd.env("TERM", "xterm-256color");
+        let cmd = if let Some(cmd_str) = command {
+            let parts: Vec<&str> = cmd_str.split_whitespace().collect();
+            if parts.is_empty() {
+                return Err("Empty command".to_string());
+            }
+            let mut builder = CommandBuilder::new(parts[0]);
+            if parts.len() > 1 {
+                builder.args(&parts[1..]);
+            }
+            builder.cwd(&cwd);
+            builder.env("TERM", "xterm-256color");
+            builder
+        } else {
+            let shell_val = shell.unwrap_or_else(|| {
+                std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".to_string())
+            });
+            let mut builder = CommandBuilder::new(&shell_val);
+            builder.cwd(&cwd);
+            builder.env("TERM", "xterm-256color");
+            builder
+        };
 
         let child = pair.slave.spawn_command(cmd).map_err(|e| e.to_string())?;
 
@@ -71,12 +85,14 @@ impl TerminalManager {
             cwd,
         };
 
+        let reader_arc = Arc::new(Mutex::new(reader));
         self.instances.insert(id, instance.clone());
         self.children.insert(id, child);
-        self.readers.insert(id, Arc::new(Mutex::new(reader)));
+        self.readers.insert(id, reader_arc.clone());
         self.writers.insert(id, Arc::new(Mutex::new(writer)));
+        self.ptys.insert(id, pair.master);
 
-        Ok(instance)
+        Ok((instance, reader_arc))
     }
 
     pub fn write(&self, id: Uuid, data: &str) -> Result<(), String> {
@@ -90,43 +106,15 @@ impl TerminalManager {
         }
     }
 
-    pub fn read(&self, id: Uuid, timeout_ms: u64) -> Result<String, String> {
-        if let Some(reader) = self.readers.get(&id) {
-            let mut reader = reader.lock().unwrap();
-            let mut buffer = vec![0u8; 8192];
-            let deadline = std::time::Instant::now().checked_add(Duration::from_millis(timeout_ms));
-
-            let mut result = Vec::new();
-            loop {
-                match reader.read(&mut buffer) {
-                    Ok(0) => break,
-                    Ok(n) => {
-                        result.extend_from_slice(&buffer[..n]);
-                        if let Some(d) = deadline {
-                            if std::time::Instant::now() >= d {
-                                break;
-                            }
-                        }
-                    }
-                    Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                        if let Some(d) = deadline {
-                            if std::time::Instant::now() >= d {
-                                break;
-                            }
-                        }
-                        thread::sleep(Duration::from_millis(10));
-                        continue;
-                    }
-                    Err(e) => return Err(e.to_string()),
-                }
-            }
-            Ok(String::from_utf8_lossy(&result).to_string())
-        } else {
-            Ok(String::new())
+    pub fn resize(&mut self, id: Uuid, rows: u16, cols: u16) -> Result<(), String> {
+        if let Some(pty) = self.ptys.get_mut(&id) {
+            pty.resize(PtySize {
+                rows,
+                cols,
+                pixel_width: 0,
+                pixel_height: 0,
+            }).map_err(|e| e.to_string())?;
         }
-    }
-
-    pub fn resize(&mut self, _id: Uuid, rows: u16, cols: u16) -> Result<(), String> {
         self.size = PtySize {
             rows,
             cols,
@@ -138,10 +126,12 @@ impl TerminalManager {
 
     pub fn kill(&mut self, id: Uuid) -> Result<(), String> {
         if let Some(mut child) = self.children.remove(&id) {
-            child.kill().map_err(|e| e.to_string())?;
+            let _ = child.kill();
+            let _ = child.wait();
             self.instances.remove(&id);
             self.readers.remove(&id);
             self.writers.remove(&id);
+            self.ptys.remove(&id);
             Ok(())
         } else {
             Err("Terminal not found".to_string())
