@@ -55,10 +55,13 @@ When the user asks to release a new version, follow this exact sequence:
    - bullet per change
    ```
 
-4. **Build** — run the full production build to verify everything compiles:
+4. **Build** — run the full production build to verify everything compiles AND generate the installable bundles:
    ```bash
    cd frontend && npm run build
-   cd src-tauri && cargo build --release
+   ```
+   Then run the Tauri bundle build (produces `.app` and `.dmg`):
+   ```bash
+   cd src-tauri && cargo tauri build
    ```
    If the build fails, stop and fix errors before continuing.
 
@@ -73,13 +76,19 @@ When the user asks to release a new version, follow this exact sequence:
    git push origin main --follow-tags
    ```
 
-7. **Create GitHub release** with the `gh` CLI:
+7. **Create GitHub release** with the `gh` CLI and upload the DMG:
    ```bash
-   gh release create "vX.Y.Z" --title "vX.Y.Z" --notes "$(cat CHANGELOG.md | sed -n '/^## \[X.Y.Z\]/,/^## \[/p' | head -n -1)"
+   gh release create "vX.Y.Z" \
+     --title "vX.Y.Z" \
+     --notes "See CHANGELOG.md for details." \
+     src-tauri/target/release/bundle/dmg/Codnia_X.Y.Z_aarch64.dmg
    ```
-   Attach the built artifacts from `src-tauri/target/release/bundle/` (macOS: `.dmg`, `.app`).
+   If the release already exists (e.g. created without assets), upload assets separately:
+   ```bash
+   gh release upload vX.Y.Z src-tauri/target/release/bundle/dmg/Codnia_X.Y.Z_aarch64.dmg
+   ```
 
-8. **Verify** — open the GitHub release page and confirm everything looks correct.
+8. **Verify** — open the GitHub release page and confirm the DMG is attached and everything looks correct.
 
 **Important**: Never skip the build step. Never commit without running `npm run build` first.
 
