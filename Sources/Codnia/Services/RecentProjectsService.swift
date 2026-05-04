@@ -1,5 +1,6 @@
 import Foundation
 
+@MainActor
 public final class RecentProjectsService {
     public static let shared = RecentProjectsService()
     private let defaults = UserDefaults.standard

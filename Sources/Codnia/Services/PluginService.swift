@@ -70,6 +70,7 @@ public struct MarketplaceCategory: Identifiable, Codable, Equatable {
     }
 }
 
+@MainActor
 public final class MarketplaceService {
     public static let shared = MarketplaceService()
 

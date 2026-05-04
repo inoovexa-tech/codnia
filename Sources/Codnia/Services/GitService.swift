@@ -1,5 +1,6 @@
 import Foundation
 
+@MainActor
 public final class GitService {
     public static let shared = GitService()
     private init() {}

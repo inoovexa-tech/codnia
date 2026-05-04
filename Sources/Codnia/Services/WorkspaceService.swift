@@ -1,6 +1,7 @@
 import Foundation
 import Combine
 
+@MainActor
 public final class WorkspaceService: ObservableObject {
     @Published public var projects: [Project] = []
     @Published public var activeProject: Project? = nil

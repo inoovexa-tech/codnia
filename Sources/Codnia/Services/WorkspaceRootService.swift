@@ -1,5 +1,6 @@
 import Foundation
 
+@MainActor
 public final class WorkspaceRootService {
     public static let shared = WorkspaceRootService()
     private let defaults = UserDefaults.standard
