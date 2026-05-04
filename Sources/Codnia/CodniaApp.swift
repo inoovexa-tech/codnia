@@ -6,7 +6,7 @@ struct CodniaApp: App {
     @State private var showSettings = false
 
     var body: some Scene {
-        WindowGroup {
+        Window("Codnia", id: "main") {
             ContentView()
                 .environmentObject(appState)
                 .frame(minWidth: 900, minHeight: 600)
