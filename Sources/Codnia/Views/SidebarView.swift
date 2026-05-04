@@ -25,7 +25,7 @@ struct SidebarView: View {
             // Bottom controls
             VStack(spacing: 4) {
                 Button(action: {
-                    // Settings
+                    NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
                 }) {
                     Image(systemName: "gear")
                         .font(.system(size: 16))

@@ -5,9 +5,13 @@
 /Users/inoovexa/Workspaces/codnia/Sources/Codnia/Models/Tab.swift
 /Users/inoovexa/Workspaces/codnia/Sources/Codnia/Services/FileSystemService.swift
 /Users/inoovexa/Workspaces/codnia/Sources/Codnia/Services/GitService.swift
+/Users/inoovexa/Workspaces/codnia/Sources/Codnia/Services/KeyboardShortcutsService.swift
+/Users/inoovexa/Workspaces/codnia/Sources/Codnia/Services/PluginService.swift
+/Users/inoovexa/Workspaces/codnia/Sources/Codnia/Services/RecentProjectsService.swift
 /Users/inoovexa/Workspaces/codnia/Sources/Codnia/Services/SearchService.swift
 /Users/inoovexa/Workspaces/codnia/Sources/Codnia/Services/SettingsService.swift
 /Users/inoovexa/Workspaces/codnia/Sources/Codnia/Services/TerminalService.swift
+/Users/inoovexa/Workspaces/codnia/Sources/Codnia/Services/WorkspaceRootService.swift
 /Users/inoovexa/Workspaces/codnia/Sources/Codnia/Services/WorkspaceService.swift
 /Users/inoovexa/Workspaces/codnia/Sources/Codnia/ViewModels/AppState.swift
 /Users/inoovexa/Workspaces/codnia/Sources/Codnia/ViewModels/EditorViewModel.swift

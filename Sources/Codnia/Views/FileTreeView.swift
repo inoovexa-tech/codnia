@@ -71,7 +71,12 @@ struct TreeNode: View {
                     InlineTextField(
                         defaultValue: edit.originalName,
                         onConfirm: { name in
-                            // Handle rename
+                            if !name.isEmpty && name != edit.originalName {
+                                let newPath = "\(edit.parentPath)/\(name)"
+                                if let oldPath = edit.path {
+                                    try? FileSystemService.shared.rename(oldPath: oldPath, newPath: newPath)
+                                }
+                            }
                             inlineEdit = nil
                         },
                         onCancel: {
@@ -124,6 +129,9 @@ struct TreeNode: View {
                 }
             }
             .contextMenu {
+                Button("Open in Finder") {
+                    NSWorkspace.shared.open(URL(fileURLWithPath: entry.isDirectory ? entry.path : URL(fileURLWithPath: entry.path).deletingLastPathComponent().path))
+                }
                 Button("New File") {
                     inlineEdit = InlineEdit(type: .newFile, parentPath: entry.isDirectory ? entry.path : (URL(fileURLWithPath: entry.path).deletingLastPathComponent().path))
                 }

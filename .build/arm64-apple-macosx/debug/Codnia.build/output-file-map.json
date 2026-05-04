@@ -51,6 +51,27 @@
     "swift-dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/GitService.swiftdeps",
     "diagnostics": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/GitService.dia"
   },
+  "/Users/inoovexa/Workspaces/codnia/Sources/Codnia/Services/KeyboardShortcutsService.swift": {
+    "dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/KeyboardShortcutsService.d",
+    "object": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/KeyboardShortcutsService.swift.o",
+    "swiftmodule": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/KeyboardShortcutsService~partial.swiftmodule",
+    "swift-dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/KeyboardShortcutsService.swiftdeps",
+    "diagnostics": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/KeyboardShortcutsService.dia"
+  },
+  "/Users/inoovexa/Workspaces/codnia/Sources/Codnia/Services/PluginService.swift": {
+    "dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/PluginService.d",
+    "object": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/PluginService.swift.o",
+    "swiftmodule": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/PluginService~partial.swiftmodule",
+    "swift-dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/PluginService.swiftdeps",
+    "diagnostics": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/PluginService.dia"
+  },
+  "/Users/inoovexa/Workspaces/codnia/Sources/Codnia/Services/RecentProjectsService.swift": {
+    "dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/RecentProjectsService.d",
+    "object": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/RecentProjectsService.swift.o",
+    "swiftmodule": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/RecentProjectsService~partial.swiftmodule",
+    "swift-dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/RecentProjectsService.swiftdeps",
+    "diagnostics": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/RecentProjectsService.dia"
+  },
   "/Users/inoovexa/Workspaces/codnia/Sources/Codnia/Services/SearchService.swift": {
     "dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/SearchService.d",
     "object": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/SearchService.swift.o",
@@ -71,6 +92,13 @@
     "swiftmodule": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/TerminalService~partial.swiftmodule",
     "swift-dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/TerminalService.swiftdeps",
     "diagnostics": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/TerminalService.dia"
+  },
+  "/Users/inoovexa/Workspaces/codnia/Sources/Codnia/Services/WorkspaceRootService.swift": {
+    "dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/WorkspaceRootService.d",
+    "object": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/WorkspaceRootService.swift.o",
+    "swiftmodule": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/WorkspaceRootService~partial.swiftmodule",
+    "swift-dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/WorkspaceRootService.swiftdeps",
+    "diagnostics": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/WorkspaceRootService.dia"
   },
   "/Users/inoovexa/Workspaces/codnia/Sources/Codnia/Services/WorkspaceService.swift": {
     "dependencies": "/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/WorkspaceService.d",

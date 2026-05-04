@@ -57,6 +57,7 @@ public final class WorkspaceService: ObservableObject {
             projects.append(project)
             activeProject = project
             saveProjects()
+            RecentProjectsService.shared.add(path)
             refreshFileTree()
             loadBranch(for: project)
         }

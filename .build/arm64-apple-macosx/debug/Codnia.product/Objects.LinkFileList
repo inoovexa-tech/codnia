@@ -11,8 +11,11 @@
 /Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/FileTreeView.swift.o
 /Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/GitService.swift.o
 /Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/GlobalSearchView.swift.o
+/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/KeyboardShortcutsService.swift.o
 /Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/MarkdownPreviewView.swift.o
+/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/PluginService.swift.o
 /Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/Project.swift.o
+/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/RecentProjectsService.swift.o
 /Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/SearchService.swift.o
 /Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/SettingsService.swift.o
 /Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/SettingsView.swift.o
@@ -23,6 +26,7 @@
 /Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/TerminalService.swift.o
 /Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/TerminalView.swift.o
 /Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/TerminalViewModel.swift.o
+/Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/WorkspaceRootService.swift.o
 /Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/Codnia.build/WorkspaceService.swift.o
 /Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/SwiftTerm.build/AppleTerminalView.swift.o
 /Users/inoovexa/Workspaces/codnia/.build/arm64-apple-macosx/debug/SwiftTerm.build/BlockElementRenderer.swift.o

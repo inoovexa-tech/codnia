@@ -7,28 +7,34 @@ struct TerminalView: View {
     @EnvironmentObject var settings: SettingsService
 
     var body: some View {
-        TerminalRepresentable(
-            cwd: tab.path,
-            shell: "/bin/zsh"
-        )
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.bgPrimary)
+        if let termId = tab.terminalId {
+            TerminalRepresentable(
+                terminalId: termId,
+                cwd: tab.path,
+                fontSize: settings.terminalFontSize
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color.bgPrimary)
+        } else {
+            Text("Terminal not initialized")
+                .foregroundColor(.textSecondary)
+        }
     }
 }
 
 struct TerminalRepresentable: NSViewRepresentable {
+    let terminalId: String
     let cwd: String
-    let shell: String
+    let fontSize: Double
 
     func makeNSView(context: Context) -> LocalProcessTerminalView {
         let terminal = LocalProcessTerminalView(frame: NSRect(x: 0, y: 0, width: 800, height: 600))
         terminal.nativeBackgroundColor = NSColor(Color.bgPrimary)
         terminal.nativeForegroundColor = NSColor(Color.textPrimary)
 
-        let font = NSFont(name: "SF Mono", size: 13) ?? NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
+        let font = NSFont(name: "SF Mono", size: CGFloat(fontSize)) ?? NSFont.monospacedSystemFont(ofSize: CGFloat(fontSize), weight: .regular)
         terminal.font = font
 
-        let home = NSHomeDirectory()
         var env: [String] = []
         for (key, value) in ProcessInfo.processInfo.environment {
             env.append("\(key)=\(value)")
@@ -36,7 +42,7 @@ struct TerminalRepresentable: NSViewRepresentable {
         env.append("PATH=/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin")
 
         terminal.startProcess(
-            executable: shell,
+            executable: "/bin/zsh",
             args: ["-l"],
             environment: env,
             execName: nil,
@@ -47,6 +53,9 @@ struct TerminalRepresentable: NSViewRepresentable {
     }
 
     func updateNSView(_ nsView: LocalProcessTerminalView, context: Context) {
-        // Resize/font updates can be handled here
+        // Handle resize/font updates
+        if let font = NSFont(name: "SF Mono", size: CGFloat(fontSize)) {
+            nsView.font = font
+        }
     }
 }

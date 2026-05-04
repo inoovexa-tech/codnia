@@ -3,6 +3,7 @@ import SwiftUI
 @main
 struct CodniaApp: App {
     @StateObject private var appState = AppState()
+    @State private var showSettings = false
 
     var body: some Scene {
         WindowGroup {
@@ -22,8 +23,17 @@ struct CodniaApp: App {
                 toggleTerminal: { appState.editorVM.createTerminalTab() },
                 globalSearch: {
                     appState.editorVM.showGlobalSearch = true
+                },
+                openSettings: {
+                    showSettings = true
                 }
             )
+        }
+
+        Settings {
+            SettingsView()
+                .environmentObject(appState.settings)
+                .frame(minWidth: 700, minHeight: 540)
         }
     }
 }
@@ -37,6 +47,7 @@ struct CodniaCommands: Commands {
     let toggleSidebar: () -> Void
     let toggleTerminal: () -> Void
     let globalSearch: () -> Void
+    let openSettings: () -> Void
 
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
@@ -61,6 +72,9 @@ struct CodniaCommands: Commands {
                 .keyboardShortcut("`", modifiers: .command)
             Button("Global Search") { globalSearch() }
                 .keyboardShortcut("f", modifiers: [.command, .shift])
+            Divider()
+            Button("Settings...") { openSettings() }
+                .keyboardShortcut(",", modifiers: .command)
         }
     }
 }

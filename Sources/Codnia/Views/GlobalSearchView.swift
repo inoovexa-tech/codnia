@@ -6,6 +6,8 @@ struct GlobalSearchView: View {
     @EnvironmentObject var editorVM: EditorViewModel
 
     @State private var query: String = ""
+    @State private var useRegex: Bool = false
+    @State private var caseSensitive: Bool = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -43,9 +45,9 @@ struct GlobalSearchView: View {
 
             // Options
             HStack(spacing: 12) {
-                Toggle("Regex", isOn: .constant(false))
+                Toggle("Regex", isOn: $useRegex)
                     .toggleStyle(CheckboxToggleStyle())
-                Toggle("Case", isOn: .constant(false))
+                Toggle("Case", isOn: $caseSensitive)
                     .toggleStyle(CheckboxToggleStyle())
                 Spacer()
             }
@@ -90,7 +92,7 @@ struct GlobalSearchView: View {
 
     private func performSearch() {
         guard let root = workspaceVM.activeProject?.path else { return }
-        searchVM.searchContent(root: root, query: query, maxResults: 500)
+        searchVM.searchContent(root: root, query: query, maxResults: 500, isRegex: useRegex, caseSensitive: caseSensitive)
     }
 }
 
@@ -120,9 +122,6 @@ struct SearchResultRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(PlainButtonStyle())
-        .onHover { hovering in
-            // Background color change handled by view
-        }
     }
 }
 

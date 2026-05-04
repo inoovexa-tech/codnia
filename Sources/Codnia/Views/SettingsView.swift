@@ -164,12 +164,54 @@ struct TerminalSettingsSection: View {
 }
 
 struct KeyboardSettingsSection: View {
+    @StateObject private var shortcutsService = KeyboardShortcutsService()
+    @State private var editingAction: String? = nil
+    @State private var editingValue: String = ""
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             SettingsSectionHeader("Shortcuts")
-            Text("Keyboard shortcuts configuration")
-                .font(.system(size: 13))
-                .foregroundColor(.textSecondary)
+            
+            ForEach(shortcutsService.shortcuts.sorted(by: { $0.key < $1.key }), id: \.key) { action, shortcut in
+                HStack {
+                    Text(action)
+                        .font(.system(size: 13))
+                        .foregroundColor(.textPrimary)
+                    Spacer()
+                    if editingAction == action {
+                        TextField("Shortcut", text: $editingValue)
+                            .frame(width: 120)
+                            .textFieldStyle(PlainTextFieldStyle())
+                            .padding(4)
+                            .background(Color.bgTertiary)
+                            .cornerRadius(4)
+                            .onSubmit {
+                                shortcutsService.update(action: action, shortcut: editingValue)
+                                editingAction = nil
+                            }
+                    } else {
+                        Button(action: {
+                            editingAction = action
+                            editingValue = shortcut
+                        }) {
+                            Text(shortcut)
+                                .font(.system(size: 12, design: .monospaced))
+                                .foregroundColor(.textSecondary)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Color.bgTertiary)
+                                .cornerRadius(4)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
+                }
+            }
+            
+            Button("Reset to Defaults") {
+                shortcutsService.reset()
+            }
+            .font(.system(size: 12))
+            .foregroundColor(.accentRed)
         }
     }
 }
