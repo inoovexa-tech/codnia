@@ -1,0 +1,33 @@
+// swift-tools-version:5.9
+import PackageDescription
+
+let package = Package(
+    name: "Codnia",
+    platforms: [.macOS(.v13)],
+    products: [
+        .executable(name: "Codnia", targets: ["Codnia"])
+    ],
+    dependencies: [
+        .package(url: "https://github.com/simonbs/Runestone", from: "0.5.0"),
+        .package(url: "https://github.com/migueldeicaza/SwiftTerm", from: "1.2.0"),
+    ],
+    targets: [
+        .executableTarget(
+            name: "Codnia",
+            dependencies: [
+                .product(name: "Runestone", package: "Runestone"),
+                .product(name: "SwiftTerm", package: "SwiftTerm"),
+            ],
+            resources: [
+                .process("Resources")
+            ],
+            swiftSettings: [
+                .enableExperimentalFeature("StrictConcurrency")
+            ]
+        ),
+        .testTarget(
+            name: "CodniaTests",
+            dependencies: ["Codnia"]
+        ),
+    ]
+)
