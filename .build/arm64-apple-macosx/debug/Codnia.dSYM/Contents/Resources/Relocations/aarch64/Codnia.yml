@@ -723,41 +723,41 @@ relocations:
   - { offset: 0x147C6A, size: 0x8, addend: 0x0, symName: '_$s6Codnia0A8CommandsV7SwiftUI0B0AadEP4body4BodyQzvgTW', symObjAddr: 0x42EC, symBinAddr: 0x1000234D4, symSize: 0x44 }
   - { offset: 0x147C7E, size: 0x8, addend: 0x0, symName: _Codnia_main, symObjAddr: 0x4358, symBinAddr: 0x100023540, symSize: 0x18 }
   - { offset: 0x147D6B, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE9bgPrimary_WZ', symObjAddr: 0x0, symBinAddr: 0x100024EDC, symSize: 0x38 }
-  - { offset: 0x147D8F, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE9bgPrimaryACvpZ', symObjAddr: 0x8F10, symBinAddr: 0x1002F37B0, symSize: 0x0 }
-  - { offset: 0x147DA9, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE11bgSecondaryACvpZ', symObjAddr: 0x8F18, symBinAddr: 0x1002F37B8, symSize: 0x0 }
-  - { offset: 0x147DC3, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE10bgTertiaryACvpZ', symObjAddr: 0x8F20, symBinAddr: 0x1002F37C0, symSize: 0x0 }
-  - { offset: 0x147DDD, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE7bgHoverACvpZ', symObjAddr: 0x8F28, symBinAddr: 0x1002F37C8, symSize: 0x0 }
-  - { offset: 0x147DF7, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE8bgActiveACvpZ', symObjAddr: 0x8F30, symBinAddr: 0x1002F37D0, symSize: 0x0 }
-  - { offset: 0x147E11, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE13borderDefaultACvpZ', symObjAddr: 0x8F38, symBinAddr: 0x1002F37D8, symSize: 0x0 }
-  - { offset: 0x147E2B, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE11borderLightACvpZ', symObjAddr: 0x8F40, symBinAddr: 0x1002F37E0, symSize: 0x0 }
-  - { offset: 0x147E45, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE11textPrimaryACvpZ', symObjAddr: 0x8F48, symBinAddr: 0x1002F37E8, symSize: 0x0 }
-  - { offset: 0x147E5F, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE13textSecondaryACvpZ', symObjAddr: 0x8F50, symBinAddr: 0x1002F37F0, symSize: 0x0 }
-  - { offset: 0x147E79, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE12textTertiaryACvpZ', symObjAddr: 0x8F58, symBinAddr: 0x1002F37F8, symSize: 0x0 }
-  - { offset: 0x147E93, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE10accentBlueACvpZ', symObjAddr: 0x8F60, symBinAddr: 0x1002F3800, symSize: 0x0 }
-  - { offset: 0x147EAD, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE11accentGreenACvpZ', symObjAddr: 0x8F68, symBinAddr: 0x1002F3808, symSize: 0x0 }
-  - { offset: 0x147EC7, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE12accentYellowACvpZ', symObjAddr: 0x8F70, symBinAddr: 0x1002F3810, symSize: 0x0 }
-  - { offset: 0x147EE1, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE9accentRedACvpZ', symObjAddr: 0x8F78, symBinAddr: 0x1002F3818, symSize: 0x0 }
-  - { offset: 0x147EFB, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE12accentOrangeACvpZ', symObjAddr: 0x8F80, symBinAddr: 0x1002F3820, symSize: 0x0 }
-  - { offset: 0x147F15, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE12accentPurpleACvpZ', symObjAddr: 0x8F88, symBinAddr: 0x1002F3828, symSize: 0x0 }
-  - { offset: 0x147F2F, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE8fileRustACvpZ', symObjAddr: 0x8F90, symBinAddr: 0x1002F3830, symSize: 0x0 }
-  - { offset: 0x147F49, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE6fileTsACvpZ', symObjAddr: 0x8F98, symBinAddr: 0x1002F3838, symSize: 0x0 }
-  - { offset: 0x147F63, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE6fileJsACvpZ', symObjAddr: 0x8FA0, symBinAddr: 0x1002F3840, symSize: 0x0 }
-  - { offset: 0x147F7D, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE8fileJsonACvpZ', symObjAddr: 0x8FA8, symBinAddr: 0x1002F3848, symSize: 0x0 }
-  - { offset: 0x147F97, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE8fileHtmlACvpZ', symObjAddr: 0x8FB0, symBinAddr: 0x1002F3850, symSize: 0x0 }
-  - { offset: 0x147FB1, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE7fileCssACvpZ', symObjAddr: 0x8FB8, symBinAddr: 0x1002F3858, symSize: 0x0 }
-  - { offset: 0x147FCB, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE8fileScssACvpZ', symObjAddr: 0x8FC0, symBinAddr: 0x1002F3860, symSize: 0x0 }
-  - { offset: 0x147FE5, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE6fileMdACvpZ', symObjAddr: 0x8FC8, symBinAddr: 0x1002F3868, symSize: 0x0 }
-  - { offset: 0x147FFF, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE11fileDefaultACvpZ', symObjAddr: 0x8FD0, symBinAddr: 0x1002F3870, symSize: 0x0 }
-  - { offset: 0x148019, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE12folderYellowACvpZ', symObjAddr: 0x8FD8, symBinAddr: 0x1002F3878, symSize: 0x0 }
-  - { offset: 0x148033, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE11selectionBgACvpZ', symObjAddr: 0x8FE0, symBinAddr: 0x1002F3880, symSize: 0x0 }
-  - { offset: 0x14804D, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE13lineHighlightACvpZ', symObjAddr: 0x8FE8, symBinAddr: 0x1002F3888, symSize: 0x0 }
-  - { offset: 0x148067, size: 0x8, addend: 0x0, symName: '_$sSo7NSColorC6CodniaE9bgPrimaryABvpZ', symObjAddr: 0x8FF0, symBinAddr: 0x1002F3890, symSize: 0x0 }
-  - { offset: 0x148081, size: 0x8, addend: 0x0, symName: '_$sSo7NSColorC6CodniaE11bgSecondaryABvpZ', symObjAddr: 0x8FF8, symBinAddr: 0x1002F3898, symSize: 0x0 }
-  - { offset: 0x14809B, size: 0x8, addend: 0x0, symName: '_$sSo7NSColorC6CodniaE10bgTertiaryABvpZ', symObjAddr: 0x9000, symBinAddr: 0x1002F38A0, symSize: 0x0 }
-  - { offset: 0x1480B5, size: 0x8, addend: 0x0, symName: '_$sSo7NSColorC6CodniaE11textPrimaryABvpZ', symObjAddr: 0x9008, symBinAddr: 0x1002F38A8, symSize: 0x0 }
-  - { offset: 0x1480CF, size: 0x8, addend: 0x0, symName: '_$sSo7NSColorC6CodniaE13textSecondaryABvpZ', symObjAddr: 0x9010, symBinAddr: 0x1002F38B0, symSize: 0x0 }
-  - { offset: 0x1480E9, size: 0x8, addend: 0x0, symName: '_$sSo7NSColorC6CodniaE10accentBlueABvpZ', symObjAddr: 0x9018, symBinAddr: 0x1002F38B8, symSize: 0x0 }
-  - { offset: 0x148103, size: 0x8, addend: 0x0, symName: '_$sSo7NSColorC6CodniaE11selectionBgABvpZ', symObjAddr: 0x9020, symBinAddr: 0x1002F38C0, symSize: 0x0 }
+  - { offset: 0x147D8F, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE9bgPrimaryACvpZ', symObjAddr: 0x8F00, symBinAddr: 0x1002F37B0, symSize: 0x0 }
+  - { offset: 0x147DA9, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE11bgSecondaryACvpZ', symObjAddr: 0x8F08, symBinAddr: 0x1002F37B8, symSize: 0x0 }
+  - { offset: 0x147DC3, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE10bgTertiaryACvpZ', symObjAddr: 0x8F10, symBinAddr: 0x1002F37C0, symSize: 0x0 }
+  - { offset: 0x147DDD, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE7bgHoverACvpZ', symObjAddr: 0x8F18, symBinAddr: 0x1002F37C8, symSize: 0x0 }
+  - { offset: 0x147DF7, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE8bgActiveACvpZ', symObjAddr: 0x8F20, symBinAddr: 0x1002F37D0, symSize: 0x0 }
+  - { offset: 0x147E11, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE13borderDefaultACvpZ', symObjAddr: 0x8F28, symBinAddr: 0x1002F37D8, symSize: 0x0 }
+  - { offset: 0x147E2B, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE11borderLightACvpZ', symObjAddr: 0x8F30, symBinAddr: 0x1002F37E0, symSize: 0x0 }
+  - { offset: 0x147E45, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE11textPrimaryACvpZ', symObjAddr: 0x8F38, symBinAddr: 0x1002F37E8, symSize: 0x0 }
+  - { offset: 0x147E5F, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE13textSecondaryACvpZ', symObjAddr: 0x8F40, symBinAddr: 0x1002F37F0, symSize: 0x0 }
+  - { offset: 0x147E79, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE12textTertiaryACvpZ', symObjAddr: 0x8F48, symBinAddr: 0x1002F37F8, symSize: 0x0 }
+  - { offset: 0x147E93, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE10accentBlueACvpZ', symObjAddr: 0x8F50, symBinAddr: 0x1002F3800, symSize: 0x0 }
+  - { offset: 0x147EAD, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE11accentGreenACvpZ', symObjAddr: 0x8F58, symBinAddr: 0x1002F3808, symSize: 0x0 }
+  - { offset: 0x147EC7, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE12accentYellowACvpZ', symObjAddr: 0x8F60, symBinAddr: 0x1002F3810, symSize: 0x0 }
+  - { offset: 0x147EE1, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE9accentRedACvpZ', symObjAddr: 0x8F68, symBinAddr: 0x1002F3818, symSize: 0x0 }
+  - { offset: 0x147EFB, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE12accentOrangeACvpZ', symObjAddr: 0x8F70, symBinAddr: 0x1002F3820, symSize: 0x0 }
+  - { offset: 0x147F15, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE12accentPurpleACvpZ', symObjAddr: 0x8F78, symBinAddr: 0x1002F3828, symSize: 0x0 }
+  - { offset: 0x147F2F, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE8fileRustACvpZ', symObjAddr: 0x8F80, symBinAddr: 0x1002F3830, symSize: 0x0 }
+  - { offset: 0x147F49, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE6fileTsACvpZ', symObjAddr: 0x8F88, symBinAddr: 0x1002F3838, symSize: 0x0 }
+  - { offset: 0x147F63, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE6fileJsACvpZ', symObjAddr: 0x8F90, symBinAddr: 0x1002F3840, symSize: 0x0 }
+  - { offset: 0x147F7D, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE8fileJsonACvpZ', symObjAddr: 0x8F98, symBinAddr: 0x1002F3848, symSize: 0x0 }
+  - { offset: 0x147F97, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE8fileHtmlACvpZ', symObjAddr: 0x8FA0, symBinAddr: 0x1002F3850, symSize: 0x0 }
+  - { offset: 0x147FB1, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE7fileCssACvpZ', symObjAddr: 0x8FA8, symBinAddr: 0x1002F3858, symSize: 0x0 }
+  - { offset: 0x147FCB, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE8fileScssACvpZ', symObjAddr: 0x8FB0, symBinAddr: 0x1002F3860, symSize: 0x0 }
+  - { offset: 0x147FE5, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE6fileMdACvpZ', symObjAddr: 0x8FB8, symBinAddr: 0x1002F3868, symSize: 0x0 }
+  - { offset: 0x147FFF, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE11fileDefaultACvpZ', symObjAddr: 0x8FC0, symBinAddr: 0x1002F3870, symSize: 0x0 }
+  - { offset: 0x148019, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE12folderYellowACvpZ', symObjAddr: 0x8FC8, symBinAddr: 0x1002F3878, symSize: 0x0 }
+  - { offset: 0x148033, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE11selectionBgACvpZ', symObjAddr: 0x8FD0, symBinAddr: 0x1002F3880, symSize: 0x0 }
+  - { offset: 0x14804D, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE13lineHighlightACvpZ', symObjAddr: 0x8FD8, symBinAddr: 0x1002F3888, symSize: 0x0 }
+  - { offset: 0x148067, size: 0x8, addend: 0x0, symName: '_$sSo7NSColorC6CodniaE9bgPrimaryABvpZ', symObjAddr: 0x8FE0, symBinAddr: 0x1002F3890, symSize: 0x0 }
+  - { offset: 0x148081, size: 0x8, addend: 0x0, symName: '_$sSo7NSColorC6CodniaE11bgSecondaryABvpZ', symObjAddr: 0x8FE8, symBinAddr: 0x1002F3898, symSize: 0x0 }
+  - { offset: 0x14809B, size: 0x8, addend: 0x0, symName: '_$sSo7NSColorC6CodniaE10bgTertiaryABvpZ', symObjAddr: 0x8FF0, symBinAddr: 0x1002F38A0, symSize: 0x0 }
+  - { offset: 0x1480B5, size: 0x8, addend: 0x0, symName: '_$sSo7NSColorC6CodniaE11textPrimaryABvpZ', symObjAddr: 0x8FF8, symBinAddr: 0x1002F38A8, symSize: 0x0 }
+  - { offset: 0x1480CF, size: 0x8, addend: 0x0, symName: '_$sSo7NSColorC6CodniaE13textSecondaryABvpZ', symObjAddr: 0x9000, symBinAddr: 0x1002F38B0, symSize: 0x0 }
+  - { offset: 0x1480E9, size: 0x8, addend: 0x0, symName: '_$sSo7NSColorC6CodniaE10accentBlueABvpZ', symObjAddr: 0x9008, symBinAddr: 0x1002F38B8, symSize: 0x0 }
+  - { offset: 0x148103, size: 0x8, addend: 0x0, symName: '_$sSo7NSColorC6CodniaE11selectionBgABvpZ', symObjAddr: 0x9010, symBinAddr: 0x1002F38C0, symSize: 0x0 }
   - { offset: 0x148111, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE9bgPrimary_WZ', symObjAddr: 0x0, symBinAddr: 0x100024EDC, symSize: 0x38 }
   - { offset: 0x14812B, size: 0x8, addend: 0x0, symName: '_$s7SwiftUI5ColorV6CodniaE3hexACSS_tcfC', symObjAddr: 0x38, symBinAddr: 0x100024F14, symSize: 0x670 }
   - { offset: 0x148231, size: 0x8, addend: 0x0, symName: '_$sSo9NSScannerCMa', symObjAddr: 0x70C, symBinAddr: 0x100025584, symSize: 0x60 }
@@ -1479,7 +1479,7 @@ relocations:
   - { offset: 0x14EF10, size: 0x8, addend: 0x0, symName: '_$s6Codnia9FileEntryVSEAASE6encode2toys7Encoder_p_tKFTW', symObjAddr: 0x2140, symBinAddr: 0x100042D1C, symSize: 0x44 }
   - { offset: 0x14EF24, size: 0x8, addend: 0x0, symName: '_$s6Codnia9FileEntryVSQAASQ2eeoiySbx_xtFZTW', symObjAddr: 0x2184, symBinAddr: 0x100042D60, symSize: 0x18 }
   - { offset: 0x14EFFD, size: 0x8, addend: 0x0, symName: '_$s6Codnia17FileSystemServiceC6shared_WZ', symObjAddr: 0x0, symBinAddr: 0x100043AC0, symSize: 0x30 }
-  - { offset: 0x14F021, size: 0x8, addend: 0x0, symName: '_$s6Codnia17FileSystemServiceC6sharedACvpZ', symObjAddr: 0xACF0, symBinAddr: 0x1002F38C8, symSize: 0x0 }
+  - { offset: 0x14F021, size: 0x8, addend: 0x0, symName: '_$s6Codnia17FileSystemServiceC6sharedACvpZ', symObjAddr: 0xACD0, symBinAddr: 0x1002F38C8, symSize: 0x0 }
   - { offset: 0x14F21E, size: 0x8, addend: 0x0, symName: '_$s6Codnia17FileSystemServiceC6shared_WZ', symObjAddr: 0x0, symBinAddr: 0x100043AC0, symSize: 0x30 }
   - { offset: 0x14F238, size: 0x8, addend: 0x0, symName: '_$s6Codnia17FileSystemServiceCMa', symObjAddr: 0x30, symBinAddr: 0x100043AF0, symSize: 0x24 }
   - { offset: 0x14F24C, size: 0x8, addend: 0x0, symName: '_$s6Codnia17FileSystemServiceC6sharedACvau', symObjAddr: 0x8C, symBinAddr: 0x100043B4C, symSize: 0x50 }
@@ -1872,7 +1872,7 @@ relocations:
   - { offset: 0x152DB7, size: 0x8, addend: 0x0, symName: '_$s6Codnia10InlineEditV2eeoiySbAC_ACtFZ', symObjAddr: 0xFCF0, symBinAddr: 0x10005713C, symSize: 0x29C }
   - { offset: 0x152E06, size: 0x8, addend: 0x0, symName: '_$s6Codnia10InlineEditVSQAASQ2eeoiySbx_xtFZTW', symObjAddr: 0x10104, symBinAddr: 0x100057550, symSize: 0x64 }
   - { offset: 0x152F17, size: 0x8, addend: 0x0, symName: '_$s6Codnia10GitServiceC6shared_WZ', symObjAddr: 0x0, symBinAddr: 0x10006165C, symSize: 0x30 }
-  - { offset: 0x152F3B, size: 0x8, addend: 0x0, symName: '_$s6Codnia10GitServiceC6sharedACvpZ', symObjAddr: 0x4888, symBinAddr: 0x1002F38D0, symSize: 0x0 }
+  - { offset: 0x152F3B, size: 0x8, addend: 0x0, symName: '_$s6Codnia10GitServiceC6sharedACvpZ', symObjAddr: 0x4878, symBinAddr: 0x1002F38D0, symSize: 0x0 }
   - { offset: 0x152FE2, size: 0x8, addend: 0x0, symName: '_$s6Codnia10GitServiceC6shared_WZ', symObjAddr: 0x0, symBinAddr: 0x10006165C, symSize: 0x30 }
   - { offset: 0x152FFC, size: 0x8, addend: 0x0, symName: '_$s6Codnia10GitServiceCMa', symObjAddr: 0x30, symBinAddr: 0x10006168C, symSize: 0x24 }
   - { offset: 0x153010, size: 0x8, addend: 0x0, symName: '_$s6Codnia10GitServiceC6sharedACvau', symObjAddr: 0x8C, symBinAddr: 0x1000616E8, symSize: 0x50 }
