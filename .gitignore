@@ -1,7 +1,21 @@
-target/
-src-tauri/target/
-src-tauri/gen/
-frontend/dist/
-frontend/node_modules/
+# Swift / SPM
+.build/
+.build-*/
+Package.resolved
+*.xcodeproj
+*.xcworkspace
+DerivedData/
+
+# macOS
+*.app
+*.dSYM
 .DS_Store
+
+# IDE
+*.swp
+*~
+.idea/
+.vscode/
+
+# Logs
 *.log
