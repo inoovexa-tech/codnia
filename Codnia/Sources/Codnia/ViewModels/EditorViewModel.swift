@@ -176,4 +176,8 @@ public final class EditorViewModel: ObservableObject {
         default: return "Plain Text"
         }
     }
+
+    public func updateCursorPosition(line: Int, column: Int) {
+        cursorPosition = "Ln \(line), Col \(column)"
+    }
 }
