@@ -57,6 +57,10 @@ export async function removeProject(id: string): Promise<void> {
   return invoke("remove_project", { id });
 }
 
+export async function renameProject(id: string, newName: string): Promise<Project> {
+  return invoke<Project>("rename_project", { id, newName });
+}
+
 export async function setActiveProject(id: string): Promise<void> {
   return invoke("set_active_project", { id });
 }

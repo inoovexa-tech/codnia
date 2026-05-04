@@ -35,6 +35,54 @@ Subsystems to know
 - **Logging**: tracing with a daily-rolling file appender to `data_local_dir()/codnia/logs/codnia.log`.
 - **Settings window**: Spawned by `open_settings_window` command as a separate `WebviewWindow` pointing to `settings.html`.
 
+Release workflow
+When the user asks to release a new version, follow this exact sequence:
+
+1. **Determine the new version number** using semver (`MAJOR.MINOR.PATCH`):
+   - **Patch** (`0.0.x`): bug fixes, minor tweaks, no new features.
+   - **Minor** (`0.x.0`): new features, non-breaking changes.
+   - **Major** (`x.0.0`): breaking changes.
+   - Read the current version from `src-tauri/Cargo.toml` (`version` field) and `src-tauri/tauri.conf.json` (`version` field). They must match. Increment based on the type of changes since the last release.
+
+2. **Update version in all config files** (they must stay in sync):
+   - `src-tauri/Cargo.toml` → `version = "..."`
+   - `src-tauri/tauri.conf.json` → `"version": "..."`
+
+3. **Update `CHANGELOG.md`** — add a new section at the top:
+   ```markdown
+   ## [x.y.z] — YYYY-MM-DD
+   ### Added / Fixed / Changed
+   - bullet per change
+   ```
+
+4. **Build** — run the full production build to verify everything compiles:
+   ```bash
+   cd frontend && npm run build
+   cd src-tauri && cargo build --release
+   ```
+   If the build fails, stop and fix errors before continuing.
+
+5. **Commit** — stage all changes and commit with message:
+   ```
+   release: vX.Y.Z — concise description
+   ```
+
+6. **Create git tag** and push:
+   ```bash
+   git tag -a "vX.Y.Z" -m "Release vX.Y.Z"
+   git push origin main --follow-tags
+   ```
+
+7. **Create GitHub release** with the `gh` CLI:
+   ```bash
+   gh release create "vX.Y.Z" --title "vX.Y.Z" --notes "$(cat CHANGELOG.md | sed -n '/^## \[X.Y.Z\]/,/^## \[/p' | head -n -1)"
+   ```
+   Attach the built artifacts from `src-tauri/target/release/bundle/` (macOS: `.dmg`, `.app`).
+
+8. **Verify** — open the GitHub release page and confirm everything looks correct.
+
+**Important**: Never skip the build step. Never commit without running `npm run build` first.
+
 Constraints
 - Tauri desktop app only; there is no separate web deployment target.
 - Frontend dependencies are in `frontend/package.json`; the repo has no top-level `package.json` or monorepo tooling.

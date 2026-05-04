@@ -107,6 +107,18 @@ async fn remove_project(
 }
 
 #[tauri::command]
+async fn rename_project(
+    id: String,
+    new_name: String,
+    state: tauri::State<'_, Arc<Mutex<AppState>>>,
+) -> Result<Project, String> {
+    let uuid = Uuid::parse_str(&id).map_err(|e| e.to_string())?;
+    let app_state = state.lock().unwrap();
+    let mut manager = app_state.workspace_manager.lock().unwrap();
+    manager.rename_project(uuid, new_name)
+}
+
+#[tauri::command]
 async fn get_projects(
     state: tauri::State<'_, Arc<Mutex<AppState>>>,
 ) -> Result<Vec<Project>, String> {
@@ -583,6 +595,7 @@ fn main() {
             open_settings_window,
             add_project,
             remove_project,
+            rename_project,
             get_projects,
             set_active_project,
             get_active_workspace,

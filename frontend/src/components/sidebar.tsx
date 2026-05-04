@@ -1,5 +1,8 @@
 import { Plus, PanelLeftOpen, PanelLeftClose, Settings } from "lucide-react";
+import { Menu, MenuItem, PredefinedMenuItem } from "@tauri-apps/api/menu";
+import { LogicalPosition } from "@tauri-apps/api/dpi";
 import { cn } from "@/lib/utils";
+import { removeProject, renameProject } from "@/lib/tauri";
 import type { Project } from "@/types";
 
 interface SidebarProps {
@@ -11,6 +14,8 @@ interface SidebarProps {
   onProjectSelect: (id: string) => void;
   onAddProject: () => void;
   onSettingsClick: () => void;
+  onProjectRemoved?: () => void;
+  onProjectRenamed?: () => void;
 }
 
 function getInitials(name: string): string {
@@ -31,7 +36,50 @@ export function Sidebar({
   onProjectSelect,
   onAddProject,
   onSettingsClick,
+  onProjectRemoved,
+  onProjectRenamed,
 }: SidebarProps) {
+  const handleProjectContextMenu = async (e: React.MouseEvent, project: Project) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      const items: (MenuItem | PredefinedMenuItem)[] = [
+        await MenuItem.new({
+          text: "Rename",
+          action: async () => {
+            const newName = window.prompt("Rename project:", project.name);
+            if (newName && newName.trim() && newName.trim() !== project.name) {
+              try {
+                await renameProject(project.id, newName.trim());
+                onProjectRenamed?.();
+              } catch (err) {
+                console.error("Rename failed:", err);
+              }
+            }
+          },
+        }),
+        await PredefinedMenuItem.new({ item: "Separator" }),
+        await MenuItem.new({
+          text: "Remove",
+          action: async () => {
+            const confirmed = window.confirm(`Remove project "${project.name}" from Codnia?`);
+            if (!confirmed) return;
+            try {
+              await removeProject(project.id);
+              onProjectRemoved?.();
+            } catch (err) {
+              console.error("Remove failed:", err);
+            }
+          },
+        }),
+      ];
+      const menu = await Menu.new({ items });
+      await menu.popup(new LogicalPosition(e.clientX, e.clientY));
+    } catch (err) {
+      console.error("Context menu error:", err);
+    }
+  };
+
   return (
     <div
       className={cn(
@@ -49,24 +97,26 @@ export function Sidebar({
             return (
               <div key={project.id} className="flex flex-col">
                  {!expanded ? (
-                  <button
-                    onClick={() => onProjectSelect(project.id)}
-                    title={project.name}
-                    className={cn(
-                      "w-[36px] h-[36px] rounded-lg flex items-center justify-center transition-colors shrink-0",
-                      isActive
-                        ? "bg-[#0070f3] text-white"
-                        : "bg-[#111111] text-white"
-                    )}
-                  >
-                    <span className="text-[11px] font-semibold">
-                      {initials}
-                    </span>
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => onProjectSelect(project.id)}
-                    title={project.name}
+                   <button
+                     onClick={() => onProjectSelect(project.id)}
+                    onContextMenu={(e) => handleProjectContextMenu(e, project)}
+                     title={project.name}
+                     className={cn(
+                       "w-[36px] h-[36px] rounded-lg flex items-center justify-center transition-colors shrink-0",
+                       isActive
+                         ? "bg-[#0070f3] text-white"
+                         : "bg-[#111111] text-white"
+                     )}
+                   >
+                     <span className="text-[11px] font-semibold">
+                       {initials}
+                     </span>
+                   </button>
+                 ) : (
+                   <button
+                     onClick={() => onProjectSelect(project.id)}
+                    onContextMenu={(e) => handleProjectContextMenu(e, project)}
+                     title={project.name}
                     className={cn(
                       "h-auto rounded-lg flex items-center transition-colors w-full justify-start px-2 py-2 gap-3",
                       isActive

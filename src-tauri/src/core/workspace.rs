@@ -160,6 +160,17 @@ impl WorkspaceManager {
         Ok(project)
     }
 
+    pub fn rename_project(&mut self, id: Uuid, new_name: String) -> Result<Project, String> {
+        if new_name.trim().is_empty() {
+            return Err("Project name cannot be empty".to_string());
+        }
+        let project = self.projects.get_mut(&id).ok_or("Project not found")?;
+        project.name = new_name.trim().to_string();
+        let cloned = project.clone();
+        let _ = self.save_to_disk();
+        Ok(cloned)
+    }
+
     pub fn remove_project(&mut self, id: Uuid) -> Option<Project> {
         let removed = self.projects.remove(&id);
         if removed.is_some() {

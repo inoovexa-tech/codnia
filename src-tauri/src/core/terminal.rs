@@ -5,6 +5,32 @@ use std::io::{Read, Write};
 use std::sync::{Arc, Mutex};
 use uuid::Uuid;
 
+fn build_user_path() -> String {
+    let home = std::env::var("HOME").unwrap_or_else(|_| "/".to_string());
+    let base_paths = vec![
+        "/usr/local/bin".to_string(),
+        "/opt/homebrew/bin".to_string(),
+        format!("{}/.local/bin", home),
+        format!("{}/.cargo/bin", home),
+        format!("{}/.nvm/versions/node/current/bin", home),
+        format!("{}/.pnpm-home", home),
+        "/usr/bin".to_string(),
+        "/bin".to_string(),
+        "/usr/sbin".to_string(),
+        "/sbin".to_string(),
+    ];
+
+    let current_path = std::env::var("PATH").unwrap_or_default();
+    let mut all_paths: Vec<String> = base_paths;
+    for p in current_path.split(':') {
+        let p = p.to_string();
+        if !all_paths.contains(&p) {
+            all_paths.push(p);
+        }
+    }
+    all_paths.join(":")
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TerminalInstance {
     pub id: Uuid,
@@ -49,6 +75,8 @@ impl TerminalManager {
                 .unwrap_or_else(|_| "/".to_string())
         });
 
+        let user_path = build_user_path();
+
         let cmd = if let Some(cmd_str) = command {
             let parts: Vec<&str> = cmd_str.split_whitespace().collect();
             if parts.is_empty() {
@@ -60,14 +88,17 @@ impl TerminalManager {
             }
             builder.cwd(&cwd);
             builder.env("TERM", "xterm-256color");
+            builder.env("PATH", &user_path);
             builder
         } else {
             let shell_val = shell.unwrap_or_else(|| {
                 std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".to_string())
             });
             let mut builder = CommandBuilder::new(&shell_val);
+            builder.arg("-l");
             builder.cwd(&cwd);
             builder.env("TERM", "xterm-256color");
+            builder.env("PATH", &user_path);
             builder
         };
 
