@@ -9,6 +9,11 @@ public final class AppState: ObservableObject {
     public let terminalVM: TerminalViewModel
     public let editorVM: EditorViewModel
     @Published public var showGlobalSearch: Bool = false
+    @Published var leftSidebarExpanded: Bool = false
+    @Published var rightSidebarExpanded: Bool = false
+    @Published var rightSidebarTab: RightSidebarTab = .explorer
+    @Published var activityBarWidth: CGFloat = 320
+    @Published var leftSidebarWidth: CGFloat = 220
 
     public init() {
         let ws = WorkspaceService()

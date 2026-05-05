@@ -3,40 +3,29 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject var appState: AppState
 
-    @State private var leftSidebarExpanded = false
-    @State private var rightSidebarExpanded = false
-    @State private var rightSidebarTab: RightSidebarTab = .explorer
-    @State private var activityBarWidth: CGFloat = 320
-    @State private var leftSidebarWidth: CGFloat = 220
-
     var body: some View {
         VStack(spacing: 0) {
-            // MARK: Title Bar / Tab Bar
-            TabBarView(
-                rightSidebarExpanded: $rightSidebarExpanded,
-                rightSidebarTab: $rightSidebarTab
-            )
-            .frame(height: 34)
-            .background(Color.bgPrimary)
-            .overlay(
-                Rectangle()
-                    .frame(height: 1)
-                    .foregroundColor(.borderDefault),
-                alignment: .bottom
-            )
-            .environmentObject(appState.editorVM)
-            .environmentObject(appState.terminalVM)
-            .environmentObject(appState.settings)
-            .environmentObject(appState.workspaceVM)
-            .environmentObject(appState.searchVM)
+            // MARK: Title Bar / Tab Bar — same row as traffic lights
+            TabBarView()
+                .frame(height: 28)
+                .padding(.leading, 70) // traffic lights width
+                .padding(.top, 0)
+                .background(Color.bgPrimary)
+                .overlay(
+                    Rectangle()
+                        .frame(height: 1)
+                        .foregroundColor(.borderDefault),
+                    alignment: .bottom
+                )
+                .environmentObject(appState)
 
             // MARK: Main Area
             HStack(spacing: 0) {
                 // Left Sidebar (Projects)
                 SidebarView(
-                    expanded: $leftSidebarExpanded
+                    expanded: $appState.leftSidebarExpanded
                 )
-                .frame(width: leftSidebarExpanded ? leftSidebarWidth : 52)
+                .frame(width: appState.leftSidebarExpanded ? appState.leftSidebarWidth : 52)
                 .background(Color.bgPrimary)
                 .overlay(
                     Rectangle()
@@ -56,15 +45,15 @@ struct ContentView: View {
                     .environmentObject(appState.settings)
 
                 // Right Sidebar (Activity Bar: Explorer + Search)
-                if rightSidebarExpanded {
+                if appState.rightSidebarExpanded {
                     ActivityBarView(
-                        tab: $rightSidebarTab,
-                        width: $activityBarWidth
+                        tab: $appState.rightSidebarTab,
+                        width: $appState.activityBarWidth
                     )
-                    .frame(width: activityBarWidth)
+                    .frame(width: appState.activityBarWidth)
                     .background(Color.bgSecondary)
                     .overlay(
-                        ResizableDivider(width: $activityBarWidth, minWidth: 200, maxWidth: 600),
+                        ResizableDivider(width: $appState.activityBarWidth, minWidth: 200, maxWidth: 600),
                         alignment: .leading
                     )
                     .environmentObject(appState.workspaceVM)
@@ -98,35 +87,5 @@ struct ContentView: View {
     private var shouldShowStatusBar: Bool {
         guard let tab = appState.editorVM.currentTab else { return false }
         return tab.type == .file
-    }
-}
-
-enum RightSidebarTab: String, CaseIterable {
-    case explorer = "Explorer"
-    case search = "Search"
-}
-
-struct ResizableDivider: View {
-    @Binding var width: CGFloat
-    let minWidth: CGFloat
-    let maxWidth: CGFloat
-    @State private var dragging = false
-
-    var body: some View {
-        Rectangle()
-            .frame(width: 4)
-            .foregroundColor(dragging ? Color.accentBlue : Color.clear)
-            .contentShape(Rectangle())
-            .gesture(
-                DragGesture()
-                    .onChanged { value in
-                        dragging = true
-                        let newWidth = width - value.translation.width
-                        width = Swift.min(Swift.max(newWidth, minWidth), maxWidth)
-                    }
-                    .onEnded { _ in
-                        dragging = false
-                    }
-            )
     }
 }

@@ -1,25 +1,15 @@
 import SwiftUI
 
 struct TabBarView: View {
-    @EnvironmentObject var editorVM: EditorViewModel
-    @EnvironmentObject var terminalVM: TerminalViewModel
-    @EnvironmentObject var settings: SettingsService
-    @EnvironmentObject var workspaceVM: WorkspaceService
-    @EnvironmentObject var searchVM: SearchService
-    @Binding var rightSidebarExpanded: Bool
-    @Binding var rightSidebarTab: RightSidebarTab
+    @EnvironmentObject var appState: AppState
+
+    private var editorVM: EditorViewModel { appState.editorVM }
+    private var terminalVM: TerminalViewModel { appState.terminalVM }
 
     var body: some View {
         HStack(spacing: 0) {
-            // Left padding to avoid traffic light buttons (macOS native buttons)
-            // Traffic lights are ~52px wide + padding
-            Spacer()
-                .frame(width: 80)
-
-            // New Tab Button with Menu
             NewTabDropdown()
 
-            // Scrollable Tabs
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 0) {
                     ForEach(editorVM.allTabs) { tab in
@@ -35,11 +25,10 @@ struct TabBarView: View {
 
             Spacer()
 
-            // Right controls
             HStack(spacing: 4) {
                 Button(action: {
-                    rightSidebarTab = .search
-                    rightSidebarExpanded = true
+                    appState.rightSidebarTab = .search
+                    appState.rightSidebarExpanded = true
                     editorVM.showGlobalSearch = true
                 }) {
                     Image(systemName: "magnifyingglass")
@@ -48,13 +37,13 @@ struct TabBarView: View {
                 .buttonStyle(CodniaIconButtonStyle(isActive: editorVM.showGlobalSearch))
 
                 Button(action: {
-                    rightSidebarTab = .explorer
-                    rightSidebarExpanded.toggle()
+                    appState.rightSidebarTab = .explorer
+                    appState.rightSidebarExpanded.toggle()
                 }) {
-                    Image(systemName: rightSidebarExpanded ? "sidebar.right" : "sidebar.left")
+                    Image(systemName: appState.rightSidebarExpanded ? "sidebar.right" : "sidebar.left")
                         .font(.system(size: 13))
                 }
-                .buttonStyle(CodniaIconButtonStyle(isActive: rightSidebarExpanded))
+                .buttonStyle(CodniaIconButtonStyle(isActive: appState.rightSidebarExpanded))
             }
             .padding(.horizontal, 8)
         }
@@ -118,9 +107,7 @@ struct TabButton: View {
 
                 Spacer()
 
-                Button(action: {
-                    onClose()
-                }) {
+                Button(action: onClose) {
                     Image(systemName: "xmark")
                         .font(.system(size: 10, weight: .medium))
                 }
@@ -128,7 +115,7 @@ struct TabButton: View {
                 .opacity(0.6)
             }
             .padding(.horizontal, 12)
-            .frame(height: 34)
+            .frame(height: 28)
             .background(isActive ? Color.bgActive : Color.clear)
             .foregroundColor(isActive ? .textPrimary : .textSecondary)
             .overlay(
@@ -173,8 +160,10 @@ struct TabButton: View {
 }
 
 struct NewTabDropdown: View {
-    @EnvironmentObject var editorVM: EditorViewModel
-    @EnvironmentObject var terminalVM: TerminalViewModel
+    @EnvironmentObject var appState: AppState
+
+    private var editorVM: EditorViewModel { appState.editorVM }
+    private var terminalVM: TerminalViewModel { appState.terminalVM }
     @State private var isPresented = false
 
     var body: some View {
@@ -188,41 +177,39 @@ struct NewTabDropdown: View {
         .popover(isPresented: $isPresented, arrowEdge: .bottom) {
             VStack(alignment: .leading, spacing: 2) {
                 Button("New File") {
-                    editorVM.newFile()
                     isPresented = false
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                        editorVM.newFile()
+                    }
                 }
                 .buttonStyle(NewTabMenuButton())
 
                 Button("New Terminal") {
-                    terminalVM.createTerminalTab()
-                    // Also activate the new tab in editorVM
-                    let newTab = terminalVM.tabs.last
-                    if let tab = newTab {
-                        editorVM.activeTabId = tab.id
-                    }
                     isPresented = false
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                        let newTab = terminalVM.createTerminalTab()
+                        editorVM.activeTabId = newTab.id
+                    }
                 }
                 .buttonStyle(NewTabMenuButton())
 
                 Divider()
 
                 Button("OpenCode") {
-                    terminalVM.createTerminalTab(type: .opencode)
-                    let newTab = terminalVM.tabs.last
-                    if let tab = newTab {
-                        editorVM.activeTabId = tab.id
-                    }
                     isPresented = false
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                        let newTab = terminalVM.createTerminalTab(type: .opencode)
+                        editorVM.activeTabId = newTab.id
+                    }
                 }
                 .buttonStyle(NewTabMenuButton())
 
                 Button("Claude Code") {
-                    terminalVM.createTerminalTab(type: .claude)
-                    let newTab = terminalVM.tabs.last
-                    if let tab = newTab {
-                        editorVM.activeTabId = tab.id
-                    }
                     isPresented = false
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                        let newTab = terminalVM.createTerminalTab(type: .claude)
+                        editorVM.activeTabId = newTab.id
+                    }
                 }
                 .buttonStyle(NewTabMenuButton())
             }
@@ -252,7 +239,7 @@ struct CodniaIconButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .foregroundColor(isActive ? .accentBlue : .textSecondary)
-            .frame(width: 28, height: 28)
+            .frame(width: 24, height: 24)
             .background(configuration.isPressed ? Color.bgHover : Color.clear)
             .cornerRadius(4)
     }

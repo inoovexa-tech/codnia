@@ -7,7 +7,6 @@ class CodniaApplicationDelegate: NSObject, NSApplicationDelegate {
     lazy var appState = AppState()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Ensure we are a regular app with Dock icon
         NSApp.setActivationPolicy(.regular)
 
         let contentView = ContentView()
