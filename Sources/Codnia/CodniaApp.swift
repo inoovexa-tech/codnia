@@ -7,6 +7,9 @@ class CodniaApplicationDelegate: NSObject, NSApplicationDelegate {
     lazy var appState = AppState()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Ensure we are a regular app with Dock icon
+        NSApp.setActivationPolicy(.regular)
+
         let contentView = ContentView()
             .environmentObject(appState)
             .frame(minWidth: 900, minHeight: 600)
@@ -29,7 +32,6 @@ class CodniaApplicationDelegate: NSObject, NSApplicationDelegate {
         window.isOpaque = true
         window.makeKeyAndOrderFront(nil)
         window.orderFrontRegardless()
-        window.level = .normal
         window.center()
 
         self.window = window
