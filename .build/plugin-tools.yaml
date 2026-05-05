@@ -25,9 +25,9 @@ targets:
   "generate-manual-arm64-apple-macosx26.0-debug-tool.module": ["<generate-manual-arm64-apple-macosx26.0-debug-tool.module>"]
   "generate-manual-arm64-apple-macosx26.0-debug.exe": ["<generate-manual-arm64-apple-macosx26.0-debug.exe>"]
   "generate-manual-arm64-apple-macosx26.0-debug.module": ["<generate-manual-arm64-apple-macosx26.0-debug.module>"]
-  "main": ["<Codnia-arm64-apple-macosx26.0-debug.exe>","<Codnia-arm64-apple-macosx26.0-debug.module>","<SwiftTermFuzz-arm64-apple-macosx26.0-debug.exe>","<termcast-arm64-apple-macosx26.0-debug.exe>"]
+  "main": ["<Codnia-arm64-apple-macosx26.0-debug.exe>","<Codnia-arm64-apple-macosx26.0-debug.module>"]
   "termcast-arm64-apple-macosx26.0-debug.exe": ["<termcast-arm64-apple-macosx26.0-debug.exe>"]
-  "test": ["<Codnia-arm64-apple-macosx26.0-debug.exe>","<Codnia-arm64-apple-macosx26.0-debug.module>","<CodniaPackageTests-arm64-apple-macosx26.0-debug.test>","<CodniaTests-arm64-apple-macosx26.0-debug.module>","<SwiftTermFuzz-arm64-apple-macosx26.0-debug.exe>","<termcast-arm64-apple-macosx26.0-debug.exe>"]
+  "test": ["<Codnia-arm64-apple-macosx26.0-debug.exe>","<Codnia-arm64-apple-macosx26.0-debug.module>","<CodniaPackageTests-arm64-apple-macosx26.0-debug.test>","<CodniaTests-arm64-apple-macosx26.0-debug.module>"]
 default: "main"
 nodes:
   "/Users/inoovexa/Workspaces/codnia/Sources/Codnia/":

@@ -1,9 +1,10 @@
 import SwiftUI
 import AppKit
 
+@MainActor
 class CodniaApplicationDelegate: NSObject, NSApplicationDelegate {
     var window: NSWindow?
-    var appState = AppState()
+    lazy var appState = AppState()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let contentView = ContentView()
