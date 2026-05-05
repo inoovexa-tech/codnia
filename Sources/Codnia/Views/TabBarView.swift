@@ -17,7 +17,6 @@ struct TabBarView: View {
             }) {
                 Image(systemName: "plus")
                     .font(.system(size: 13))
-                    .frame(width: 28, height: 38)
             }
             .buttonStyle(PlainButtonStyle())
             .foregroundColor(.textSecondary)
@@ -49,7 +48,6 @@ struct TabBarView: View {
                 Button(action: onToggleSearch) {
                     Image(systemName: "magnifyingglass")
                         .font(.system(size: 13))
-                        .frame(width: 28, height: 38)
                 }
                 .buttonStyle(PlainButtonStyle())
                 .foregroundColor(isSearchActive ? .accentBlue : .textSecondary)
@@ -57,7 +55,6 @@ struct TabBarView: View {
                 Button(action: onToggleRightSidebar) {
                     Image(systemName: isRightSidebarExpanded ? "sidebar.right" : "sidebar.left")
                         .font(.system(size: 13))
-                        .frame(width: 28, height: 38)
                 }
                 .buttonStyle(PlainButtonStyle())
                 .foregroundColor(isRightSidebarExpanded ? .accentBlue : .textSecondary)
