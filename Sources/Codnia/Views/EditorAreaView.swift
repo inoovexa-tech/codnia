@@ -6,21 +6,30 @@ struct EditorAreaView: View {
     @EnvironmentObject var settings: SettingsService
 
     var body: some View {
-        ZStack {
-            if editorVM.tabs.isEmpty && terminalVM.tabs.isEmpty {
-                EmptyStateView()
-            } else if let activeId = editorVM.activeTabId {
-                // Look in editor tabs first, then terminal tabs
-                if let _ = editorVM.tabs.first(where: { $0.id == activeId }) {
+        Group {
+            if let activeTab = editorVM.currentTab {
+                if activeTab.type == .file {
                     CodeEditorView(
                         content: $editorVM.editorContent,
                         language: editorVM.currentLanguage,
                         onChange: {
-                            editorVM.markModified(tabId: activeId)
+                            editorVM.markModified(tabId: activeTab.id)
                         }
                     )
                     .environmentObject(settings)
-                } else if let tab = terminalVM.tabs.first(where: { $0.id == activeId }) {
+                    .id("editor-\(activeTab.id)")
+                    .onAppear {
+                        // Ensure editor is focusable when tab becomes active
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                            if let window = NSApplication.shared.keyWindow {
+                                if let scrollView = window.contentView?.findSubview(ofType: NSScrollView.self),
+                                   let textView = scrollView.documentView as? NSTextView {
+                                    window.makeFirstResponder(textView)
+                                }
+                            }
+                        }
+                    }
+                } else if let tab = terminalVM.tabs.first(where: { $0.id == activeTab.id }) {
                     TerminalView(tab: tab)
                         .environmentObject(terminalVM)
                         .background(Color.bgPrimary)
@@ -31,6 +40,8 @@ struct EditorAreaView: View {
                 EmptyStateView()
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.bgPrimary)
     }
 }
 

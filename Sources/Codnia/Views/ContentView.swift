@@ -5,7 +5,7 @@ struct ContentView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // MARK: Title Bar / Tab Bar
+            // Tab bar at top
             TabBarView(
                 editorVM: appState.editorVM,
                 terminalVM: appState.terminalVM,
@@ -34,23 +34,19 @@ struct ContentView: View {
                 alignment: .bottom
             )
 
-            // MARK: Main Area
+            // Main area
             HStack(spacing: 0) {
-                SidebarView(
-                    expanded: $appState.leftSidebarExpanded
-                )
-                .frame(width: appState.leftSidebarExpanded ? appState.leftSidebarWidth : 52)
-                .background(Color.bgPrimary)
-                .overlay(
-                    Rectangle()
-                        .frame(width: 1)
-                        .foregroundColor(.borderDefault),
-                    alignment: .trailing
-                )
-                .environmentObject(appState)
-                .environmentObject(appState.workspaceVM)
-                .environmentObject(appState.editorVM)
-                .environmentObject(appState.settings)
+                SidebarView(expanded: $appState.leftSidebarExpanded)
+                    .frame(width: appState.leftSidebarExpanded ? appState.leftSidebarWidth : 52)
+                    .background(Color.bgPrimary)
+                    .overlay(
+                        Rectangle().frame(width: 1).foregroundColor(.borderDefault),
+                        alignment: .trailing
+                    )
+                    .environmentObject(appState)
+                    .environmentObject(appState.workspaceVM)
+                    .environmentObject(appState.editorVM)
+                    .environmentObject(appState.settings)
 
                 EditorAreaView()
                     .background(Color.bgPrimary)
@@ -81,9 +77,7 @@ struct ContentView: View {
                     .frame(height: 22)
                     .background(Color.bgPrimary)
                     .overlay(
-                        Rectangle()
-                            .frame(height: 1)
-                            .foregroundColor(.borderDefault),
+                        Rectangle().frame(height: 1).foregroundColor(.borderDefault),
                         alignment: .top
                     )
                     .environmentObject(appState.editorVM)
@@ -101,3 +95,5 @@ struct ContentView: View {
         return tab.type == .file
     }
 }
+
+// Removed ContentViewWithoutTabBar - no longer needed

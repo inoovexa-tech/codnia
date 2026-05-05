@@ -39,6 +39,10 @@ public final class EditorViewModel: ObservableObject {
         editorContent = ""
         currentLanguage = "Plain Text"
         fileContents[tab.id] = ""
+        // Force UI update by toggling activeTabId
+        DispatchQueue.main.async { [weak self] in
+            self?.objectWillChange.send()
+        }
     }
 
     public func openFileDialog() {
@@ -62,6 +66,8 @@ public final class EditorViewModel: ObservableObject {
             activeTabId = existing.id
             editorContent = content
             currentLanguage = language
+            fileContents[existing.id] = content
+            objectWillChange.send()
             return
         }
 
@@ -72,6 +78,7 @@ public final class EditorViewModel: ObservableObject {
         currentLanguage = language
         fileContents[tab.id] = content
         detectLanguage(from: name)
+        objectWillChange.send()
     }
 
     public func openFileFromTree(_ entry: FileEntry) {
@@ -82,9 +89,18 @@ public final class EditorViewModel: ObservableObject {
     public func activateTab(_ id: String) {
         activeTabId = id
         if let tab = tabs.first(where: { $0.id == id }) {
-            editorContent = fs.readFile(path: tab.path)
+            // Use fileContents dictionary for unsaved content, fallback to reading from disk
+            if let savedContent = fileContents[tab.id] {
+                editorContent = savedContent
+            } else {
+                let content = fs.readFile(path: tab.path)
+                editorContent = content
+                fileContents[tab.id] = content
+            }
             currentLanguage = tab.language
             detectLanguage(from: tab.name)
+            // Force UI update
+            objectWillChange.send()
         }
     }
 

@@ -5,6 +5,7 @@ struct CodeEditorView: View {
     let language: String
     let onChange: () -> Void
     @EnvironmentObject var settings: SettingsService
+    @EnvironmentObject var editorVM: EditorViewModel
 
     var body: some View {
         MacEditorView(
@@ -12,10 +13,35 @@ struct CodeEditorView: View {
             fontSize: settings.fontSize,
             showLineNumbers: settings.showLineNumbers,
             onChange: onChange,
-            cursorPosition: { _, _ in }
+            cursorPosition: { _, _ in },
+            editorVM: editorVM
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.bgPrimary)
+        .onAppear {
+            // Ensure the editor becomes first responder when appearing
+            DispatchQueue.main.async {
+                if let window = NSApplication.shared.keyWindow,
+                   let scrollView = window.contentView?.findSubview(ofType: NSScrollView.self),
+                   let textView = scrollView.documentView as? NSTextView {
+                    window.makeFirstResponder(textView)
+                }
+            }
+        }
+    }
+}
+
+extension NSView {
+    func findSubview<T: NSView>(ofType type: T.Type) -> T? {
+        if let view = self as? T {
+            return view
+        }
+        for subview in subviews {
+            if let found = subview.findSubview(ofType: type) {
+                return found
+            }
+        }
+        return nil
     }
 }
 
@@ -25,6 +51,7 @@ struct MacEditorView: NSViewRepresentable {
     let showLineNumbers: Bool
     let onChange: () -> Void
     let cursorPosition: (Int, Int) -> Void
+    var editorVM: EditorViewModel? = nil
 
     func makeNSView(context: Context) -> NSScrollView {
         let scrollView = NSScrollView()
@@ -51,6 +78,11 @@ struct MacEditorView: NSViewRepresentable {
         textView.setSelectedRange(NSRange(location: 0, length: 0))
         textView.textContainerInset = NSSize(width: 0, height: 0)
         textView.textContainer?.lineFragmentPadding = 4
+        textView.isRichText = false
+        textView.isAutomaticQuoteSubstitutionEnabled = false
+        textView.isAutomaticDashSubstitutionEnabled = false
+        textView.isAutomaticTextReplacementEnabled = false
+        textView.smartInsertDeleteEnabled = false
 
         scrollView.documentView = textView
 
@@ -65,6 +97,14 @@ struct MacEditorView: NSViewRepresentable {
         textView.applyHighlighting(language: detectLanguage(for: "Plain Text"))
 
         context.coordinator.textView = textView
+        context.coordinator.editorVM = editorVM
+
+        // Make the text view the first responder after a short delay
+        DispatchQueue.main.async {
+            if let window = textView.window {
+                window.makeFirstResponder(textView)
+            }
+        }
 
         return scrollView
     }
@@ -72,13 +112,29 @@ struct MacEditorView: NSViewRepresentable {
     func updateNSView(_ nsView: NSScrollView, context: Context) {
         guard let textView = nsView.documentView as? CodniaTextView else { return }
 
+        // Only update text if it actually changed (avoid unnecessary updates that lose focus)
         if textView.string != text {
             let selected = textView.selectedRange()
             textView.string = text
             textView.applyHighlighting(language: detectLanguage(for: text))
-            if selected.location <= text.count {
+            // Restore cursor position if valid
+            if selected.location <= text.count && selected.location >= 0 {
                 textView.setSelectedRange(selected)
             }
+        }
+
+        // Ensure text view is editable and selectable
+        if !textView.isEditable {
+            textView.isEditable = true
+            textView.isSelectable = true
+        }
+
+        // Make first responder if needed (but avoid stealing focus from other views like find panel)
+        if let window = textView.window,
+           window.firstResponder != textView,
+           let activeTabId = context.coordinator.parent.editorVM?.activeTabId,
+           context.coordinator.parent.editorVM?.currentTab?.type == .file {
+            window.makeFirstResponder(textView)
         }
 
         if let font = NSFont(name: "SF Mono", size: CGFloat(fontSize)) {
@@ -103,6 +159,7 @@ struct MacEditorView: NSViewRepresentable {
     class Coordinator: NSObject, NSTextViewDelegate {
         let parent: MacEditorView
         weak var textView: CodniaTextView?
+        weak var editorVM: EditorViewModel?
 
         init(_ parent: MacEditorView) {
             self.parent = parent
@@ -132,6 +189,15 @@ struct MacEditorView: NSViewRepresentable {
 
 class CodniaTextView: NSTextView {
     override var isFlipped: Bool { true }
+    override var acceptsFirstResponder: Bool { true }
+    override func becomeFirstResponder() -> Bool {
+        let result = super.becomeFirstResponder()
+        if result {
+            self.isSelectable = true
+            self.isEditable = true
+        }
+        return result
+    }
 
     func applyHighlighting(language: CodeLanguage) {
         guard let textStorage = self.textStorage else { return }

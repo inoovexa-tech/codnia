@@ -9,19 +9,28 @@ struct TabBarView: View {
     var isRightSidebarExpanded: Bool
     var isSearchActive: Bool
 
+    @State private var showNewTabMenu = false
+
     var body: some View {
         HStack(spacing: 0) {
-            // Plus button
-            Button(action: {
-                editorVM.newFile()
-            }) {
+            // Plus button with menu
+            Menu {
+                Button("New File") { editorVM.newFile() }
+                Button("Terminal") { editorVM.createTerminalTab(type: .terminal) }
+                Button("OpenCode") { editorVM.createTerminalTab(type: .opencode) }
+                Button("Claude Code") { editorVM.createTerminalTab(type: .claude) }
+                Button("Codex") { editorVM.createTerminalTab(type: .codex) }
+            } label: {
                 Image(systemName: "plus")
                     .font(.system(size: 13))
+                    .frame(width: 28, height: 28)
             }
+            .menuStyle(BorderlessButtonMenuStyle())
             .buttonStyle(PlainButtonStyle())
             .foregroundColor(.textSecondary)
+            .padding(.leading, 4)
 
-            // Tabs — sem ScrollView para evitar crash no macOS
+            // Tabs
             HStack(spacing: 0) {
                 ForEach(editorVM.tabs) { tab in
                     TabButton(
@@ -61,6 +70,12 @@ struct TabBarView: View {
             }
             .padding(.horizontal, 8)
         }
+        .frame(height: 28)
+        .background(Color.bgPrimary)
+        .overlay(
+            Rectangle().frame(height: 1).foregroundColor(.borderDefault),
+            alignment: .bottom
+        )
     }
 }
 

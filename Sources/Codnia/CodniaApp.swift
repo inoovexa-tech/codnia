@@ -19,7 +19,7 @@ class CodniaApplicationDelegate: NSObject, NSApplicationDelegate {
 
         let window = NSWindow(
             contentRect: NSRect(x: 200, y: 200, width: 1200, height: 800),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
@@ -30,6 +30,7 @@ class CodniaApplicationDelegate: NSObject, NSApplicationDelegate {
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
         window.isOpaque = true
+
         window.makeKeyAndOrderFront(nil)
         window.orderFrontRegardless()
         window.center()
