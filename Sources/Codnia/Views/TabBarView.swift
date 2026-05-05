@@ -5,8 +5,9 @@ struct TabBarView: View {
     @ObservedObject var terminalVM: TerminalViewModel
 
     var onToggleRightSidebar: () -> Void
-    var onShowSearch: () -> Void
+    var onToggleSearch: () -> Void
     var isRightSidebarExpanded: Bool
+    var isSearchActive: Bool
 
     var body: some View {
         HStack(spacing: 0) {
@@ -41,11 +42,11 @@ struct TabBarView: View {
             Spacer()
 
             HStack(spacing: 4) {
-                Button(action: onShowSearch) {
+                Button(action: onToggleSearch) {
                     Image(systemName: "magnifyingglass")
                         .font(.system(size: 13))
                 }
-                .buttonStyle(CodniaIconButtonStyle(isActive: false))
+                .buttonStyle(CodniaIconButtonStyle(isActive: isSearchActive))
 
                 Button(action: onToggleRightSidebar) {
                     Image(systemName: isRightSidebarExpanded ? "sidebar.right" : "sidebar.left")

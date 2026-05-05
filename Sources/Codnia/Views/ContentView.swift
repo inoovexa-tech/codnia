@@ -12,14 +12,20 @@ struct ContentView: View {
                 onToggleRightSidebar: {
                     appState.rightSidebarExpanded.toggle()
                 },
-                onShowSearch: {
-                    appState.rightSidebarTab = .search
-                    appState.rightSidebarExpanded = true
-                    appState.editorVM.showGlobalSearch = true
+                onToggleSearch: {
+                    if appState.rightSidebarExpanded && appState.rightSidebarTab == .search {
+                        appState.rightSidebarExpanded = false
+                        appState.editorVM.showGlobalSearch = false
+                    } else {
+                        appState.rightSidebarTab = .search
+                        appState.rightSidebarExpanded = true
+                        appState.editorVM.showGlobalSearch = true
+                    }
                 },
-                isRightSidebarExpanded: appState.rightSidebarExpanded
+                isRightSidebarExpanded: appState.rightSidebarExpanded,
+                isSearchActive: appState.rightSidebarExpanded && appState.rightSidebarTab == .search
             )
-            .frame(height: 28)
+            .frame(height: 38)
             .padding(.leading, 70)
             .padding(.top, 0)
             .background(Color.bgPrimary)

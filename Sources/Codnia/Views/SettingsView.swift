@@ -32,7 +32,7 @@ struct SettingsView: View {
                             .foregroundColor(selectedTab == tab ? .textPrimary : .textSecondary)
                             .padding(.horizontal, 14)
                             .padding(.vertical, 6)
-                            .background(selectedTab == tab ? Color.bgTertiary : Color.clear)
+                            .background(selectedTab == tab ? Color.bgSecondary : Color.clear)
                             .cornerRadius(6)
                     }
                     .buttonStyle(PlainButtonStyle())
@@ -79,19 +79,23 @@ enum SettingsTab: String, CaseIterable, Identifiable {
 }
 
 struct GeneralSettingsSection: View {
+    @EnvironmentObject var settings: SettingsService
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             SettingsSectionHeader("Appearance")
             SettingsRow(label: "Theme", description: "Editor color theme") {
-                Picker("", selection: .constant("dark-pure")) {
+                Picker("", selection: $settings.editorTheme) {
                     Text("Dark Pure").tag("dark-pure")
                 }
                 .pickerStyle(MenuPickerStyle())
                 .frame(width: 200)
+                .onChange(of: settings.editorTheme) { _ in settings.save() }
             }
 
             SettingsSectionHeader("Behavior")
-            SettingsToggleRow(label: "Auto Save", description: "Automatically save files", isOn: .constant(false))
+            SettingsToggleRow(label: "Auto Save", description: "Automatically save files", isOn: $settings.autoSave)
+                .onChange(of: settings.autoSave) { _ in settings.save() }
         }
     }
 }
@@ -105,6 +109,7 @@ struct EditorSettingsSection: View {
             SettingsRow(label: "Font Size", description: "Editor font size in points") {
                 HStack {
                     Slider(value: $settings.fontSize, in: 8 ... 32, step: 1)
+                        .onChange(of: settings.fontSize) { _ in settings.save() }
                     Text("\(Int(settings.fontSize))")
                         .foregroundColor(.textSecondary)
                         .frame(width: 30)
@@ -114,7 +119,9 @@ struct EditorSettingsSection: View {
 
             SettingsSectionHeader("Behavior")
             SettingsToggleRow(label: "Word Wrap", description: "Wrap lines at viewport width", isOn: $settings.wordWrap)
+                .onChange(of: settings.wordWrap) { _ in settings.save() }
             SettingsToggleRow(label: "Line Numbers", description: "Show line numbers in gutter", isOn: $settings.showLineNumbers)
+                .onChange(of: settings.showLineNumbers) { _ in settings.save() }
 
             SettingsRow(label: "Tab Size", description: "Number of spaces per tab") {
                 Picker("", selection: $settings.tabSize) {
@@ -141,6 +148,7 @@ struct TerminalSettingsSection: View {
             SettingsRow(label: "Font Size", description: "Terminal font size in points") {
                 HStack {
                     Slider(value: $settings.terminalFontSize, in: 8 ... 32, step: 1)
+                        .onChange(of: settings.terminalFontSize) { _ in settings.save() }
                     Text("\(Int(settings.terminalFontSize))")
                         .foregroundColor(.textSecondary)
                         .frame(width: 30)
@@ -156,10 +164,9 @@ struct TerminalSettingsSection: View {
                     .padding(4)
                     .background(Color.bgTertiary)
                     .cornerRadius(4)
+                    .onChange(of: settings.terminalScrollback) { _ in settings.save() }
             }
         }
-        .onChange(of: settings.terminalFontSize) { _ in settings.save() }
-        .onChange(of: settings.terminalScrollback) { _ in settings.save() }
     }
 }
 
@@ -172,7 +179,9 @@ struct KeyboardSettingsSection: View {
         VStack(alignment: .leading, spacing: 16) {
             SettingsSectionHeader("Shortcuts")
             
-            ForEach(shortcutsService.shortcuts.sorted(by: { $0.key < $1.key }), id: \.key) { action, shortcut in
+            ForEach(shortcutsService.shortcuts.sorted(by: { $0.key < $1.key }), id: \.key) { item in
+                let action = item.key
+                let shortcut = item.value
                 HStack {
                     Text(action)
                         .font(.system(size: 13))

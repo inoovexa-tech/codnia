@@ -37,6 +37,16 @@ public final class TerminalService: ObservableObject {
             print("Terminal start failed: \(error)")
         }
 
+        if let command = command {
+            DispatchQueue.global().asyncAfter(deadline: .now() + 0.3) { [weak self] in
+                guard let self = self else { return }
+                let cmd = command + "\n"
+                if let data = cmd.data(using: .utf8) {
+                    self.pipes[id]?.input.fileHandleForWriting.write(data)
+                }
+            }
+        }
+
         return instance
     }
 
