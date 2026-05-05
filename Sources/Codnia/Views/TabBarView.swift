@@ -22,27 +22,27 @@ struct TabBarView: View {
             .buttonStyle(PlainButtonStyle())
             .foregroundColor(.textSecondary)
 
-            // Tab list
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 0) {
-                    ForEach(Array(editorVM.tabs.enumerated()), id: \.offset) { index, tab in
-                        TabButton(
-                            tab: tab,
-                            isActive: tab.id == editorVM.activeTabId,
-                            onSelect: { editorVM.activateTab(tab.id) },
-                            onClose: { editorVM.closeTab(tab.id) }
-                        )
-                    }
-                    ForEach(Array(terminalVM.tabs.enumerated()), id: \.offset) { index, tab in
-                        TabButton(
-                            tab: tab,
-                            isActive: tab.id == editorVM.activeTabId,
-                            onSelect: { editorVM.activeTabId = tab.id },
-                            onClose: { editorVM.closeTab(tab.id) }
-                        )
-                    }
+            // Tabs — sem ScrollView para evitar crash no macOS
+            HStack(spacing: 0) {
+                ForEach(editorVM.tabs) { tab in
+                    TabButton(
+                        tab: tab,
+                        isActive: tab.id == editorVM.activeTabId,
+                        onSelect: { editorVM.activateTab(tab.id) },
+                        onClose: { editorVM.closeTab(tab.id) }
+                    )
+                }
+                ForEach(terminalVM.tabs) { tab in
+                    TabButton(
+                        tab: tab,
+                        isActive: tab.id == editorVM.activeTabId,
+                        onSelect: { editorVM.activeTabId = tab.id },
+                        onClose: { editorVM.closeTab(tab.id) }
+                    )
                 }
             }
+
+            Spacer()
 
             // Right buttons
             HStack(spacing: 4) {
@@ -124,7 +124,6 @@ struct TabButton: View {
                 .font(.system(size: 12))
                 .lineLimit(1)
 
-            // Xmark como Text/Image clicável em vez de Button aninhado
             Image(systemName: "xmark")
                 .font(.system(size: 10, weight: .medium))
                 .foregroundColor(.textSecondary)
