@@ -39,10 +39,6 @@ public final class EditorViewModel: ObservableObject {
         editorContent = ""
         currentLanguage = "Plain Text"
         fileContents[tab.id] = ""
-        // Force UI update by toggling activeTabId
-        DispatchQueue.main.async { [weak self] in
-            self?.objectWillChange.send()
-        }
     }
 
     public func openFileDialog() {
@@ -135,6 +131,10 @@ public final class EditorViewModel: ObservableObject {
 
     public func saveCurrentFile() {
         guard let tab = currentTab, tab.type == .file else { return }
+        if tab.path.isEmpty {
+            saveCurrentFileAs()
+            return
+        }
         do {
             try fs.writeFile(path: tab.path, content: editorContent)
             fileContents[tab.id] = editorContent

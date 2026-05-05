@@ -30,23 +30,25 @@ struct TabBarView: View {
             .foregroundColor(.textSecondary)
             .padding(.leading, 4)
 
-            // Tabs
-            HStack(spacing: 0) {
-                ForEach(editorVM.tabs) { tab in
-                    TabButton(
-                        tab: tab,
-                        isActive: tab.id == editorVM.activeTabId,
-                        onSelect: { editorVM.activateTab(tab.id) },
-                        onClose: { editorVM.closeTab(tab.id) }
-                    )
-                }
-                ForEach(terminalVM.tabs) { tab in
-                    TabButton(
-                        tab: tab,
-                        isActive: tab.id == editorVM.activeTabId,
-                        onSelect: { editorVM.activeTabId = tab.id },
-                        onClose: { editorVM.closeTab(tab.id) }
-                    )
+            // Tabs with horizontal scrolling
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 0) {
+                    ForEach(editorVM.tabs) { tab in
+                        TabButton(
+                            tab: tab,
+                            isActive: tab.id == editorVM.activeTabId,
+                            onSelect: { editorVM.activateTab(tab.id) },
+                            onClose: { editorVM.closeTab(tab.id) }
+                        )
+                    }
+                    ForEach(terminalVM.tabs) { tab in
+                        TabButton(
+                            tab: tab,
+                            isActive: tab.id == editorVM.activeTabId,
+                            onSelect: { editorVM.activeTabId = tab.id },
+                            onClose: { editorVM.closeTab(tab.id) }
+                        )
+                    }
                 }
             }
 

@@ -71,9 +71,13 @@ struct ActivityBarView: View {
                     entries: workspaceVM.fileTree,
                     onSelect: { path in
                         editorVM.openFile(path)
+                    },
+                    onRefresh: {
+                        workspaceVM.refreshFileTree()
                     }
                 )
                 .background(Color.bgPrimary)
+                .frame(maxHeight: .infinity)
             } else {
                 GlobalSearchView()
                     .environmentObject(searchVM)

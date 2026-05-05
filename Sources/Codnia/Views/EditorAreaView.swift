@@ -17,17 +17,10 @@ struct EditorAreaView: View {
                         }
                     )
                     .environmentObject(settings)
-                    .id("editor-\(activeTab.id)")
                     .onAppear {
-                        // Ensure editor is focusable when tab becomes active
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                            if let window = NSApplication.shared.keyWindow {
-                                if let scrollView = window.contentView?.findSubview(ofType: NSScrollView.self),
-                                   let textView = scrollView.documentView as? NSTextView {
-                                    window.makeFirstResponder(textView)
-                                }
-                            }
-                        }
+                        print("EditorAreaView: showing editor for tab: \(activeTab.name)")
+                        print("EditorAreaView: content length: \(editorVM.editorContent.count)")
+                        print("EditorAreaView: content preview: \(editorVM.editorContent.prefix(50))")
                     }
                 } else if let tab = terminalVM.tabs.first(where: { $0.id == activeTab.id }) {
                     TerminalView(tab: tab)
@@ -51,7 +44,6 @@ struct EmptyStateView: View {
             Image(systemName: "doc.text")
                 .font(.system(size: 64))
                 .foregroundColor(.textTertiary)
-                .opacity(0.3)
 
             Text("Open a file to start editing")
                 .font(.system(size: 13))

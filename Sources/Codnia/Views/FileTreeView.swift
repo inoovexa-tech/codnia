@@ -3,11 +3,12 @@ import SwiftUI
 struct FileTreeView: View {
     let entries: [FileEntry]
     let onSelect: (String) -> Void
+    let onRefresh: () -> Void
     @State private var expandedPaths = Set<String>()
     @State private var inlineEdit: InlineEdit? = nil
 
     var body: some View {
-        ScrollView {
+        ScrollView(.vertical, showsIndicators: true) {
             VStack(alignment: .leading, spacing: 0) {
                 ForEach(entries) { entry in
                     TreeNode(
@@ -15,10 +16,12 @@ struct FileTreeView: View {
                         depth: 0,
                         expandedPaths: $expandedPaths,
                         inlineEdit: $inlineEdit,
-                        onSelect: onSelect
+                        onSelect: onSelect,
+                        onRefresh: onRefresh
                     )
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 }
@@ -29,6 +32,7 @@ struct TreeNode: View {
     @Binding var expandedPaths: Set<String>
     @Binding var inlineEdit: InlineEdit?
     let onSelect: (String) -> Void
+    let onRefresh: () -> Void
 
     @State private var children: [FileEntry] = []
     @State private var loaded = false
@@ -78,6 +82,7 @@ struct TreeNode: View {
                                 }
                             }
                             inlineEdit = nil
+                            onRefresh()
                         },
                         onCancel: {
                             inlineEdit = nil
@@ -121,6 +126,12 @@ struct TreeNode: View {
             .onHover { hovering in
                 hovered = hovering
             }
+            .onChange(of: isExpanded) { expanded in
+                if expanded && !loaded {
+                    children = FileSystemService.shared.listDirectory(path: entry.path)
+                    loaded = true
+                }
+            }
             .onTapGesture {
                 if entry.isDirectory {
                     toggleExpand()
@@ -133,10 +144,18 @@ struct TreeNode: View {
                     NSWorkspace.shared.open(URL(fileURLWithPath: entry.isDirectory ? entry.path : URL(fileURLWithPath: entry.path).deletingLastPathComponent().path))
                 }
                 Button("New File") {
-                    inlineEdit = InlineEdit(type: .newFile, parentPath: entry.isDirectory ? entry.path : (URL(fileURLWithPath: entry.path).deletingLastPathComponent().path))
+                    let parentPath = entry.isDirectory ? entry.path : (URL(fileURLWithPath: entry.path).deletingLastPathComponent().path)
+                    if !entry.isDirectory {
+                        expandedPaths.insert(URL(fileURLWithPath: parentPath).path)
+                    }
+                    inlineEdit = InlineEdit(type: .newFile, parentPath: parentPath)
                 }
                 Button("New Folder") {
-                    inlineEdit = InlineEdit(type: .newDirectory, parentPath: entry.isDirectory ? entry.path : (URL(fileURLWithPath: entry.path).deletingLastPathComponent().path))
+                    let parentPath = entry.isDirectory ? entry.path : (URL(fileURLWithPath: entry.path).deletingLastPathComponent().path)
+                    if !entry.isDirectory {
+                        expandedPaths.insert(URL(fileURLWithPath: parentPath).path)
+                    }
+                    inlineEdit = InlineEdit(type: .newDirectory, parentPath: parentPath)
                 }
                 Divider()
                 Button("Rename") {
@@ -144,6 +163,7 @@ struct TreeNode: View {
                 }
                 Button("Delete") {
                     try? FileSystemService.shared.delete(path: entry.path)
+                    onRefresh()
                 }
             }
 
@@ -154,7 +174,8 @@ struct TreeNode: View {
                         depth: depth + 1,
                         expandedPaths: $expandedPaths,
                         inlineEdit: $inlineEdit,
-                        onSelect: onSelect
+                        onSelect: onSelect,
+                        onRefresh: onRefresh
                     )
                 }
 
@@ -181,7 +202,7 @@ struct TreeNode: View {
                                     try? FileSystemService.shared.createDirectory(path: newPath)
                                 }
                                 inlineEdit = nil
-                                // Refresh
+                                onRefresh()
                             },
                             onCancel: {
                                 inlineEdit = nil
@@ -214,12 +235,13 @@ struct TreeNode: View {
         guard entry.isDirectory else { return }
         if expandedPaths.contains(entry.path) {
             expandedPaths.remove(entry.path)
+            // Reset loaded state so children reload on next expand
+            loaded = false
+            children = []
         } else {
             expandedPaths.insert(entry.path)
-            if !loaded {
-                children = FileSystemService.shared.listDirectory(path: entry.path)
-                loaded = true
-            }
+            children = FileSystemService.shared.listDirectory(path: entry.path)
+            loaded = true
         }
     }
 }
