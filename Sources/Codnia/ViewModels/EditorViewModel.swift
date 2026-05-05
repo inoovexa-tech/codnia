@@ -150,7 +150,8 @@ public final class EditorViewModel: ObservableObject {
     }
 
     public func createTerminalTab(type: TabType = .terminal) {
-        terminal.createTerminalTab(type: type)
+        let tab = terminal.createTerminalTab(type: type)
+        activeTabId = tab.id
     }
 
     public func detectLanguage(from filename: String) {

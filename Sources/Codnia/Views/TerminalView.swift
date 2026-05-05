@@ -6,12 +6,22 @@ struct TerminalView: View {
     @EnvironmentObject var terminalVM: TerminalViewModel
     @EnvironmentObject var settings: SettingsService
 
+    private var autoCommand: String? {
+        switch tab.type {
+        case .opencode: return "opencode"
+        case .claude: return "claude"
+        case .codex: return "codex"
+        default: return nil
+        }
+    }
+
     var body: some View {
         if let termId = tab.terminalId {
             TerminalRepresentable(
                 terminalId: termId,
                 cwd: tab.path,
-                fontSize: settings.terminalFontSize
+                fontSize: settings.terminalFontSize,
+                autoCommand: autoCommand
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color.bgPrimary)
@@ -26,6 +36,7 @@ struct TerminalRepresentable: NSViewRepresentable {
     let terminalId: String
     let cwd: String
     let fontSize: Double
+    var autoCommand: String? = nil
 
     func makeNSView(context: Context) -> LocalProcessTerminalView {
         let terminal = LocalProcessTerminalView(frame: NSRect(x: 0, y: 0, width: 800, height: 600))
@@ -35,14 +46,12 @@ struct TerminalRepresentable: NSViewRepresentable {
         let font = NSFont(name: "SF Mono", size: CGFloat(fontSize)) ?? NSFont.monospacedSystemFont(ofSize: CGFloat(fontSize), weight: .regular)
         terminal.font = font
 
-        // Build environment with proper PATH
         var env: [String] = []
         for (key, value) in ProcessInfo.processInfo.environment {
             env.append("\(key)=\(value)")
         }
         env.append("PATH=/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin")
 
-        // Start zsh process
         terminal.startProcess(
             executable: "/bin/zsh",
             args: ["-l"],
@@ -51,7 +60,12 @@ struct TerminalRepresentable: NSViewRepresentable {
             currentDirectory: cwd.isEmpty ? nil : cwd
         )
 
-        // Make terminal first responder to receive keyboard input
+        if let command = autoCommand {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                terminal.feed(text: command + "\n")
+            }
+        }
+
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             if let window = terminal.window {
                 window.makeFirstResponder(terminal)
@@ -62,7 +76,6 @@ struct TerminalRepresentable: NSViewRepresentable {
     }
 
     func updateNSView(_ nsView: LocalProcessTerminalView, context: Context) {
-        // Handle resize/font updates
         if let font = NSFont(name: "SF Mono", size: CGFloat(fontSize)) {
             nsView.font = font
         }

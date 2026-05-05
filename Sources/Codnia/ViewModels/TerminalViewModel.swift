@@ -21,10 +21,10 @@ public final class TerminalViewModel: ObservableObject {
     }
 
     @discardableResult
-    public func createTerminalTab(type: TabType = .terminal, command: String? = nil) -> Tab {
+    public func createTerminalTab(type: TabType = .terminal) -> Tab {
         let cwd = service.instances.first?.cwd ?? NSHomeDirectory()
-        let name = command.map { commandName($0) } ?? "Terminal"
-        let instance = service.createTerminal(cwd: cwd, command: command)
+        let name = tabName(for: type)
+        let instance = service.createTerminal(cwd: cwd)
         let tab = Tab(
             id: "terminal-\(instance.id)",
             path: instance.cwd,
@@ -63,12 +63,13 @@ public final class TerminalViewModel: ObservableObject {
         return service.getOutputHandle(id: id.replacingOccurrences(of: "terminal-", with: ""))
     }
 
-    private func commandName(_ cmd: String) -> String {
-        switch cmd {
-        case "opencode": return "OpenCode"
-        case "claude": return "Claude Code"
-        case "codex": return "Codex"
-        default: return cmd.capitalized
+    private func tabName(for type: TabType) -> String {
+        switch type {
+        case .opencode: return "OpenCode"
+        case .claude: return "Claude Code"
+        case .codex: return "Codex"
+        case .terminal: return "Terminal"
+        case .file: return "Terminal"
         }
     }
 }

@@ -8,9 +8,9 @@ public final class TerminalService: ObservableObject {
 
     public init() {}
 
-    public func createTerminal(cwd: String? = nil, command: String? = nil) -> TerminalInstance {
+    public func createTerminal(cwd: String? = nil) -> TerminalInstance {
         let id = UUID().uuidString
-        let instance = TerminalInstance(id: id, name: command ?? "Terminal", cwd: cwd ?? NSHomeDirectory())
+        let instance = TerminalInstance(id: id, name: "Terminal", cwd: cwd ?? NSHomeDirectory())
         instances.append(instance)
 
         let process = Process()
@@ -35,16 +35,6 @@ public final class TerminalService: ObservableObject {
             try process.run()
         } catch {
             print("Terminal start failed: \(error)")
-        }
-
-        if let command = command {
-            DispatchQueue.global().asyncAfter(deadline: .now() + 0.3) { [weak self] in
-                guard let self = self else { return }
-                let cmd = command + "\n"
-                if let data = cmd.data(using: .utf8) {
-                    self.pipes[id]?.input.fileHandleForWriting.write(data)
-                }
-            }
         }
 
         return instance

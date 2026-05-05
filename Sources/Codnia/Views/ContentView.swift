@@ -26,8 +26,6 @@ struct ContentView: View {
                 isSearchActive: appState.rightSidebarExpanded && appState.rightSidebarTab == .search
             )
             .frame(height: 28)
-            .padding(.leading, 70)
-            .padding(.top, 0)
             .background(Color.bgPrimary)
             .overlay(
                 Rectangle()

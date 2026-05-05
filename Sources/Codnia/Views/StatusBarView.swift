@@ -16,6 +16,35 @@ struct StatusBarView: View {
 
             Spacer()
 
+            HStack(spacing: 2) {
+                Button(action: {
+                    editorVM.createTerminalTab(type: .opencode)
+                }) {
+                    Image(systemName: "command")
+                        .font(.system(size: 11))
+                }
+                .buttonStyle(PlainButtonStyle())
+                .foregroundColor(.accentBlue)
+
+                Button(action: {
+                    editorVM.createTerminalTab(type: .claude)
+                }) {
+                    Image(systemName: "circle")
+                        .font(.system(size: 11))
+                }
+                .buttonStyle(PlainButtonStyle())
+                .foregroundColor(.accentOrange)
+
+                Button(action: {
+                    editorVM.createTerminalTab(type: .codex)
+                }) {
+                    Image(systemName: "square.stack.3d.up")
+                        .font(.system(size: 11))
+                }
+                .buttonStyle(PlainButtonStyle())
+                .foregroundColor(.accentPurple)
+            }
+
             Text("Spaces: 4")
                 .font(.system(size: 11))
                 .foregroundColor(.textSecondary)
