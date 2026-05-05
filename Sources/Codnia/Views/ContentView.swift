@@ -25,7 +25,7 @@ struct ContentView: View {
                 isRightSidebarExpanded: appState.rightSidebarExpanded,
                 isSearchActive: appState.rightSidebarExpanded && appState.rightSidebarTab == .search
             )
-            .frame(height: 38)
+            .frame(height: 28)
             .padding(.leading, 70)
             .padding(.top, 0)
             .background(Color.bgPrimary)
