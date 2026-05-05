@@ -18,24 +18,27 @@ struct TabBarView: View {
                     .font(.system(size: 13))
             }
             .buttonStyle(CodniaIconButtonStyle(isActive: false))
+            .padding(.top, 6)
 
             // Tab list with explicit index-based identification
-            HStack(spacing: 0) {
-                ForEach(Array(editorVM.tabs.enumerated()), id: \.offset) { index, tab in
-                    TabButton(
-                        tab: tab,
-                        isActive: tab.id == editorVM.activeTabId,
-                        onSelect: { editorVM.activateTab(tab.id) },
-                        onClose: { editorVM.closeTab(tab.id) }
-                    )
-                }
-                ForEach(Array(terminalVM.tabs.enumerated()), id: \.offset) { index, tab in
-                    TabButton(
-                        tab: tab,
-                        isActive: tab.id == editorVM.activeTabId,
-                        onSelect: { editorVM.activeTabId = tab.id },
-                        onClose: { editorVM.closeTab(tab.id) }
-                    )
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 0) {
+                    ForEach(Array(editorVM.tabs.enumerated()), id: \.offset) { index, tab in
+                        TabButton(
+                            tab: tab,
+                            isActive: tab.id == editorVM.activeTabId,
+                            onSelect: { editorVM.activateTab(tab.id) },
+                            onClose: { editorVM.closeTab(tab.id) }
+                        )
+                    }
+                    ForEach(Array(terminalVM.tabs.enumerated()), id: \.offset) { index, tab in
+                        TabButton(
+                            tab: tab,
+                            isActive: tab.id == editorVM.activeTabId,
+                            onSelect: { editorVM.activeTabId = tab.id },
+                            onClose: { editorVM.closeTab(tab.id) }
+                        )
+                    }
                 }
             }
 
@@ -55,6 +58,7 @@ struct TabBarView: View {
                 .buttonStyle(CodniaIconButtonStyle(isActive: isRightSidebarExpanded))
             }
             .padding(.horizontal, 8)
+            .padding(.top, 6)
         }
     }
 }
@@ -113,8 +117,6 @@ struct TabButton: View {
                 Text(displayName)
                     .font(.system(size: 12))
                     .lineLimit(1)
-
-                Spacer()
 
                 Button(action: onClose) {
                     Image(systemName: "xmark")

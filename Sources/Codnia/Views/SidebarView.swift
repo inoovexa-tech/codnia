@@ -23,7 +23,7 @@ struct SidebarView: View {
             Spacer()
 
             // Bottom controls
-            VStack(spacing: 4) {
+            HStack(spacing: 4) {
                 Button(action: {
                     openSettingsWindow()
                 }) {
@@ -32,8 +32,10 @@ struct SidebarView: View {
                 }
                 .buttonStyle(PlainButtonStyle())
                 .frame(width: 36, height: 36)
-                .background(Color.bgTertiary)
+                .background(Color.clear)
                 .cornerRadius(8)
+
+                Spacer()
 
                 Button(action: {
                     expanded.toggle()
@@ -43,10 +45,11 @@ struct SidebarView: View {
                 }
                 .buttonStyle(PlainButtonStyle())
                 .frame(width: 36, height: 36)
-                .background(Color.bgTertiary)
+                .background(Color.clear)
                 .cornerRadius(8)
             }
             .padding(.vertical, 8)
+            .padding(.horizontal, expanded ? 8 : 4)
             .foregroundColor(.textPrimary)
             .overlay(
                 Rectangle()

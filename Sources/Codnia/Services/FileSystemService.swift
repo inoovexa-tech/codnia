@@ -69,7 +69,7 @@ public final class FileSystemService {
         ) else { return [] }
 
         var entries: [FileEntry] = []
-        for child in contents.sorted { $0.lastPathComponent < $1.lastPathComponent } {
+        for child in contents {
             let isDir = (try? child.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false
             entries.append(FileEntry(
                 name: child.lastPathComponent,
@@ -77,6 +77,11 @@ public final class FileSystemService {
                 isDirectory: isDir,
                 children: nil
             ))
+        }
+        entries.sort {
+            if $0.isDirectory && !$1.isDirectory { return true }
+            if !$0.isDirectory && $1.isDirectory { return false }
+            return $0.name.localizedStandardCompare($1.name) == .orderedAscending
         }
         return entries
     }

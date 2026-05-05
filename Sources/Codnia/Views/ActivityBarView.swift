@@ -73,13 +73,13 @@ struct ActivityBarView: View {
                         editorVM.openFile(path)
                     }
                 )
-                .background(Color.bgSecondary)
+                .background(Color.bgPrimary)
             } else {
                 GlobalSearchView()
                     .environmentObject(searchVM)
                     .environmentObject(workspaceVM)
                     .environmentObject(editorVM)
-                    .background(Color.bgSecondary)
+                    .background(Color.bgPrimary)
             }
         }
     }

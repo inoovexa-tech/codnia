@@ -24,6 +24,13 @@ struct GlobalSearchView: View {
                     .onSubmit {
                         performSearch()
                     }
+                    .onChange(of: query) { newValue in
+                        if !newValue.isEmpty {
+                            performSearch()
+                        } else {
+                            searchVM.results = []
+                        }
+                    }
 
                 if !query.isEmpty {
                     Button(action: {
