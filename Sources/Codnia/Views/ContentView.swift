@@ -49,6 +49,7 @@ struct ContentView: View {
                         .foregroundColor(.borderDefault),
                     alignment: .trailing
                 )
+                .environmentObject(appState)
                 .environmentObject(appState.workspaceVM)
                 .environmentObject(appState.editorVM)
                 .environmentObject(appState.settings)

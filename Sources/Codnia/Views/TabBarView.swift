@@ -11,6 +11,7 @@ struct TabBarView: View {
 
     var body: some View {
         HStack(spacing: 0) {
+            // Plus button
             Button(action: {
                 editorVM.newFile()
             }) {
@@ -18,9 +19,9 @@ struct TabBarView: View {
                     .font(.system(size: 13))
             }
             .buttonStyle(CodniaIconButtonStyle(isActive: false))
-            .padding(.top, 6)
+            .frame(width: 28, height: 38)
 
-            // Tab list with explicit index-based identification
+            // Tab list
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 0) {
                     ForEach(Array(editorVM.tabs.enumerated()), id: \.offset) { index, tab in
@@ -41,9 +42,9 @@ struct TabBarView: View {
                     }
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            Spacer()
-
+            // Right buttons
             HStack(spacing: 4) {
                 Button(action: onToggleSearch) {
                     Image(systemName: "magnifyingglass")
@@ -57,9 +58,10 @@ struct TabBarView: View {
                 }
                 .buttonStyle(CodniaIconButtonStyle(isActive: isRightSidebarExpanded))
             }
+            .frame(width: 60, height: 38)
             .padding(.horizontal, 8)
-            .padding(.top, 6)
         }
+        .frame(height: 38)
     }
 }
 

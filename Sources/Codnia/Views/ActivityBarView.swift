@@ -82,6 +82,12 @@ struct ActivityBarView: View {
                     .background(Color.bgPrimary)
             }
         }
+        .overlay(
+            Rectangle()
+                .frame(width: 1)
+                .foregroundColor(.borderDefault),
+            alignment: .leading
+        )
     }
 }
 

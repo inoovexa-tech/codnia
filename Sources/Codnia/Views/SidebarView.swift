@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 struct SidebarView: View {
     @Binding var expanded: Bool
@@ -23,47 +24,100 @@ struct SidebarView: View {
             Spacer()
 
             // Bottom controls
-            HStack(spacing: 4) {
-                Button(action: {
-                    openSettingsWindow()
-                }) {
-                    Image(systemName: "gear")
-                        .font(.system(size: 16))
-                }
-                .buttonStyle(PlainButtonStyle())
-                .frame(width: 36, height: 36)
-                .background(Color.clear)
-                .cornerRadius(8)
+            if expanded {
+                HStack(spacing: 4) {
+                    Button(action: {
+                        openSettingsWindow()
+                    }) {
+                        Image(systemName: "gear")
+                            .font(.system(size: 16))
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .frame(width: 36, height: 36)
+                    .background(Color.clear)
+                    .cornerRadius(8)
 
-                Spacer()
+                    Spacer()
 
-                Button(action: {
-                    expanded.toggle()
-                }) {
-                    Image(systemName: expanded ? "sidebar.left" : "sidebar.right")
-                        .font(.system(size: 14))
+                    Button(action: {
+                        expanded.toggle()
+                    }) {
+                        Image(systemName: expanded ? "sidebar.left" : "sidebar.right")
+                            .font(.system(size: 14))
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .frame(width: 36, height: 36)
+                    .background(Color.clear)
+                    .cornerRadius(8)
                 }
-                .buttonStyle(PlainButtonStyle())
-                .frame(width: 36, height: 36)
-                .background(Color.clear)
-                .cornerRadius(8)
+                .padding(.vertical, 8)
+                .padding(.horizontal, 8)
+                .foregroundColor(.textPrimary)
+                .overlay(
+                    Rectangle()
+                        .frame(height: 1)
+                        .foregroundColor(.borderDefault),
+                    alignment: .top
+                )
+            } else {
+                VStack(spacing: 4) {
+                    Button(action: {
+                        openSettingsWindow()
+                    }) {
+                        Image(systemName: "gear")
+                            .font(.system(size: 16))
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .frame(width: 36, height: 36)
+                    .background(Color.clear)
+                    .cornerRadius(8)
+
+                    Button(action: {
+                        expanded.toggle()
+                    }) {
+                        Image(systemName: expanded ? "sidebar.left" : "sidebar.right")
+                            .font(.system(size: 14))
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .frame(width: 36, height: 36)
+                    .background(Color.clear)
+                    .cornerRadius(8)
+                }
+                .padding(.vertical, 8)
+                .padding(.horizontal, 4)
+                .foregroundColor(.textPrimary)
+                .overlay(
+                    Rectangle()
+                        .frame(height: 1)
+                        .foregroundColor(.borderDefault),
+                    alignment: .top
+                )
             }
-            .padding(.vertical, 8)
-            .padding(.horizontal, expanded ? 8 : 4)
-            .foregroundColor(.textPrimary)
-            .overlay(
-                Rectangle()
-                    .frame(height: 1)
-                    .foregroundColor(.borderDefault),
-                alignment: .top
-            )
         }
         .background(Color.bgPrimary)
     }
 
     private func openSettingsWindow() {
-        // Open macOS preferences window
-        NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
+        let settingsView = SettingsView()
+            .environmentObject(settings)
+            .frame(minWidth: 700, minHeight: 540)
+
+        let hostingView = NSHostingView(rootView: settingsView)
+        hostingView.frame = NSRect(x: 0, y: 0, width: 700, height: 540)
+        hostingView.wantsLayer = true
+
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 700, height: 540),
+            styleMask: [.titled, .closable, .miniaturizable],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = "Settings"
+        window.contentView = hostingView
+        window.minSize = NSSize(width: 700, height: 540)
+        window.backgroundColor = NSColor(Color.bgPrimary)
+        window.center()
+        window.makeKeyAndOrderFront(nil)
     }
 }
 
