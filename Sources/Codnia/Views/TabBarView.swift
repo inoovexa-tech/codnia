@@ -18,24 +18,23 @@ struct TabBarView: View {
             }
             .buttonStyle(CodniaIconButtonStyle(isActive: false))
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 0) {
-                    ForEach(editorVM.tabs) { tab in
-                        TabButton(
-                            tab: tab,
-                            isActive: tab.id == editorVM.activeTabId,
-                            onSelect: { editorVM.activateTab(tab.id) },
-                            onClose: { editorVM.closeTab(tab.id) }
-                        )
-                    }
-                    ForEach(terminalVM.tabs) { tab in
-                        TabButton(
-                            tab: tab,
-                            isActive: tab.id == editorVM.activeTabId,
-                            onSelect: { editorVM.activeTabId = tab.id },
-                            onClose: { editorVM.closeTab(tab.id) }
-                        )
-                    }
+            // Tab list with explicit index-based identification
+            HStack(spacing: 0) {
+                ForEach(Array(editorVM.tabs.enumerated()), id: \.offset) { index, tab in
+                    TabButton(
+                        tab: tab,
+                        isActive: tab.id == editorVM.activeTabId,
+                        onSelect: { editorVM.activateTab(tab.id) },
+                        onClose: { editorVM.closeTab(tab.id) }
+                    )
+                }
+                ForEach(Array(terminalVM.tabs.enumerated()), id: \.offset) { index, tab in
+                    TabButton(
+                        tab: tab,
+                        isActive: tab.id == editorVM.activeTabId,
+                        onSelect: { editorVM.activeTabId = tab.id },
+                        onClose: { editorVM.closeTab(tab.id) }
+                    )
                 }
             }
 

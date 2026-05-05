@@ -12,9 +12,11 @@ class CodniaApplicationDelegate: NSObject, NSApplicationDelegate {
         let contentView = ContentView()
             .environmentObject(appState)
             .frame(minWidth: 900, minHeight: 600)
+            .ignoresSafeArea(.container, edges: .top)
 
         let hostingView = NSHostingView(rootView: contentView)
         hostingView.frame = NSRect(x: 0, y: 0, width: 1200, height: 800)
+        hostingView.wantsLayer = true
 
         let window = NSWindow(
             contentRect: NSRect(x: 200, y: 200, width: 1200, height: 800),
