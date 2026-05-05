@@ -17,9 +17,10 @@ struct TabBarView: View {
             }) {
                 Image(systemName: "plus")
                     .font(.system(size: 13))
+                    .frame(width: 28, height: 38)
             }
-            .buttonStyle(CodniaIconButtonStyle(isActive: false))
-            .frame(width: 28, height: 38)
+            .buttonStyle(PlainButtonStyle())
+            .foregroundColor(.textSecondary)
 
             // Tab list
             ScrollView(.horizontal, showsIndicators: false) {
@@ -42,23 +43,25 @@ struct TabBarView: View {
                     }
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             // Right buttons
             HStack(spacing: 4) {
                 Button(action: onToggleSearch) {
                     Image(systemName: "magnifyingglass")
                         .font(.system(size: 13))
+                        .frame(width: 28, height: 38)
                 }
-                .buttonStyle(CodniaIconButtonStyle(isActive: isSearchActive))
+                .buttonStyle(PlainButtonStyle())
+                .foregroundColor(isSearchActive ? .accentBlue : .textSecondary)
 
                 Button(action: onToggleRightSidebar) {
                     Image(systemName: isRightSidebarExpanded ? "sidebar.right" : "sidebar.left")
                         .font(.system(size: 13))
+                        .frame(width: 28, height: 38)
                 }
-                .buttonStyle(CodniaIconButtonStyle(isActive: isRightSidebarExpanded))
+                .buttonStyle(PlainButtonStyle())
+                .foregroundColor(isRightSidebarExpanded ? .accentBlue : .textSecondary)
             }
-            .frame(width: 60, height: 38)
             .padding(.horizontal, 8)
         }
         .frame(height: 38)
@@ -70,6 +73,8 @@ struct TabButton: View {
     let isActive: Bool
     let onSelect: () -> Void
     let onClose: () -> Void
+
+    @State private var isHovered = false
 
     private var displayName: String {
         tab.isModified ? "\(tab.name) ●" : tab.name
@@ -104,41 +109,47 @@ struct TabButton: View {
     }
 
     var body: some View {
-        Button(action: onSelect) {
-            HStack(spacing: 6) {
-                if tab.type == .file {
-                    fileIcon(for: tab.name)
-                        .foregroundColor(iconColor)
-                        .font(.system(size: 13))
-                } else {
-                    terminalIcon(for: tab.type)
-                        .foregroundColor(iconColor)
-                        .font(.system(size: 13))
-                }
-
-                Text(displayName)
-                    .font(.system(size: 12))
-                    .lineLimit(1)
-
-                Button(action: onClose) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 10, weight: .medium))
-                }
-                .buttonStyle(PlainButtonStyle())
-                .opacity(0.6)
+        HStack(spacing: 6) {
+            if tab.type == .file {
+                fileIcon(for: tab.name)
+                    .foregroundColor(iconColor)
+                    .font(.system(size: 13))
+            } else {
+                terminalIcon(for: tab.type)
+                    .foregroundColor(iconColor)
+                    .font(.system(size: 13))
             }
-            .padding(.horizontal, 12)
-            .frame(height: 28)
-            .background(isActive ? Color.bgActive : Color.clear)
-            .foregroundColor(isActive ? .textPrimary : .textSecondary)
-            .overlay(
-                Rectangle()
-                    .frame(height: 2)
-                    .foregroundColor(isActive ? .accentBlue : .clear),
-                alignment: .bottom
-            )
+
+            Text(displayName)
+                .font(.system(size: 12))
+                .lineLimit(1)
+
+            // Xmark como Text/Image clicável em vez de Button aninhado
+            Image(systemName: "xmark")
+                .font(.system(size: 10, weight: .medium))
+                .foregroundColor(.textSecondary)
+                .opacity(isHovered ? 0.6 : 0)
+                .onTapGesture {
+                    onClose()
+                }
         }
-        .buttonStyle(PlainButtonStyle())
+        .padding(.horizontal, 12)
+        .frame(height: 28)
+        .background(isActive ? Color.bgActive : Color.clear)
+        .foregroundColor(isActive ? .textPrimary : .textSecondary)
+        .overlay(
+            Rectangle()
+                .frame(height: 2)
+                .foregroundColor(isActive ? .accentBlue : .clear),
+            alignment: .bottom
+        )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            onSelect()
+        }
+        .onHover { hovering in
+            isHovered = hovering
+        }
     }
 
     private func fileIcon(for filename: String) -> Image {
@@ -169,17 +180,5 @@ struct TabButton: View {
         case .codex: return Image(systemName: "square.stack.3d.up")
         default: return Image(systemName: "terminal")
         }
-    }
-}
-
-struct CodniaIconButtonStyle: ButtonStyle {
-    let isActive: Bool
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .foregroundColor(isActive ? .accentBlue : .textSecondary)
-            .frame(width: 24, height: 24)
-            .background(configuration.isPressed ? Color.bgHover : Color.clear)
-            .cornerRadius(4)
     }
 }
