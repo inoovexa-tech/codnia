@@ -12,11 +12,19 @@ struct TabBarView: View {
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 0) {
-                    ForEach(editorVM.allTabs) { tab in
+                    ForEach(editorVM.tabs) { tab in
                         TabButton(
                             tab: tab,
                             isActive: tab.id == editorVM.activeTabId,
                             onSelect: { editorVM.activateTab(tab.id) },
+                            onClose: { editorVM.closeTab(tab.id) }
+                        )
+                    }
+                    ForEach(terminalVM.tabs) { tab in
+                        TabButton(
+                            tab: tab,
+                            isActive: tab.id == editorVM.activeTabId,
+                            onSelect: { editorVM.activeTabId = tab.id },
                             onClose: { editorVM.closeTab(tab.id) }
                         )
                     }

@@ -7,24 +7,28 @@ struct EditorAreaView: View {
 
     var body: some View {
         ZStack {
-            if editorVM.allTabs.isEmpty || editorVM.activeTabId == nil {
+            if editorVM.tabs.isEmpty && terminalVM.tabs.isEmpty {
                 EmptyStateView()
-            } else if let tab = editorVM.currentTab {
-                switch tab.type {
-                case .file:
+            } else if let activeId = editorVM.activeTabId {
+                // Look in editor tabs first, then terminal tabs
+                if let _ = editorVM.tabs.first(where: { $0.id == activeId }) {
                     CodeEditorView(
                         content: $editorVM.editorContent,
                         language: editorVM.currentLanguage,
                         onChange: {
-                            editorVM.markModified(tabId: tab.id)
+                            editorVM.markModified(tabId: activeId)
                         }
                     )
                     .environmentObject(settings)
-                default:
+                } else if let tab = terminalVM.tabs.first(where: { $0.id == activeId }) {
                     TerminalView(tab: tab)
                         .environmentObject(terminalVM)
                         .background(Color.bgPrimary)
+                } else {
+                    EmptyStateView()
                 }
+            } else {
+                EmptyStateView()
             }
         }
     }
