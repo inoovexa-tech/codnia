@@ -5,23 +5,32 @@ struct ContentView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // MARK: Title Bar / Tab Bar — same row as traffic lights
-            TabBarView()
-                .frame(height: 28)
-                .padding(.leading, 70) // traffic lights width
-                .padding(.top, 0)
-                .background(Color.bgPrimary)
-                .overlay(
-                    Rectangle()
-                        .frame(height: 1)
-                        .foregroundColor(.borderDefault),
-                    alignment: .bottom
-                )
-                .environmentObject(appState)
+            // MARK: Title Bar / Tab Bar
+            TabBarView(
+                editorVM: appState.editorVM,
+                terminalVM: appState.terminalVM,
+                onToggleRightSidebar: {
+                    appState.rightSidebarExpanded.toggle()
+                },
+                onShowSearch: {
+                    appState.rightSidebarTab = .search
+                    appState.rightSidebarExpanded = true
+                    appState.editorVM.showGlobalSearch = true
+                },
+                isRightSidebarExpanded: appState.rightSidebarExpanded
+            )
+            .frame(height: 28)
+            .padding(.leading, 70)
+            .background(Color.bgPrimary)
+            .overlay(
+                Rectangle()
+                    .frame(height: 1)
+                    .foregroundColor(.borderDefault),
+                alignment: .bottom
+            )
 
             // MARK: Main Area
             HStack(spacing: 0) {
-                // Left Sidebar (Projects)
                 SidebarView(
                     expanded: $appState.leftSidebarExpanded
                 )
@@ -37,14 +46,12 @@ struct ContentView: View {
                 .environmentObject(appState.editorVM)
                 .environmentObject(appState.settings)
 
-                // Editor / Terminal Area
                 EditorAreaView()
                     .background(Color.bgPrimary)
                     .environmentObject(appState.editorVM)
                     .environmentObject(appState.terminalVM)
                     .environmentObject(appState.settings)
 
-                // Right Sidebar (Activity Bar: Explorer + Search)
                 if appState.rightSidebarExpanded {
                     ActivityBarView(
                         tab: $appState.rightSidebarTab,
@@ -63,7 +70,6 @@ struct ContentView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            // MARK: Status Bar
             if shouldShowStatusBar {
                 StatusBarView()
                     .frame(height: 22)

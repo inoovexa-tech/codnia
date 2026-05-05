@@ -1,14 +1,22 @@
 import SwiftUI
 
 struct TabBarView: View {
-    @EnvironmentObject var appState: AppState
+    @ObservedObject var editorVM: EditorViewModel
+    @ObservedObject var terminalVM: TerminalViewModel
 
-    private var editorVM: EditorViewModel { appState.editorVM }
-    private var terminalVM: TerminalViewModel { appState.terminalVM }
+    var onToggleRightSidebar: () -> Void
+    var onShowSearch: () -> Void
+    var isRightSidebarExpanded: Bool
 
     var body: some View {
         HStack(spacing: 0) {
-            NewTabDropdown()
+            Button(action: {
+                editorVM.newFile()
+            }) {
+                Image(systemName: "plus")
+                    .font(.system(size: 13))
+            }
+            .buttonStyle(CodniaIconButtonStyle(isActive: false))
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 0) {
@@ -34,24 +42,17 @@ struct TabBarView: View {
             Spacer()
 
             HStack(spacing: 4) {
-                Button(action: {
-                    appState.rightSidebarTab = .search
-                    appState.rightSidebarExpanded = true
-                    editorVM.showGlobalSearch = true
-                }) {
+                Button(action: onShowSearch) {
                     Image(systemName: "magnifyingglass")
                         .font(.system(size: 13))
                 }
-                .buttonStyle(CodniaIconButtonStyle(isActive: editorVM.showGlobalSearch))
+                .buttonStyle(CodniaIconButtonStyle(isActive: false))
 
-                Button(action: {
-                    appState.rightSidebarTab = .explorer
-                    appState.rightSidebarExpanded.toggle()
-                }) {
-                    Image(systemName: appState.rightSidebarExpanded ? "sidebar.right" : "sidebar.left")
+                Button(action: onToggleRightSidebar) {
+                    Image(systemName: isRightSidebarExpanded ? "sidebar.right" : "sidebar.left")
                         .font(.system(size: 13))
                 }
-                .buttonStyle(CodniaIconButtonStyle(isActive: appState.rightSidebarExpanded))
+                .buttonStyle(CodniaIconButtonStyle(isActive: isRightSidebarExpanded))
             }
             .padding(.horizontal, 8)
         }
@@ -164,80 +165,6 @@ struct TabButton: View {
         case .codex: return Image(systemName: "square.stack.3d.up")
         default: return Image(systemName: "terminal")
         }
-    }
-}
-
-struct NewTabDropdown: View {
-    @EnvironmentObject var appState: AppState
-
-    private var editorVM: EditorViewModel { appState.editorVM }
-    private var terminalVM: TerminalViewModel { appState.terminalVM }
-    @State private var isPresented = false
-
-    var body: some View {
-        Button(action: {
-            isPresented = true
-        }) {
-            Image(systemName: "plus")
-                .font(.system(size: 13))
-        }
-        .buttonStyle(CodniaIconButtonStyle(isActive: false))
-        .popover(isPresented: $isPresented, arrowEdge: .bottom) {
-            VStack(alignment: .leading, spacing: 2) {
-                Button("New File") {
-                    isPresented = false
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                        editorVM.newFile()
-                    }
-                }
-                .buttonStyle(NewTabMenuButton())
-
-                Button("New Terminal") {
-                    isPresented = false
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                        let newTab = terminalVM.createTerminalTab()
-                        editorVM.activeTabId = newTab.id
-                    }
-                }
-                .buttonStyle(NewTabMenuButton())
-
-                Divider()
-
-                Button("OpenCode") {
-                    isPresented = false
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                        let newTab = terminalVM.createTerminalTab(type: .opencode)
-                        editorVM.activeTabId = newTab.id
-                    }
-                }
-                .buttonStyle(NewTabMenuButton())
-
-                Button("Claude Code") {
-                    isPresented = false
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                        let newTab = terminalVM.createTerminalTab(type: .claude)
-                        editorVM.activeTabId = newTab.id
-                    }
-                }
-                .buttonStyle(NewTabMenuButton())
-            }
-            .padding(4)
-            .frame(width: 160)
-            .background(Color.bgTertiary)
-        }
-    }
-}
-
-struct NewTabMenuButton: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(configuration.isPressed ? Color.accentBlue : Color.clear)
-            .foregroundColor(.textPrimary)
-            .font(.system(size: 12))
-            .cornerRadius(4)
     }
 }
 
