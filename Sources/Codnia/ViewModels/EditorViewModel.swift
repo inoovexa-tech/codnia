@@ -89,15 +89,15 @@ public final class EditorViewModel: ObservableObject {
     }
 
     public func closeTab(_ id: String) {
-        if let tab = tabs.first(where: { $0.id == id }) {
+        if tabs.firstIndex(where: { $0.id == id }) != nil {
             tabs.removeAll { $0.id == id }
             fileContents.removeValue(forKey: id)
 
             if activeTabId == id {
                 activeTabId = tabs.last?.id ?? terminal.tabs.last?.id
             }
-        } else if let tab = terminal.tabs.first(where: { $0.id == id }) {
-            terminal.closeTab(tab)
+        } else if terminal.tabs.first(where: { $0.id == id }) != nil {
+            terminal.closeTab(byId: id)
             if activeTabId == id {
                 activeTabId = allTabs.last?.id
             }

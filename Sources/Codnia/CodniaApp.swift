@@ -28,6 +28,8 @@ class CodniaApplicationDelegate: NSObject, NSApplicationDelegate {
         window.titleVisibility = .hidden
         window.isOpaque = true
         window.makeKeyAndOrderFront(nil)
+        window.orderFrontRegardless()
+        window.level = .normal
         window.center()
 
         self.window = window

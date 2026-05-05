@@ -12,19 +12,23 @@ struct ContentView: View {
     var body: some View {
         VStack(spacing: 0) {
             // MARK: Title Bar / Tab Bar
-            TabBarView()
-                .frame(height: 34)
-                .background(Color.bgPrimary)
-                .overlay(
-                    Rectangle()
-                        .frame(height: 1)
-                        .foregroundColor(.borderDefault),
-                    alignment: .bottom
-                )
-                .environmentObject(appState.editorVM)
-                .environmentObject(appState.terminalVM)
-                .environmentObject(appState.settings)
-                .environmentObject(appState.workspaceVM)
+            TabBarView(
+                rightSidebarExpanded: $rightSidebarExpanded,
+                rightSidebarTab: $rightSidebarTab
+            )
+            .frame(height: 34)
+            .background(Color.bgPrimary)
+            .overlay(
+                Rectangle()
+                    .frame(height: 1)
+                    .foregroundColor(.borderDefault),
+                alignment: .bottom
+            )
+            .environmentObject(appState.editorVM)
+            .environmentObject(appState.terminalVM)
+            .environmentObject(appState.settings)
+            .environmentObject(appState.workspaceVM)
+            .environmentObject(appState.searchVM)
 
             // MARK: Main Area
             HStack(spacing: 0) {

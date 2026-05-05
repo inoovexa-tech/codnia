@@ -25,7 +25,7 @@ struct SidebarView: View {
             // Bottom controls
             VStack(spacing: 4) {
                 Button(action: {
-                    NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
+                    openSettingsWindow()
                 }) {
                     Image(systemName: "gear")
                         .font(.system(size: 16))
@@ -56,6 +56,11 @@ struct SidebarView: View {
             )
         }
         .background(Color.bgPrimary)
+    }
+
+    private func openSettingsWindow() {
+        // Open macOS preferences window
+        NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
     }
 }
 
@@ -92,6 +97,7 @@ struct SidebarExpandedProjectsList: View {
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
+        panel.prompt = "Select"
         if panel.runModal() == .OK, let url = panel.url {
             workspaceVM.addProject(path: url.path)
         }
@@ -107,7 +113,7 @@ struct SidebarCollapsedProjectsList: View {
         }
 
         Button(action: {
-            // Add project
+            addProject()
         }) {
             Image(systemName: "plus")
                 .font(.system(size: 14))
@@ -121,6 +127,17 @@ struct SidebarCollapsedProjectsList: View {
                 .stroke(Color.borderLight, style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
         )
         .padding(.top, 4)
+    }
+
+    private func addProject() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.prompt = "Select"
+        if panel.runModal() == .OK, let url = panel.url {
+            workspaceVM.addProject(path: url.path)
+        }
     }
 }
 

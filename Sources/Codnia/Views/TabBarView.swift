@@ -5,9 +5,17 @@ struct TabBarView: View {
     @EnvironmentObject var terminalVM: TerminalViewModel
     @EnvironmentObject var settings: SettingsService
     @EnvironmentObject var workspaceVM: WorkspaceService
+    @EnvironmentObject var searchVM: SearchService
+    @Binding var rightSidebarExpanded: Bool
+    @Binding var rightSidebarTab: RightSidebarTab
 
     var body: some View {
         HStack(spacing: 0) {
+            // Left padding to avoid traffic light buttons (macOS native buttons)
+            // Traffic lights are ~52px wide + padding
+            Spacer()
+                .frame(width: 80)
+
             // New Tab Button with Menu
             NewTabDropdown()
 
@@ -30,20 +38,23 @@ struct TabBarView: View {
             // Right controls
             HStack(spacing: 4) {
                 Button(action: {
-                    // Search
+                    rightSidebarTab = .search
+                    rightSidebarExpanded = true
+                    editorVM.showGlobalSearch = true
                 }) {
                     Image(systemName: "magnifyingglass")
                         .font(.system(size: 13))
                 }
-                .buttonStyle(CodniaIconButtonStyle(isActive: false))
+                .buttonStyle(CodniaIconButtonStyle(isActive: editorVM.showGlobalSearch))
 
                 Button(action: {
-                    // Toggle right panel
+                    rightSidebarTab = .explorer
+                    rightSidebarExpanded.toggle()
                 }) {
-                    Image(systemName: "sidebar.right")
+                    Image(systemName: rightSidebarExpanded ? "sidebar.right" : "sidebar.left")
                         .font(.system(size: 13))
                 }
-                .buttonStyle(CodniaIconButtonStyle(isActive: false))
+                .buttonStyle(CodniaIconButtonStyle(isActive: rightSidebarExpanded))
             }
             .padding(.horizontal, 8)
         }
@@ -115,9 +126,6 @@ struct TabButton: View {
                 }
                 .buttonStyle(PlainButtonStyle())
                 .opacity(0.6)
-                .onHover { hovering in
-                    // Hover effect handled by parent
-                }
             }
             .padding(.horizontal, 12)
             .frame(height: 34)
@@ -146,7 +154,7 @@ struct TabButton: View {
             return Image(systemName: "paintbrush")
         case "md":
             return Image(systemName: "text.alignleft")
-        case "swift", "sh":
+        case "sh":
             return Image(systemName: "terminal")
         default:
             return Image(systemName: "doc")
@@ -187,6 +195,11 @@ struct NewTabDropdown: View {
 
                 Button("New Terminal") {
                     terminalVM.createTerminalTab()
+                    // Also activate the new tab in editorVM
+                    let newTab = terminalVM.tabs.last
+                    if let tab = newTab {
+                        editorVM.activeTabId = tab.id
+                    }
                     isPresented = false
                 }
                 .buttonStyle(NewTabMenuButton())
@@ -195,12 +208,20 @@ struct NewTabDropdown: View {
 
                 Button("OpenCode") {
                     terminalVM.createTerminalTab(type: .opencode)
+                    let newTab = terminalVM.tabs.last
+                    if let tab = newTab {
+                        editorVM.activeTabId = tab.id
+                    }
                     isPresented = false
                 }
                 .buttonStyle(NewTabMenuButton())
 
                 Button("Claude Code") {
                     terminalVM.createTerminalTab(type: .claude)
+                    let newTab = terminalVM.tabs.last
+                    if let tab = newTab {
+                        editorVM.activeTabId = tab.id
+                    }
                     isPresented = false
                 }
                 .buttonStyle(NewTabMenuButton())

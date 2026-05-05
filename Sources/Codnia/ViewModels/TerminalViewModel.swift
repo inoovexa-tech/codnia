@@ -20,7 +20,8 @@ public final class TerminalViewModel: ObservableObject {
             .store(in: &cancellables)
     }
 
-    public func createTerminalTab(type: TabType = .terminal, command: String? = nil) {
+    @discardableResult
+    public func createTerminalTab(type: TabType = .terminal, command: String? = nil) -> Tab {
         let cwd = service.instances.first?.cwd ?? NSHomeDirectory()
         let name = command.map { commandName($0) } ?? "Terminal"
         let instance = service.createTerminal(cwd: cwd, command: command)
@@ -34,6 +35,7 @@ public final class TerminalViewModel: ObservableObject {
         )
         tabs.append(tab)
         activeId = tab.id
+        return tab
     }
 
     public func closeTab(_ tab: Tab) {

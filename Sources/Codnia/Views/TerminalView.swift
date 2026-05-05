@@ -35,12 +35,14 @@ struct TerminalRepresentable: NSViewRepresentable {
         let font = NSFont(name: "SF Mono", size: CGFloat(fontSize)) ?? NSFont.monospacedSystemFont(ofSize: CGFloat(fontSize), weight: .regular)
         terminal.font = font
 
+        // Build environment with proper PATH
         var env: [String] = []
         for (key, value) in ProcessInfo.processInfo.environment {
             env.append("\(key)=\(value)")
         }
         env.append("PATH=/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin")
 
+        // Start zsh process
         terminal.startProcess(
             executable: "/bin/zsh",
             args: ["-l"],
@@ -48,6 +50,13 @@ struct TerminalRepresentable: NSViewRepresentable {
             execName: nil,
             currentDirectory: cwd.isEmpty ? nil : cwd
         )
+
+        // Make terminal first responder to receive keyboard input
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            if let window = terminal.window {
+                window.makeFirstResponder(terminal)
+            }
+        }
 
         return terminal
     }
