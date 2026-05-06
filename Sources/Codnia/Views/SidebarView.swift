@@ -7,7 +7,7 @@ struct SidebarView: View {
     @EnvironmentObject var editorVM: EditorViewModel
     @EnvironmentObject var settings: SettingsService
 
-    private static var settingsWindowController: NSWindowController?
+    static var settingsWindowController: NSWindowController?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -25,12 +25,9 @@ struct SidebarView: View {
 
             Spacer()
 
-            // Bottom controls
             if expanded {
                 HStack(spacing: 4) {
-                    Button(action: {
-                        openSettingsWindow()
-                    }) {
+                    Button(action: { openSettingsWindow() }) {
                         Image(systemName: "gear")
                             .font(.system(size: 16))
                     }
@@ -41,9 +38,7 @@ struct SidebarView: View {
 
                     Spacer()
 
-                    Button(action: {
-                        expanded.toggle()
-                    }) {
+                    Button(action: { expanded.toggle() }) {
                         Image(systemName: expanded ? "sidebar.left" : "sidebar.right")
                             .font(.system(size: 14))
                     }
@@ -63,9 +58,7 @@ struct SidebarView: View {
                 )
             } else {
                 VStack(spacing: 4) {
-                    Button(action: {
-                        openSettingsWindow()
-                    }) {
+                    Button(action: { openSettingsWindow() }) {
                         Image(systemName: "gear")
                             .font(.system(size: 16))
                     }
@@ -74,9 +67,7 @@ struct SidebarView: View {
                     .background(Color.clear)
                     .cornerRadius(8)
 
-                    Button(action: {
-                        expanded.toggle()
-                    }) {
+                    Button(action: { expanded.toggle() }) {
                         Image(systemName: expanded ? "sidebar.left" : "sidebar.right")
                             .font(.system(size: 14))
                     }
@@ -96,7 +87,7 @@ struct SidebarView: View {
                 )
             }
         }
-        .background(Color.bgPrimary)
+        .background(Color.black)
     }
 
     private func openSettingsWindow() {
@@ -141,9 +132,7 @@ struct SidebarExpandedProjectsList: View {
             ProjectRowExpanded(project: project)
         }
 
-        Button(action: {
-            addProject()
-        }) {
+        Button(action: { addProject() }) {
             HStack(spacing: 8) {
                 Image(systemName: "plus")
                     .font(.system(size: 14))
@@ -181,9 +170,7 @@ struct SidebarCollapsedProjectsList: View {
             ProjectRowCollapsed(project: project)
         }
 
-        Button(action: {
-            addProject()
-        }) {
+        Button(action: { addProject() }) {
             Image(systemName: "plus")
                 .font(.system(size: 14))
         }
@@ -237,7 +224,7 @@ struct ProjectRowExpanded: View {
                 Text(initials)
                     .font(.system(size: 11, weight: .semibold))
                     .frame(width: 28, height: 28)
-                    .background(isActive ? Color.white.opacity(0.2) : Color.bgHover)
+                    .background(isActive ? Color.accentBlue : Color.bgHover)
                     .foregroundColor(.white)
                     .cornerRadius(6)
 
@@ -248,16 +235,22 @@ struct ProjectRowExpanded: View {
                         .lineLimit(1)
 
                     if !branchText.isEmpty {
-                        Text(branchText)
-                            .font(.system(size: 10))
-                            .foregroundColor(.textSecondary)
-                            .lineLimit(1)
+                        HStack(spacing: 4) {
+                            Text(branchText)
+                                .font(.system(size: 10))
+                                .foregroundColor(.textSecondary)
+
+                            Spacer()
+
+                            changesBadge
+                                .font(.system(size: 10))
+                        }
                     }
                 }
             }
             .padding(.horizontal, 8)
             .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-            .background(isActive ? Color.accentBlue : Color.bgTertiary)
+            .background(isActive ? Color.bgTertiary : Color.clear)
             .cornerRadius(8)
         }
         .buttonStyle(PlainButtonStyle())
@@ -299,6 +292,18 @@ struct ProjectRowExpanded: View {
 
     private var branchText: String {
         workspaceVM.branches[project.id] ?? ""
+    }
+
+    @ViewBuilder
+    private var changesBadge: some View {
+        if let changes = workspaceVM.changesCount[project.id], changes.added > 0 || changes.deleted > 0 {
+            HStack(spacing: 2) {
+                Text("+\(changes.added)")
+                    .foregroundColor(.green)
+                Text("-\(changes.deleted)")
+                    .foregroundColor(.red)
+            }
+        }
     }
 }
 

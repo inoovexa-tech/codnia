@@ -6,9 +6,16 @@ struct StatusBarView: View {
 
     var body: some View {
         HStack(spacing: 16) {
-            Text(branchText)
-                .font(.system(size: 11))
-                .foregroundColor(.textSecondary)
+            if workspaceVM.activeProject != nil {
+                HStack(spacing: 4) {
+                    Text(branchText)
+                        .font(.system(size: 11))
+                        .foregroundColor(.textSecondary)
+
+                    changesBadgeView
+                        .font(.system(size: 11))
+                }
+            }
 
             Text("0 problems")
                 .font(.system(size: 11))
@@ -64,9 +71,24 @@ struct StatusBarView: View {
         .padding(.horizontal, 12)
     }
 
+    @ViewBuilder
+    private var changesBadgeView: some View {
+        if let project = workspaceVM.activeProject {
+            let changes = workspaceVM.getChangesCount(forProjectId: project.id)
+            if changes.added > 0 || changes.deleted > 0 {
+                HStack(spacing: 2) {
+                    Text("+\(changes.added)")
+                        .foregroundColor(.green)
+                    Text("-\(changes.deleted)")
+                        .foregroundColor(.red)
+                }
+            }
+        }
+    }
+
     private var branchText: String {
         if let project = workspaceVM.activeProject {
-            return workspaceVM.branches[project.id] ?? "main"
+            return workspaceVM.getBranch(forProjectId: project.id)
         }
         return "main"
     }

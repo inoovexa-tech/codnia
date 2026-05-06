@@ -7,9 +7,33 @@ public final class WorkspaceService: ObservableObject {
     @Published public var activeProject: Project? = nil
     @Published public var fileTree: [FileEntry] = []
     @Published public var branches: [String: String] = [:]
+    @Published public var changesCount: [String: (added: Int, deleted: Int)] = [:]
+    
+    private var timer: Timer?
 
     public init() {
         loadProjects()
+        startAutoRefresh()
+    }
+    
+    deinit {
+        timer?.invalidate()
+    }
+    
+    private func startAutoRefresh() {
+        timer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { [weak self] _ in
+            self?.refreshAllChanges()
+        }
+    }
+    
+    private func refreshAllChanges() {
+        for project in projects {
+            GitService.shared.getChangesCount(path: project.path) { [weak self] added, deleted in
+                DispatchQueue.main.async {
+                    self?.changesCount[project.id] = (added: added, deleted: deleted)
+                }
+            }
+        }
     }
 
     public func loadProjects() {
@@ -74,9 +98,22 @@ public final class WorkspaceService: ObservableObject {
         saveProjects()
     }
 
-    public func renameProject(id: String, newName: String) {
+    public func renameProject(id: String, newName: String, renameDirectory: Bool = false) {
         if let idx = projects.firstIndex(where: { $0.id == id }) {
+            let oldPath = projects[idx].path
             projects[idx].name = newName
+
+            if renameDirectory {
+                let parentDir = URL(fileURLWithPath: oldPath).deletingLastPathComponent().path
+                let newPath = "\(parentDir)/\(newName)"
+                do {
+                    try FileManager.default.moveItem(atPath: oldPath, toPath: newPath)
+                    projects[idx].path = newPath
+                } catch {
+                    print("Failed to rename directory: \(error)")
+                }
+            }
+
             saveProjects()
         }
     }
@@ -108,9 +145,18 @@ public final class WorkspaceService: ObservableObject {
                 self?.branches[project.id] = branch
             }
         }
+        GitService.shared.getChangesCount(path: project.path) { [weak self] added, deleted in
+            DispatchQueue.main.async {
+                self?.changesCount[project.id] = (added: added, deleted: deleted)
+            }
+        }
     }
 
     public func getBranch(forProjectId id: String) -> String {
         branches[id] ?? "main"
+    }
+
+    public func getChangesCount(forProjectId id: String) -> (added: Int, deleted: Int) {
+        changesCount[id] ?? (added: 0, deleted: 0)
     }
 }

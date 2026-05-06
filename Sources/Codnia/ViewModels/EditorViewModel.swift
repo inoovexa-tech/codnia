@@ -29,10 +29,20 @@ public final class EditorViewModel: ObservableObject {
         }
 
         // Observe project changes
+        var previousProject: Project? = workspace.activeProject
         workspace.$activeProject
             .receive(on: RunLoop.main)
             .sink { [weak self] project in
                 guard let self = self else { return }
+                // Save current tabs to previous project before switching
+                if let prev = previousProject,
+                   let idx = workspace.projects.firstIndex(where: { $0.id == prev.id }) {
+                    workspace.projects[idx].fileTabs = self.tabs
+                    workspace.projects[idx].terminalTabs = self.terminal.tabs
+                    workspace.projects[idx].activeTabId = self.activeTabId
+                    workspace.saveProjects()
+                }
+                previousProject = project
                 if let project = project {
                     self.loadTabs(from: project)
                 } else {
@@ -45,6 +55,7 @@ public final class EditorViewModel: ObservableObject {
     }
 
     private func loadTabs(from project: Project) {
+        // Always load tabs from project
         tabs = project.fileTabs
         terminal.tabs = project.terminalTabs
         activeTabId = project.activeTabId
@@ -54,6 +65,9 @@ public final class EditorViewModel: ObservableObject {
             let content = fs.readFile(path: tab.path)
             fileContents[tab.id] = content
         }
+
+        // Force UI update
+        objectWillChange.send()
     }
 
     private func saveTabsToProject() {

@@ -9,7 +9,7 @@ class CodniaApplicationDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.regular)
 
-        if let icon = NSImage(contentsOfFile: Bundle.main.path(forResource: "icon", ofType: "png") ?? "") {
+        if let icon = Bundle.main.image(forResource: "icon") ?? NSImage(named: "icon") {
             NSApp.applicationIconImage = icon
         }
 
