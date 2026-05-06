@@ -35,6 +35,7 @@ class CodniaApplicationDelegate: NSObject, NSApplicationDelegate {
         window.titleVisibility = .hidden
         window.isOpaque = true
         window.styleMask.insert(.fullSizeContentView)
+        window.isMovableByWindowBackground = true
 
         if let toolbar = window.toolbar {
             toolbar.isVisible = false

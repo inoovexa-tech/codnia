@@ -7,6 +7,8 @@ struct SidebarView: View {
     @EnvironmentObject var editorVM: EditorViewModel
     @EnvironmentObject var settings: SettingsService
 
+    private static var settingsWindowController: NSWindowController?
+
     var body: some View {
         VStack(spacing: 0) {
             ScrollView {
@@ -98,6 +100,13 @@ struct SidebarView: View {
     }
 
     private func openSettingsWindow() {
+        if let existingController = Self.settingsWindowController,
+           let window = existingController.window,
+           window.isVisible {
+            window.makeKeyAndOrderFront(nil)
+            return
+        }
+
         let settingsView = SettingsView()
             .environmentObject(settings)
             .frame(minWidth: 700, minHeight: 540)
@@ -117,7 +126,10 @@ struct SidebarView: View {
         window.minSize = NSSize(width: 700, height: 540)
         window.backgroundColor = NSColor(Color.bgPrimary)
         window.center()
-        window.makeKeyAndOrderFront(nil)
+
+        let controller = NSWindowController(window: window)
+        Self.settingsWindowController = controller
+        controller.showWindow(nil)
     }
 }
 
@@ -201,6 +213,9 @@ struct SidebarCollapsedProjectsList: View {
 struct ProjectRowExpanded: View {
     let project: Project
     @EnvironmentObject var workspaceVM: WorkspaceService
+    @State private var showRenameModal = false
+    @State private var renameName: String = ""
+    @State private var renameDirectory = false
 
     var isActive: Bool {
         workspaceVM.activeProject?.id == project.id
@@ -247,8 +262,38 @@ struct ProjectRowExpanded: View {
         }
         .buttonStyle(PlainButtonStyle())
         .contextMenu {
-            Button("Rename") { /* Rename */ }
+            Button("Rename") {
+                renameName = project.name
+                renameDirectory = false
+                showRenameModal = true
+            }
             Button("Remove") { workspaceVM.removeProject(id: project.id) }
+        }
+        .sheet(isPresented: $showRenameModal) {
+            VStack(spacing: 16) {
+                Text("Rename Project")
+                    .font(.headline)
+
+                TextField("Project Name", text: $renameName)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .frame(width: 250)
+
+                Toggle("Rename directory as well", isOn: $renameDirectory)
+
+                HStack(spacing: 12) {
+                    Button("Cancel") { showRenameModal = false }
+                        .keyboardShortcut(.cancelAction)
+                    Button("Rename") {
+                        if !renameName.isEmpty {
+                            workspaceVM.renameProject(id: project.id, newName: renameName, renameDirectory: renameDirectory)
+                        }
+                        showRenameModal = false
+                    }
+                    .keyboardShortcut(.defaultAction)
+                }
+            }
+            .padding(24)
+            .frame(width: 300, height: 180)
         }
     }
 
