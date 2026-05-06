@@ -1,3 +1,15 @@
+## [0.1.1] — 2026-05-06
+
+### Fixed
+- Terminal sessions now persist across tab switches and project changes
+- TerminalManager keeps instances alive globally, only hiding/showing based on active tab
+- Fixed terminal process being killed when switching between projects
+- Added TerminalContainerManager for persistent NSView container across SwiftUI recreation
+
+### Added
+- Keyboard shortcuts: Cmd+N (new file), Cmd+T (new terminal), Cmd+S (save), Cmd+Shift+S (save as), Cmd+W (close tab)
+- Keyboard shortcut hints in TabBarView "+" menu
+
 ## [0.1.0] — 2026-05-06
 
 ### Added
