@@ -5,7 +5,6 @@ struct CodeEditorView: View {
     let language: String
     let onChange: () -> Void
     @EnvironmentObject var settings: SettingsService
-    @State private var showDebug = true
 
     var body: some View {
         ZStack {
@@ -15,31 +14,12 @@ struct CodeEditorView: View {
                 fontSize: settings.fontSize,
                 onChange: onChange
             )
-
-            // Debug overlay to verify data flow (triple-click to toggle)
-            if showDebug && content.count > 0 {
-                VStack {
-                    HStack {
-                        Text("\(content.count) chars")
-                            .font(.system(size: 10))
-                            .foregroundColor(.green)
-                            .padding(4)
-                            .background(Color.black.opacity(0.8))
-                        Spacer()
-                    }
-                    Spacer()
-                }
-            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.black)
         .onAppear {
-            print("CodeEditorView appeared")
-            print("Content length: \(content.count)")
-            print("Content preview: \(content.prefix(100))")
-        }
-        .onTapGesture(count: 3) {
-            showDebug.toggle()
+            print("=== CodeEditorView onAppear ===")
+            print("Initial content length: \(content.count)")
         }
     }
 }
