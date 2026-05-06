@@ -63,46 +63,53 @@ struct CodniaApp: App {
                 .environmentObject(appDelegate.appState.settings)
                 .frame(minWidth: 700, minHeight: 540)
         }
-    }
-}
+        .commands {
+            CommandGroup(replacing: .newItem) {
+                Button("New File") { appDelegate.appState.editorVM.newFile() }
+                    .keyboardShortcut("n", modifiers: .command)
+                Button("New Terminal") { appDelegate.appState.editorVM.createTerminalTab(type: .terminal) }
+                    .keyboardShortcut("t", modifiers: .command)
+                Divider()
+                Button("Open File...") { appDelegate.appState.editorVM.openFileDialog() }
+                    .keyboardShortcut("o", modifiers: .command)
+                Divider()
+                Button("Save") { appDelegate.appState.editorVM.saveCurrentFile() }
+                    .keyboardShortcut("s", modifiers: .command)
+                Button("Save As...") { appDelegate.appState.editorVM.saveCurrentFileAs() }
+                    .keyboardShortcut("s", modifiers: [.command, .shift])
+                Divider()
+                Button("Close Tab") { appDelegate.appState.editorVM.closeCurrentTab() }
+                    .keyboardShortcut("w", modifiers: .command)
+            }
 
-struct CodniaCommands: Commands {
-    let newFile: () -> Void
-    let openFile: () -> Void
-    let save: () -> Void
-    let saveAs: () -> Void
-    let closeTab: () -> Void
-    let toggleSidebar: () -> Void
-    let toggleTerminal: () -> Void
-    let globalSearch: () -> Void
-    let openSettings: () -> Void
-
-    var body: some Commands {
-        CommandGroup(replacing: .newItem) {
-            Button("New File") { newFile() }
-                .keyboardShortcut("n", modifiers: .command)
-            Button("Open File...") { openFile() }
-                .keyboardShortcut("o", modifiers: .command)
-            Divider()
-            Button("Save") { save() }
-                .keyboardShortcut("s", modifiers: .command)
-            Button("Save As...") { saveAs() }
-                .keyboardShortcut("s", modifiers: [.command, .shift])
-            Divider()
-            Button("Close Tab") { closeTab() }
-                .keyboardShortcut("w", modifiers: .command)
-        }
-
-        CommandMenu("View") {
-            Button("Toggle Sidebar") { toggleSidebar() }
+            CommandMenu("View") {
+                Button("Toggle Sidebar") {
+                    appDelegate.appState.leftSidebarExpanded.toggle()
+                }
                 .keyboardShortcut("b", modifiers: .command)
-            Button("Toggle Terminal") { toggleTerminal() }
+                Button("Toggle Terminal") {
+                    if let tab = appDelegate.appState.terminalVM.tabs.first {
+                        appDelegate.appState.editorVM.activeTabId = tab.id
+                    } else {
+                        appDelegate.appState.editorVM.createTerminalTab(type: .terminal)
+                    }
+                }
                 .keyboardShortcut("`", modifiers: .command)
-            Button("Global Search") { globalSearch() }
+                Button("Global Search") {
+                    let state = appDelegate.appState
+                    if state.rightSidebarExpanded && state.rightSidebarTab == .search {
+                        state.rightSidebarExpanded = false
+                        state.editorVM.showGlobalSearch = false
+                    } else {
+                        state.rightSidebarTab = .search
+                        state.rightSidebarExpanded = true
+                        state.editorVM.showGlobalSearch = true
+                    }
+                }
                 .keyboardShortcut("f", modifiers: [.command, .shift])
-            Divider()
-            Button("Settings...") { openSettings() }
-                .keyboardShortcut(",", modifiers: .command)
+            }
         }
     }
 }
+
+

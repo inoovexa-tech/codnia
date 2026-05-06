@@ -21,6 +21,49 @@ public final class EditorViewModel: ObservableObject {
         self.workspace = workspace
         self.settings = settings
         self.terminal = terminal
+        terminal.workspace = workspace
+
+        // Load tabs from active project
+        if let project = workspace.activeProject {
+            loadTabs(from: project)
+        }
+
+        // Observe project changes
+        workspace.$activeProject
+            .receive(on: RunLoop.main)
+            .sink { [weak self] project in
+                guard let self = self else { return }
+                if let project = project {
+                    self.loadTabs(from: project)
+                } else {
+                    self.tabs = []
+                    self.terminal.tabs = []
+                    self.activeTabId = nil
+                }
+            }
+            .store(in: &cancellables)
+    }
+
+    private func loadTabs(from project: Project) {
+        tabs = project.fileTabs
+        terminal.tabs = project.terminalTabs
+        activeTabId = project.activeTabId
+
+        // Restore file contents for file tabs
+        for tab in project.fileTabs where tab.type == .file && !tab.path.isEmpty {
+            let content = fs.readFile(path: tab.path)
+            fileContents[tab.id] = content
+        }
+    }
+
+    private func saveTabsToProject() {
+        guard let projectId = workspace.activeProject?.id,
+              let index = workspace.projects.firstIndex(where: { $0.id == projectId }) else { return }
+
+        workspace.projects[index].fileTabs = tabs
+        workspace.projects[index].terminalTabs = terminal.tabs
+        workspace.projects[index].activeTabId = activeTabId
+        workspace.saveProjects()
     }
 
     public var allTabs: [Tab] {
@@ -39,6 +82,7 @@ public final class EditorViewModel: ObservableObject {
         editorContent = ""
         currentLanguage = "Plain Text"
         fileContents[tab.id] = ""
+        saveTabsToProject()
     }
 
     public func openFileDialog() {
@@ -64,6 +108,7 @@ public final class EditorViewModel: ObservableObject {
             currentLanguage = language
             fileContents[existing.id] = content
             objectWillChange.send()
+            saveTabsToProject()
             return
         }
 
@@ -75,6 +120,7 @@ public final class EditorViewModel: ObservableObject {
         fileContents[tab.id] = content
         detectLanguage(from: name)
         objectWillChange.send()
+        saveTabsToProject()
     }
 
     public func openFileFromTree(_ entry: FileEntry) {
@@ -97,6 +143,7 @@ public final class EditorViewModel: ObservableObject {
             detectLanguage(from: tab.name)
             // Force UI update
             objectWillChange.send()
+            saveTabsToProject()
         }
     }
 
@@ -108,11 +155,13 @@ public final class EditorViewModel: ObservableObject {
             if activeTabId == id {
                 activeTabId = tabs.last?.id ?? terminal.tabs.last?.id
             }
+            saveTabsToProject()
         } else if terminal.tabs.first(where: { $0.id == id }) != nil {
             terminal.closeTab(byId: id)
             if activeTabId == id {
                 activeTabId = allTabs.last?.id
             }
+            saveTabsToProject()
         }
     }
 
@@ -140,6 +189,7 @@ public final class EditorViewModel: ObservableObject {
             fileContents[tab.id] = editorContent
             if let idx = tabs.firstIndex(where: { $0.id == tab.id }) {
                 tabs[idx].isModified = false
+                saveTabsToProject()
             }
         } catch {
             print("Save failed: \(error)")
@@ -158,6 +208,7 @@ public final class EditorViewModel: ObservableObject {
                     tabs[idx].path = url.path
                     tabs[idx].name = url.lastPathComponent
                     tabs[idx].isModified = false
+                    saveTabsToProject()
                 }
             } catch {
                 print("Save As failed: \(error)")

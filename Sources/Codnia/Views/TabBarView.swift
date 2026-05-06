@@ -17,7 +17,9 @@ struct TabBarView: View {
 
                 Menu {
                     Button("New File") { editorVM.newFile() }
-                    Button("Terminal") { editorVM.createTerminalTab(type: .terminal) }
+                        .keyboardShortcut("n", modifiers: .command)
+                    Button("New Terminal") { editorVM.createTerminalTab(type: .terminal) }
+                        .keyboardShortcut("t", modifiers: .command)
                 } label: {
                     Image(systemName: "plus")
                         .font(.system(size: 13))

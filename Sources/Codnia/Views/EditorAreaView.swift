@@ -6,35 +6,37 @@ struct EditorAreaView: View {
     @EnvironmentObject var settings: SettingsService
 
     var body: some View {
-        Group {
-            if let activeTab = editorVM.currentTab {
-                if activeTab.type == .file {
-                    CodeEditorView(
-                        content: $editorVM.editorContent,
-                        language: editorVM.currentLanguage,
-                        onChange: {
-                            editorVM.markModified(tabId: activeTab.id)
-                        }
-                    )
-                    .environmentObject(settings)
-                    .onAppear {
-                        print("EditorAreaView: showing editor for tab: \(activeTab.name)")
-                        print("EditorAreaView: content length: \(editorVM.editorContent.count)")
-                        print("EditorAreaView: content preview: \(editorVM.editorContent.prefix(50))")
+        ZStack {
+            // File editor
+            if let activeTab = editorVM.currentTab, activeTab.type == .file {
+                CodeEditorView(
+                    content: $editorVM.editorContent,
+                    language: editorVM.currentLanguage,
+                    onChange: {
+                        editorVM.markModified(tabId: activeTab.id)
                     }
-                } else if let tab = terminalVM.tabs.first(where: { $0.id == activeTab.id }) {
-                    TerminalView(tab: tab)
-                        .environmentObject(terminalVM)
-                        .background(Color.bgPrimary)
-                } else {
-                    EmptyStateView()
-                }
-            } else {
+                )
+                .environmentObject(settings)
+            }
+
+            // Terminals - persistent container keeps sessions alive across tab/project switches
+            TerminalView(
+                tabs: $terminalVM.tabs,
+                activeTabId: $editorVM.activeTabId
+            )
+            .opacity(terminalVisibility)
+
+            if editorVM.currentTab == nil {
                 EmptyStateView()
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.bgPrimary)
+    }
+
+    private var terminalVisibility: Double {
+        guard let activeTab = editorVM.currentTab else { return 0 }
+        return terminalVM.tabs.contains { $0.id == activeTab.id } ? 1 : 0
     }
 }
 

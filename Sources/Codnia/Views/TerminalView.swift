@@ -1,49 +1,97 @@
 import SwiftUI
 import SwiftTerm
 
-struct TerminalView: View {
-    let tab: Tab
-    @EnvironmentObject var terminalVM: TerminalViewModel
-    @EnvironmentObject var settings: SettingsService
+@MainActor
+class TerminalManager {
+    static let shared = TerminalManager()
+    private var terminals: [String: LocalProcessTerminalView] = [:]
 
-    private var autoCommand: String? {
-        switch tab.type {
-        case .opencode: return "opencode"
-        case .claude: return "claude"
-        case .codex: return "codex"
-        default: return nil
-        }
+    func get(for id: String) -> LocalProcessTerminalView? {
+        terminals[id]
     }
 
-    var body: some View {
-        if let termId = tab.terminalId {
-            TerminalRepresentable(
-                terminalId: termId,
-                cwd: tab.path,
-                fontSize: settings.terminalFontSize,
-                autoCommand: autoCommand
-            )
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color.bgPrimary)
-        } else {
-            Text("Terminal not initialized")
-                .foregroundColor(.textSecondary)
+    func set(_ terminal: LocalProcessTerminalView, for id: String) {
+        terminals[id] = terminal
+    }
+
+    func remove(for id: String) {
+        terminals.removeValue(forKey: id)?.removeFromSuperview()
+    }
+
+    func show(id: String) {
+        guard let terminal = terminals[id] else { return }
+        terminal.superview?.subviews.forEach { $0.isHidden = true }
+        terminal.isHidden = false
+        if let window = terminal.window ?? NSApplication.shared.keyWindow ?? NSApplication.shared.mainWindow {
+            _ = window.makeFirstResponder(terminal)
         }
     }
 }
 
-struct TerminalRepresentable: NSViewRepresentable {
-    let terminalId: String
-    let cwd: String
-    let fontSize: Double
-    var autoCommand: String? = nil
+// Global container that persists across SwiftUI view recreation
+@MainActor
+class TerminalContainerManager {
+    static let shared = TerminalContainerManager()
+    private var container: NSView?
 
-    func makeNSView(context: Context) -> LocalProcessTerminalView {
-        let terminal = LocalProcessTerminalView(frame: NSRect(x: 0, y: 0, width: 800, height: 600))
+    func getContainer() -> NSView {
+        if let existing = container, existing.window != nil {
+            return existing
+        }
+        let newContainer = NSView()
+        newContainer.autoresizingMask = [.width, .height]
+        container = newContainer
+        return newContainer
+    }
+}
+
+struct TerminalHostView: NSViewRepresentable {
+    @Binding var tabs: [Tab]
+    @Binding var activeTabId: String?
+    let fontSize: Double
+
+    func makeNSView(context: Context) -> NSView {
+        let container = TerminalContainerManager.shared.getContainer()
+        // Ensure container is properly sized when added to view hierarchy
+        DispatchQueue.main.async {
+            if let superview = container.superview {
+                container.frame = superview.bounds
+            }
+        }
+        return container
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        // Ensure all terminal tabs have a view in the container
+        for tab in tabs {
+            guard let termId = tab.terminalId else { continue }
+            if let existing = TerminalManager.shared.get(for: termId) {
+                // Re-add to container if needed
+                if existing.superview == nil {
+                    nsView.addSubview(existing)
+                    existing.frame = nsView.bounds
+                    existing.autoresizingMask = [.width, .height]
+                }
+            } else {
+                let terminal = createTerminal(cwd: tab.path, fontSize: fontSize, type: tab.type, in: nsView)
+                TerminalManager.shared.set(terminal, for: termId)
+            }
+        }
+
+        // Show active terminal
+        if let activeTab = tabs.first(where: { $0.id == activeTabId }),
+           let termId = activeTab.terminalId {
+            TerminalManager.shared.show(id: termId)
+        }
+    }
+
+    private func createTerminal(cwd: String, fontSize: Double, type: TabType, in container: NSView) -> LocalProcessTerminalView {
+        let terminal = LocalProcessTerminalView(frame: container.bounds)
+        terminal.autoresizingMask = [.width, .height]
         terminal.nativeBackgroundColor = NSColor(Color.bgPrimary)
         terminal.nativeForegroundColor = NSColor(Color.textPrimary)
-
         terminal.font = NSFont.monospacedSystemFont(ofSize: CGFloat(fontSize), weight: .regular)
+        terminal.isHidden = true
 
         var env = ProcessInfo.processInfo.environment
         if env["HOME"] == nil { env["HOME"] = NSHomeDirectory() }
@@ -60,47 +108,38 @@ struct TerminalRepresentable: NSViewRepresentable {
             currentDirectory: cwd.isEmpty ? nil : cwd
         )
 
+        let autoCommand: String? = {
+            switch type {
+            case .opencode: return "opencode"
+            case .claude: return "claude"
+            case .codex: return "codex"
+            default: return nil
+            }
+        }()
+
         if let command = autoCommand {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 terminal.feed(text: command + "\n")
             }
         }
 
-        context.coordinator.terminal = terminal
-        context.coordinator.setupFirstResponder()
-
+        container.addSubview(terminal)
         return terminal
     }
+}
 
-    func updateNSView(_ nsView: LocalProcessTerminalView, context: Context) {
-        nsView.font = NSFont.monospacedSystemFont(ofSize: CGFloat(fontSize), weight: .regular)
-    }
+struct TerminalView: View {
+    @Binding var tabs: [Tab]
+    @Binding var activeTabId: String?
+    @EnvironmentObject var settings: SettingsService
 
-    func makeCoordinator() -> Coordinator {
-        Coordinator()
-    }
-
-    class Coordinator {
-        weak var terminal: LocalProcessTerminalView?
-
-        func setupFirstResponder() {
-            DispatchQueue.main.async { [weak self] in
-                self?.tryMakeFirstResponder()
-            }
-
-            NotificationCenter.default.addObserver(
-                forName: NSWindow.didBecomeKeyNotification,
-                object: nil,
-                queue: .main
-            ) { [weak self] _ in
-                self?.tryMakeFirstResponder()
-            }
-        }
-
-        private func tryMakeFirstResponder() {
-            guard let terminal = terminal else { return }
-            guard let window = terminal.window ?? NSApplication.shared.keyWindow ?? NSApplication.shared.mainWindow else { return }
-            window.makeFirstResponder(terminal)
-        }
+    var body: some View {
+        TerminalHostView(
+            tabs: $tabs,
+            activeTabId: $activeTabId,
+            fontSize: settings.terminalFontSize
+        )
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.bgPrimary)
     }
 }

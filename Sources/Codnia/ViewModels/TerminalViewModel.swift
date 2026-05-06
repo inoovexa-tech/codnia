@@ -9,8 +9,10 @@ public final class TerminalViewModel: ObservableObject {
 
     private let service = TerminalService()
     private var cancellables = Set<AnyCancellable>()
+    var workspace: WorkspaceService?
 
-    public init() {
+    public init(workspace: WorkspaceService? = nil) {
+        self.workspace = workspace
         // Bridge service instances to tabs
         service.$instances
             .receive(on: RunLoop.main)
@@ -22,11 +24,14 @@ public final class TerminalViewModel: ObservableObject {
 
     @discardableResult
     public func createTerminalTab(type: TabType = .terminal) -> Tab {
-        let cwd = service.instances.first?.cwd ?? NSHomeDirectory()
+        // Use project path if available, otherwise use home directory
+        // Each new terminal gets its own instance with independent CWD
+        let projectPath = workspace?.activeProject?.path
+        let cwd = projectPath ?? NSHomeDirectory()
         let name = tabName(for: type)
         let instance = service.createTerminal(cwd: cwd)
         let tab = Tab(
-            id: "terminal-\(instance.id)",
+            id: UUID().uuidString,
             path: instance.cwd,
             name: name,
             language: "",
@@ -35,14 +40,17 @@ public final class TerminalViewModel: ObservableObject {
         )
         tabs.append(tab)
         activeId = tab.id
+        saveTabsToProject()
         return tab
     }
 
     public func closeTab(_ tab: Tab) {
         if let termId = tab.terminalId {
             service.kill(id: termId)
+            TerminalManager.shared.remove(for: termId)
         }
         tabs.removeAll { $0.id == tab.id }
+        saveTabsToProject()
     }
 
     public func closeTab(byId id: String) {
@@ -59,5 +67,15 @@ public final class TerminalViewModel: ObservableObject {
         case .terminal: return "Terminal"
         case .file: return "Terminal"
         }
+    }
+
+    private func saveTabsToProject() {
+        guard let workspace = workspace,
+              let projectId = workspace.activeProject?.id,
+              let index = workspace.projects.firstIndex(where: { $0.id == projectId }) else { return }
+
+        workspace.projects[index].terminalTabs = tabs
+        workspace.projects[index].activeTabId = activeId
+        workspace.saveProjects()
     }
 }
