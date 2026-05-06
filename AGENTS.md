@@ -39,12 +39,19 @@ Release process
 - Update `CHANGELOG.md` with the new version and date
 - Build in release mode: `swift build --configuration release`
 - Create app bundle structure:
-  - `mkdir -p /tmp/codnia-app/Codnia.app/Contents/MacOS`
-  - `mkdir -p /tmp/codnia-app/Codnia.app/Contents/Resources`
+  - `rm -rf /tmp/codnia-app && mkdir -p /tmp/codnia-app/Codnia.app/Contents/{MacOS,Resources}`
   - Copy executable: `cp .build/release/Codnia /tmp/codnia-app/Codnia.app/Contents/MacOS/Codnia`
   - Copy icon: `cp Sources/Codnia/icon.png /tmp/codnia-app/Codnia.app/Contents/Resources/icon.png`
   - Create `Info.plist` with version, icon, and bundle identifier
   - Set executable permission: `chmod +x /tmp/codnia-app/Codnia.app/Contents/MacOS/Codnia`
-- Create DMG: `hdiutil create -volname Codnia -srcfolder /tmp/codnia-app -ov -format UDZO Codnia-v0.0.0.dmg`
+  - Sign app ad-hoc: `codesign --force --deep --sign - /tmp/codnia-app/Codnia.app`
+- Create DMG folder with Applications symlink:
+  - `rm -rf /tmp/codnia-dmg && mkdir -p /tmp/codnia-dmg`
+  - `cp -R /tmp/codnia-app/Codnia.app /tmp/codnia-dmg/`
+  - `ln -s /Applications /tmp/codnia-dmg/Applications`
+- Create DMG: `hdiutil create -volname Codnia -srcfolder /tmp/codnia-dmg -ov -format UDZO Codnia-v0.0.0.dmg`
 - Create git tag: `git tag -a v0.0.0 -m "Release v0.0.0"` then `git push origin v0.0.0`
 - Create GitHub release with DMG: `gh release create v0.0.0 Codnia-v0.0.0.dmg --title "v0.0.0" --notes "Release notes here"`
+- Note: Since Codnia is open-source without Apple Developer certificate, users need to:
+  - Right-click Codnia.app → Open → Click Open in dialog, OR
+  - Run `xattr -cr /Applications/Codnia.app` in Terminal
