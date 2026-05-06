@@ -1,3 +1,20 @@
+## [0.2.0] — 2026-05-06
+
+### Added
+- Rename project modal with option to rename directory
+- Git changes count (+/-) displayed with green/red colors in sidebar and status bar
+- Auto-refresh git changes every 3 seconds via WorkspaceService timer
+- Persist editor tabs state per project (fileTabs, terminalTabs, activeTabId)
+- Double-click on title bar to zoom/maximize window
+- Improved terminal tab identification (type + index + directory)
+- Auto-refresh file explorer and show hidden files
+
+### Fixed
+- Sidebar project row styling (active: gray bg, inactive: no bg, active icon: blue)
+- AttributeGraph cycle issues resolved by using timer-based updates instead of computed properties
+- Rename project now properly updates sidebar UI
+- Git changes aligned to the right of branch name
+
 ## [0.1.1] — 2026-05-06
 
 ### Fixed
