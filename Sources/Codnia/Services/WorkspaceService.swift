@@ -8,6 +8,7 @@ public final class WorkspaceService: ObservableObject {
     @Published public var fileTree: [FileEntry] = []
     @Published public var branches: [String: String] = [:]
     @Published public var changesCount: [String: (added: Int, deleted: Int)] = [:]
+    @Published public var projectRunningStates: [String: Bool] = [:]
     
     private var timer: Timer?
 
@@ -22,7 +23,10 @@ public final class WorkspaceService: ObservableObject {
     
     private func startAutoRefresh() {
         timer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { [weak self] _ in
-            self?.refreshAllChanges()
+            DispatchQueue.main.async {
+                self?.refreshAllChanges()
+                self?.refreshRunningStates()
+            }
         }
     }
     
@@ -30,9 +34,18 @@ public final class WorkspaceService: ObservableObject {
         for project in projects {
             GitService.shared.getChangesCount(path: project.path) { [weak self] added, deleted in
                 DispatchQueue.main.async {
-                    self?.changesCount[project.id] = (added: added, deleted: deleted)
+                    guard let self = self else { return }
+                    self.changesCount[project.id] = (added: added, deleted: deleted)
+                    self.objectWillChange.send()
                 }
             }
+        }
+    }
+
+    private func refreshRunningStates() {
+        for project in projects {
+            let hasAITerminal = project.terminalTabs.contains { $0.type == .opencode || $0.type == .claude || $0.type == .codex }
+            projectRunningStates[project.id] = hasAITerminal
         }
     }
 
@@ -114,6 +127,28 @@ public final class WorkspaceService: ObservableObject {
                 }
             }
 
+            saveProjects()
+        }
+    }
+
+    public func updateProjectIcon(id: String, iconPath: String) {
+        if let idx = projects.firstIndex(where: { $0.id == id }) {
+            let oldProject = projects[idx]
+            let updatedProject = Project(
+                id: oldProject.id,
+                name: oldProject.name,
+                path: oldProject.path,
+                createdAt: oldProject.createdAt,
+                fileTabs: oldProject.fileTabs,
+                terminalTabs: oldProject.terminalTabs,
+                activeTabId: oldProject.activeTabId,
+                customIconPath: iconPath
+            )
+            projects[idx] = updatedProject
+            if activeProject?.id == id {
+                activeProject = updatedProject
+            }
+            objectWillChange.send()
             saveProjects()
         }
     }

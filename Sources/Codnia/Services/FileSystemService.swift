@@ -64,17 +64,19 @@ public final class FileSystemService {
         let url = URL(fileURLWithPath: path)
         guard let contents = try? fm.contentsOfDirectory(
             at: url,
-            includingPropertiesForKeys: [.isDirectoryKey, .isHiddenKey],
-            options: .skipsHiddenFiles
+            includingPropertiesForKeys: [.isDirectoryKey, .isHiddenKey]
         ) else { return [] }
 
         var entries: [FileEntry] = []
         for child in contents {
-            let isDir = (try? child.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false
+            let resourceValues = try? child.resourceValues(forKeys: [.isDirectoryKey, .isHiddenKey])
+            let isDir = resourceValues?.isDirectory ?? false
+            let isHidden = resourceValues?.isHidden ?? child.lastPathComponent.hasPrefix(".")
             entries.append(FileEntry(
                 name: child.lastPathComponent,
                 path: child.path,
                 isDirectory: isDir,
+                isHidden: isHidden,
                 children: nil
             ))
         }

@@ -23,6 +23,12 @@ public struct TerminalInstance: Identifiable, Codable, Equatable {
     public var name: String
     public var cwd: String
 
+    public init(id: String = UUID().uuidString, name: String, cwd: String) {
+        self.id = id
+        self.name = name
+        self.cwd = cwd
+    }
+
     public static func == (lhs: TerminalInstance, rhs: TerminalInstance) -> Bool {
         lhs.id == rhs.id
     }

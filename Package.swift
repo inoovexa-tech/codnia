@@ -17,7 +17,7 @@ let package = Package(
                 .product(name: "SwiftTerm", package: "SwiftTerm"),
             ],
             resources: [
-                .process("icon.png")
+                .process("icon.icns"),
             ],
             swiftSettings: [
                 .enableExperimentalFeature("StrictConcurrency")

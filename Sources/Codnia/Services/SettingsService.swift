@@ -10,9 +10,12 @@ public final class SettingsService: ObservableObject {
     @Published public var showLineNumbers: Bool = true
     @Published public var tabSize: Int = 4
     @Published public var wordWrap: Bool = true
+    @Published public var activityBarWidth: CGFloat = 320
+    @Published public var leftSidebarWidth: CGFloat = 220
 
     private let defaults = UserDefaults.standard
     private let prefix = "codnia.settings."
+    private var cancellables = Set<AnyCancellable>()
 
     public init() {
         load()
@@ -31,6 +34,32 @@ public final class SettingsService: ObservableObject {
         tabSize = defaults.integer(forKey: prefix + "tabSize")
         if tabSize == 0 { tabSize = 4 }
         wordWrap = defaults.bool(forKey: prefix + "wordWrap")
+        activityBarWidth = CGFloat(defaults.double(forKey: prefix + "activityBarWidth"))
+        if activityBarWidth == 0 { activityBarWidth = 320 }
+        leftSidebarWidth = CGFloat(defaults.double(forKey: prefix + "leftSidebarWidth"))
+        if leftSidebarWidth == 0 { leftSidebarWidth = 220 }
+
+        setupAutosave()
+    }
+
+    private func setupAutosave() {
+        let publishers = [
+            $fontSize.map { _ in () }.eraseToAnyPublisher(),
+            $terminalFontSize.map { _ in () }.eraseToAnyPublisher(),
+            $editorTheme.map { _ in () }.eraseToAnyPublisher(),
+            $autoSave.map { _ in () }.eraseToAnyPublisher(),
+            $showLineNumbers.map { _ in () }.eraseToAnyPublisher(),
+            $tabSize.map { _ in () }.eraseToAnyPublisher(),
+            $wordWrap.map { _ in () }.eraseToAnyPublisher(),
+            $activityBarWidth.map { _ in () }.eraseToAnyPublisher(),
+            $leftSidebarWidth.map { _ in () }.eraseToAnyPublisher()
+        ]
+        Publishers.MergeMany(publishers)
+            .debounce(for: .milliseconds(200), scheduler: DispatchQueue.main)
+            .sink { [weak self] in
+                self?.save()
+            }
+            .store(in: &cancellables)
     }
 
     public func save() {
@@ -42,5 +71,7 @@ public final class SettingsService: ObservableObject {
         defaults.set(showLineNumbers, forKey: prefix + "showLineNumbers")
         defaults.set(tabSize, forKey: prefix + "tabSize")
         defaults.set(wordWrap, forKey: prefix + "wordWrap")
+        defaults.set(Double(activityBarWidth), forKey: prefix + "activityBarWidth")
+        defaults.set(Double(leftSidebarWidth), forKey: prefix + "leftSidebarWidth")
     }
 }

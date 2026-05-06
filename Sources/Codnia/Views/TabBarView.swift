@@ -10,7 +10,6 @@ struct TabBarView: View {
     var isSearchActive: Bool
 
     var body: some View {
-        // ZStack centers HStack vertically within 36pt height
         ZStack {
             HStack(spacing: 0) {
                 Spacer().frame(width: 90)
@@ -31,20 +30,24 @@ struct TabBarView: View {
 
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 0) {
-                        ForEach(editorVM.tabs) { tab in
+                        ForEach(Array(editorVM.tabs.enumerated()), id: \.element.id) { index, tab in
                             TabButton(
                                 tab: tab,
                                 isActive: tab.id == editorVM.activeTabId,
                                 onSelect: { editorVM.activateTab(tab.id) },
-                                onClose: { editorVM.closeTab(tab.id) }
+                                onClose: { editorVM.closeTab(tab.id) },
+                                onMoveLeft: index > 0 ? { editorVM.moveTab(from: index, to: index - 1) } : nil,
+                                onMoveRight: index < editorVM.tabs.count - 1 ? { editorVM.moveTab(from: index, to: index + 1) } : nil
                             )
                         }
-                        ForEach(terminalVM.tabs) { tab in
+                        ForEach(Array(terminalVM.tabs.enumerated()), id: \.element.id) { index, tab in
                             TabButton(
                                 tab: tab,
                                 isActive: tab.id == editorVM.activeTabId,
                                 onSelect: { editorVM.activeTabId = tab.id },
-                                onClose: { editorVM.closeTab(tab.id) }
+                                onClose: { editorVM.closeTab(tab.id) },
+                                onMoveLeft: index > 0 ? { terminalVM.moveTab(from: index, to: index - 1) } : nil,
+                                onMoveRight: index < terminalVM.tabs.count - 1 ? { terminalVM.moveTab(from: index, to: index + 1) } : nil
                             )
                         }
                     }
@@ -69,7 +72,7 @@ struct TabBarView: View {
                 }
                 .padding(.horizontal, 8)
             }
-            .frame(maxHeight: .infinity) // Centers vertically in ZStack
+            .frame(maxHeight: .infinity)
         }
         .frame(height: 36)
         .background(Color.bgPrimary)
@@ -85,11 +88,12 @@ struct TabButton: View {
     let isActive: Bool
     let onSelect: () -> Void
     let onClose: () -> Void
+    var onMoveLeft: (() -> Void)? = nil
+    var onMoveRight: (() -> Void)? = nil
 
     @State private var isHovered = false
 
     var body: some View {
-        // ZStack centers HStack vertically within 36pt
         ZStack {
             HStack(spacing: 6) {
                 if tab.type == .file {
@@ -112,7 +116,7 @@ struct TabButton: View {
                     .opacity(isHovered ? 0.6 : 0)
                     .onTapGesture { onClose() }
             }
-            .frame(maxHeight: .infinity) // Centers vertically
+            .frame(maxHeight: .infinity)
         }
         .padding(.horizontal, 12)
         .frame(height: 36)
@@ -125,6 +129,15 @@ struct TabButton: View {
         .contentShape(Rectangle())
         .onTapGesture { onSelect() }
         .onHover { isHovered = $0 }
+        .contextMenu {
+            Button("Close Tab") { onClose() }
+            if onMoveLeft != nil {
+                Button("Move Left") { onMoveLeft?() }
+            }
+            if onMoveRight != nil {
+                Button("Move Right") { onMoveRight?() }
+            }
+        }
     }
 
     private var iconColor: Color {

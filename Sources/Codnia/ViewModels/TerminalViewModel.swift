@@ -78,4 +78,12 @@ public final class TerminalViewModel: ObservableObject {
         workspace.projects[index].activeTabId = activeId
         workspace.saveProjects()
     }
+
+    public func moveTab(from source: Int, to destination: Int) {
+        guard source < tabs.count, destination < tabs.count, source != destination else { return }
+        let tab = tabs.remove(at: source)
+        let adjustedDestination = source < destination ? destination - 1 : destination
+        tabs.insert(tab, at: adjustedDestination)
+        saveTabsToProject()
+    }
 }

@@ -5,6 +5,7 @@ struct SidebarView: View {
     @Binding var expanded: Bool
     @EnvironmentObject var workspaceVM: WorkspaceService
     @EnvironmentObject var editorVM: EditorViewModel
+    @EnvironmentObject var terminalVM: TerminalViewModel
     @EnvironmentObject var settings: SettingsService
 
     static var settingsWindowController: NSWindowController?
@@ -87,7 +88,7 @@ struct SidebarView: View {
                 )
             }
         }
-        .background(Color.black)
+        .background(Color.clear)
     }
 
     private func openSettingsWindow() {
@@ -200,9 +201,11 @@ struct SidebarCollapsedProjectsList: View {
 struct ProjectRowExpanded: View {
     let project: Project
     @EnvironmentObject var workspaceVM: WorkspaceService
+    @EnvironmentObject var terminalVM: TerminalViewModel
     @State private var showRenameModal = false
     @State private var renameName: String = ""
     @State private var renameDirectory = false
+    @State private var showIconPicker = false
 
     var isActive: Bool {
         workspaceVM.activeProject?.id == project.id
@@ -216,23 +219,51 @@ struct ProjectRowExpanded: View {
             .joined()
     }
 
+    private var hasActiveTerminal: Bool {
+        !project.terminalTabs.isEmpty
+    }
+
+    private var isProjectRunning: Bool {
+        terminalVM.tabs.contains { $0.type == .opencode || $0.type == .claude || $0.type == .codex }
+    }
+
+    @ViewBuilder
+    private var projectIcon: some View {
+        if let iconPath = project.detectedIconPath,
+           let nsImage = NSImage(contentsOfFile: iconPath) {
+            Image(nsImage: nsImage)
+                .resizable()
+                .frame(width: 28, height: 28)
+                .cornerRadius(6)
+        } else {
+            Text(initials)
+                .font(.system(size: 11, weight: .semibold))
+                .frame(width: 28, height: 28)
+                .background(isActive ? Color.accentBlue : Color.bgHover)
+                .foregroundColor(.white)
+                .cornerRadius(6)
+        }
+    }
+
     var body: some View {
         Button(action: {
             workspaceVM.setActiveProject(id: project.id)
         }) {
             HStack(spacing: 8) {
-                Text(initials)
-                    .font(.system(size: 11, weight: .semibold))
-                    .frame(width: 28, height: 28)
-                    .background(isActive ? Color.accentBlue : Color.bgHover)
-                    .foregroundColor(.white)
-                    .cornerRadius(6)
+                projectIcon
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(project.name)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.white)
-                        .lineLimit(1)
+                    HStack(spacing: 4) {
+                        Text(project.name)
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.white)
+                            .lineLimit(1)
+
+                        if isProjectRunning {
+                            ProgressView()
+                                .scaleEffect(0.4)
+                        }
+                    }
 
                     if !branchText.isEmpty {
                         HStack(spacing: 4) {
@@ -253,14 +284,18 @@ struct ProjectRowExpanded: View {
             .background(isActive ? Color.bgTertiary : Color.clear)
             .cornerRadius(8)
         }
-        .buttonStyle(PlainButtonStyle())
+        .buttonStyle(BorderlessButtonStyle())
         .contextMenu {
+            Button("Change Icon") { showIconPicker = true }
             Button("Rename") {
                 renameName = project.name
                 renameDirectory = false
                 showRenameModal = true
             }
             Button("Remove") { workspaceVM.removeProject(id: project.id) }
+        }
+        .sheet(isPresented: $showIconPicker) {
+            IconPickerView(project: project, workspaceVM: workspaceVM)
         }
         .sheet(isPresented: $showRenameModal) {
             VStack(spacing: 16) {
@@ -310,6 +345,7 @@ struct ProjectRowExpanded: View {
 struct ProjectRowCollapsed: View {
     let project: Project
     @EnvironmentObject var workspaceVM: WorkspaceService
+    @EnvironmentObject var terminalVM: TerminalViewModel
 
     var isActive: Bool {
         workspaceVM.activeProject?.id == project.id
@@ -323,10 +359,19 @@ struct ProjectRowCollapsed: View {
             .joined()
     }
 
-    var body: some View {
-        Button(action: {
-            workspaceVM.setActiveProject(id: project.id)
-        }) {
+    private var isProjectRunning: Bool {
+        terminalVM.tabs.contains { $0.type == .opencode || $0.type == .claude || $0.type == .codex }
+    }
+
+    @ViewBuilder
+    private var projectIcon: some View {
+        if let iconPath = project.detectedIconPath,
+           let nsImage = NSImage(contentsOfFile: iconPath) {
+            Image(nsImage: nsImage)
+                .resizable()
+                .frame(width: 36, height: 36)
+                .cornerRadius(8)
+        } else {
             Text(initials)
                 .font(.system(size: 11, weight: .semibold))
                 .frame(width: 36, height: 36)
@@ -334,7 +379,24 @@ struct ProjectRowCollapsed: View {
                 .foregroundColor(.white)
                 .cornerRadius(8)
         }
-        .buttonStyle(PlainButtonStyle())
+    }
+
+    var body: some View {
+        Button(action: {
+            workspaceVM.setActiveProject(id: project.id)
+        }) {
+            ZStack(alignment: .bottomTrailing) {
+                projectIcon
+
+                if isProjectRunning {
+                    ProgressView()
+                        .scaleEffect(0.4)
+                        .offset(x: 2, y: 2)
+                }
+            }
+        }
+        .buttonStyle(BorderlessButtonStyle())
+        .frame(width: 36, height: 36)
         .help(project.name)
     }
 }

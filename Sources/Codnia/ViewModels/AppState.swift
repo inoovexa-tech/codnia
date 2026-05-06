@@ -12,8 +12,6 @@ public final class AppState: ObservableObject {
     @Published var leftSidebarExpanded: Bool = true
     @Published var rightSidebarExpanded: Bool = false
     @Published var rightSidebarTab: RightSidebarTab = .explorer
-    @Published var activityBarWidth: CGFloat = 320
-    @Published var leftSidebarWidth: CGFloat = 220
 
     public init() {
         let ws = WorkspaceService()

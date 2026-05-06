@@ -262,4 +262,13 @@ public final class EditorViewModel: ObservableObject {
     public func updateCursorPosition(line: Int, column: Int) {
         cursorPosition = "Ln \(line), Col \(column)"
     }
+
+    public func moveTab(from source: Int, to destination: Int) {
+        guard source < tabs.count, destination < tabs.count, source != destination else { return }
+        let tab = tabs.remove(at: source)
+        // Adjust destination if needed
+        let adjustedDestination = source < destination ? destination - 1 : destination
+        tabs.insert(tab, at: adjustedDestination)
+        saveTabsToProject()
+    }
 }

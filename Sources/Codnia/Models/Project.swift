@@ -8,6 +8,7 @@ public struct Project: Identifiable, Codable, Equatable {
     public var fileTabs: [Tab]
     public var terminalTabs: [Tab]
     public var activeTabId: String?
+    public var customIconPath: String?
 
     public init(
         id: String = UUID().uuidString,
@@ -16,7 +17,8 @@ public struct Project: Identifiable, Codable, Equatable {
         createdAt: Date = Date(),
         fileTabs: [Tab] = [],
         terminalTabs: [Tab] = [],
-        activeTabId: String? = nil
+        activeTabId: String? = nil,
+        customIconPath: String? = nil
     ) {
         self.id = id
         self.name = name
@@ -25,9 +27,24 @@ public struct Project: Identifiable, Codable, Equatable {
         self.fileTabs = fileTabs
         self.terminalTabs = terminalTabs
         self.activeTabId = activeTabId
+        self.customIconPath = customIconPath
     }
 
     public static func == (lhs: Project, rhs: Project) -> Bool {
         lhs.id == rhs.id
+    }
+
+    var detectedIconPath: String? {
+        if let custom = customIconPath, FileManager.default.fileExists(atPath: custom) {
+            return custom
+        }
+        let commonIcons = ["favicon.ico", "icon.png", "logo.png", "icon.svg", "Icon.png"]
+        for iconName in commonIcons {
+            let iconPath = (path as NSString).appendingPathComponent(iconName)
+            if FileManager.default.fileExists(atPath: iconPath) {
+                return iconPath
+            }
+        }
+        return nil
     }
 }

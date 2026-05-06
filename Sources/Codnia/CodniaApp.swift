@@ -1,6 +1,16 @@
 import SwiftUI
 import AppKit
 
+class CodniaWindow: NSWindow {
+    override func mouseDown(with event: NSEvent) {
+        if event.clickCount == 2 {
+            performZoom(nil)
+            return
+        }
+        super.mouseDown(with: event)
+    }
+}
+
 @MainActor
 class CodniaApplicationDelegate: NSObject, NSApplicationDelegate {
     var window: NSWindow?
@@ -21,7 +31,7 @@ class CodniaApplicationDelegate: NSObject, NSApplicationDelegate {
         hostingView.frame = NSRect(x: 0, y: 0, width: 1200, height: 800)
         hostingView.wantsLayer = true
 
-        let window = NSWindow(
+        let window = CodniaWindow(
             contentRect: NSRect(x: 200, y: 200, width: 1200, height: 800),
             styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
             backing: .buffered,
@@ -34,7 +44,6 @@ class CodniaApplicationDelegate: NSObject, NSApplicationDelegate {
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
         window.isOpaque = true
-        window.styleMask.insert(.fullSizeContentView)
         window.isMovableByWindowBackground = true
 
         if let toolbar = window.toolbar {
@@ -112,5 +121,3 @@ struct CodniaApp: App {
         }
     }
 }
-
-

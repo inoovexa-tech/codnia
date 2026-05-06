@@ -22,9 +22,9 @@
     <string>13.0</string>
     <key>NSPrincipalClass</key>
     <string>NSApplication</string>
-    <key>CFBundleIconFile</key>
-    <string>icon.png</string>
-    <key>CFBundleIconName</key>
-    <string>icon</string>
+	<key>CFBundleIconFile</key>
+	<string>icon.icns</string>
+	<key>CFBundleIconName</key>
+	<string>icon</string>
 </dict>
 </plist>

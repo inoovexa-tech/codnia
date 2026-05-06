@@ -123,6 +123,7 @@ struct TreeNode: View {
             .padding(.vertical, 2)
             .frame(height: 24)
             .background(hovered ? Color.bgHover : Color.clear)
+            .opacity(entry.isHidden ? 0.5 : 1.0)
             .onHover { hovering in
                 hovered = hovering
             }

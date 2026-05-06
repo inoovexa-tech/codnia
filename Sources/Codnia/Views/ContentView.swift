@@ -10,11 +10,12 @@ struct ContentView: View {
                 // Espaçador para a área da tab bar (36pt)
                 Color.clear
                     .frame(height: 36)
+                    .allowsHitTesting(false)
 
                 // Main area
                 HStack(spacing: 0) {
                     SidebarView(expanded: $appState.leftSidebarExpanded)
-                        .frame(width: appState.leftSidebarExpanded ? appState.leftSidebarWidth : 52)
+                        .frame(width: appState.leftSidebarExpanded ? appState.settings.leftSidebarWidth : 52)
                         .background(Color.bgPrimary)
                         .overlay(Rectangle().frame(width: 1).foregroundColor(.borderDefault), alignment: .trailing)
                         .environmentObject(appState)
@@ -29,13 +30,27 @@ struct ContentView: View {
                         .environmentObject(appState.settings)
 
                     if appState.rightSidebarExpanded {
+                        ResizableDivider(
+                            width: .init(
+                                get: { appState.settings.activityBarWidth },
+                                set: { appState.settings.activityBarWidth = $0 }
+                            ),
+                            minWidth: 320,
+                            maxWidth: 600,
+                            side: .right
+                        )
+                        .frame(width: 6)
+                        .zIndex(10)
+
                         ActivityBarView(
                             tab: $appState.rightSidebarTab,
-                            width: $appState.activityBarWidth
+                            width: .init(
+                                get: { appState.settings.activityBarWidth },
+                                set: { appState.settings.activityBarWidth = $0 }
+                            )
                         )
-                        .frame(width: appState.activityBarWidth)
+                        .frame(width: appState.settings.activityBarWidth)
                         .background(Color.bgSecondary)
-                        .overlay(ResizableDivider(width: $appState.activityBarWidth, minWidth: 200, maxWidth: 600), alignment: .leading)
                         .environmentObject(appState.workspaceVM)
                         .environmentObject(appState.editorVM)
                         .environmentObject(appState.searchVM)
@@ -43,14 +58,7 @@ struct ContentView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-                if let tab = appState.editorVM.currentTab, tab.type == .file {
-                    StatusBarView()
-                        .frame(height: 22)
-                        .background(Color.bgPrimary)
-                        .overlay(Rectangle().frame(height: 1).foregroundColor(.borderDefault), alignment: .top)
-                        .environmentObject(appState.editorVM)
-                        .environmentObject(appState.workspaceVM)
-                }
+                // StatusBarView removed as per user request
             }
 
             // Tab bar sobreposta no topo absoluto da janela
