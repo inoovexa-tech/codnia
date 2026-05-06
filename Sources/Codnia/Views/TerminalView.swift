@@ -43,19 +43,19 @@ struct TerminalRepresentable: NSViewRepresentable {
         terminal.nativeBackgroundColor = NSColor(Color.bgPrimary)
         terminal.nativeForegroundColor = NSColor(Color.textPrimary)
 
-        let font = NSFont(name: "SF Mono", size: CGFloat(fontSize)) ?? NSFont.monospacedSystemFont(ofSize: CGFloat(fontSize), weight: .regular)
-        terminal.font = font
+        terminal.font = NSFont.monospacedSystemFont(ofSize: CGFloat(fontSize), weight: .regular)
 
-        var env: [String] = []
-        for (key, value) in ProcessInfo.processInfo.environment {
-            env.append("\(key)=\(value)")
-        }
-        env.append("PATH=/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin")
+        var env = ProcessInfo.processInfo.environment
+        if env["HOME"] == nil { env["HOME"] = NSHomeDirectory() }
+        if env["SHELL"] == nil { env["SHELL"] = "/bin/zsh" }
+        if env["TERM"] == nil { env["TERM"] = "xterm-256color" }
+        if env["LANG"] == nil { env["LANG"] = "en_US.UTF-8" }
+        let envStrings = env.map { "\($0.key)=\($0.value)" }
 
         terminal.startProcess(
             executable: "/bin/zsh",
             args: ["-l"],
-            environment: env,
+            environment: envStrings,
             execName: nil,
             currentDirectory: cwd.isEmpty ? nil : cwd
         )
@@ -66,18 +66,41 @@ struct TerminalRepresentable: NSViewRepresentable {
             }
         }
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            if let window = terminal.window {
-                window.makeFirstResponder(terminal)
-            }
-        }
+        context.coordinator.terminal = terminal
+        context.coordinator.setupFirstResponder()
 
         return terminal
     }
 
     func updateNSView(_ nsView: LocalProcessTerminalView, context: Context) {
-        if let font = NSFont(name: "SF Mono", size: CGFloat(fontSize)) {
-            nsView.font = font
+        nsView.font = NSFont.monospacedSystemFont(ofSize: CGFloat(fontSize), weight: .regular)
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
+    class Coordinator {
+        weak var terminal: LocalProcessTerminalView?
+
+        func setupFirstResponder() {
+            DispatchQueue.main.async { [weak self] in
+                self?.tryMakeFirstResponder()
+            }
+
+            NotificationCenter.default.addObserver(
+                forName: NSWindow.didBecomeKeyNotification,
+                object: nil,
+                queue: .main
+            ) { [weak self] _ in
+                self?.tryMakeFirstResponder()
+            }
+        }
+
+        private func tryMakeFirstResponder() {
+            guard let terminal = terminal else { return }
+            guard let window = terminal.window ?? NSApplication.shared.keyWindow ?? NSApplication.shared.mainWindow else { return }
+            window.makeFirstResponder(terminal)
         }
     }
 }

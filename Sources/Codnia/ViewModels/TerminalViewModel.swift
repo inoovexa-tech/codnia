@@ -51,18 +51,6 @@ public final class TerminalViewModel: ObservableObject {
         }
     }
 
-    public func writeToTerminal(id: String, data: String) {
-        if let tab = tabs.first(where: { $0.id == id }),
-           let termId = tab.terminalId {
-            service.write(id: termId, data: data)
-        }
-    }
-
-    public func getProcessHandle(forTerminalId id: String) -> FileHandle? {
-        // Bridge to raw terminal process for SwiftTerm
-        return service.getOutputHandle(id: id.replacingOccurrences(of: "terminal-", with: ""))
-    }
-
     private func tabName(for type: TabType) -> String {
         switch type {
         case .opencode: return "OpenCode"
