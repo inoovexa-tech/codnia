@@ -33,3 +33,18 @@ fix(editor): prevent editor from disappearing when creating new file
 Constraints
 - macOS desktop app only (SwiftUI)
 - Minimum macOS 13 (Ventura)
+
+Release process
+- Version format: `v0.0.0` (semantic versioning)
+- Update `CHANGELOG.md` with the new version and date
+- Build in release mode: `swift build --configuration release`
+- Create app bundle structure:
+  - `mkdir -p /tmp/codnia-app/Codnia.app/Contents/MacOS`
+  - `mkdir -p /tmp/codnia-app/Codnia.app/Contents/Resources`
+  - Copy executable: `cp .build/release/Codnia /tmp/codnia-app/Codnia.app/Contents/MacOS/Codnia`
+  - Copy icon: `cp Sources/Codnia/icon.png /tmp/codnia-app/Codnia.app/Contents/Resources/icon.png`
+  - Create `Info.plist` with version, icon, and bundle identifier
+  - Set executable permission: `chmod +x /tmp/codnia-app/Codnia.app/Contents/MacOS/Codnia`
+- Create DMG: `hdiutil create -volname Codnia -srcfolder /tmp/codnia-app -ov -format UDZO Codnia-v0.0.0.dmg`
+- Create git tag: `git tag -a v0.0.0 -m "Release v0.0.0"` then `git push origin v0.0.0`
+- Create GitHub release with DMG: `gh release create v0.0.0 Codnia-v0.0.0.dmg --title "v0.0.0" --notes "Release notes here"`

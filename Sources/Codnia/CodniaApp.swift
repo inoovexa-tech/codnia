@@ -9,6 +9,10 @@ class CodniaApplicationDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.regular)
 
+        if let icon = NSImage(contentsOfFile: Bundle.main.path(forResource: "icon", ofType: "png") ?? "") {
+            NSApp.applicationIconImage = icon
+        }
+
         let contentView = ContentView()
             .environmentObject(appState)
             .frame(minWidth: 900, minHeight: 600)
