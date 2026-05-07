@@ -1,3 +1,14 @@
+## [0.5.0] — 2026-05-07
+
+### Added
+- Syntax highlighting in code editor
+- Black background theme for editor
+- Tab reordering via drag-and-drop
+
+### Fixed
+- Prevent app hang on termination by stopping auto-refresh timer and file observers
+- Enable smooth window drag without conflict with tab interactions
+
 ## [0.4.0] — 2026-05-07
 
 ### Added

@@ -2,7 +2,7 @@
 
 A modern, lightweight desktop IDE built with Swift and SwiftUI for macOS.
 
-![Version](https://img.shields.io/badge/version-0.4.0-blue)
+![Version](https://img.shields.io/badge/version-0.5.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platform](https://img.shields.io/badge/platform-macOS%2013%2B-lightgrey)
 
@@ -131,6 +131,8 @@ Contributions are welcome! Please follow this process:
 4. **Pull Request** - Submit your changes to the `main` branch.
 5. **PR Approval** - The pull request will be reviewed and approved.
 6. **Release** - Once approved, the changes will be included in the next version.
+
+> **Note for maintainers:** When cutting a new release, always update the version badge in this README and keep the changelog in `CHANGELOG.md` up to date.
 
 ## License
 
