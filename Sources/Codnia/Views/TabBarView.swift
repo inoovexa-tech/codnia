@@ -63,7 +63,7 @@ struct TabBarView: View {
                             TabButton(
                                 tab: tab,
                                 isActive: tab.id == editorVM.activeTabId,
-                                onSelect: { editorVM.activeTabId = tab.id },
+                                onSelect: { editorVM.activateTab(tab.id) },
                                 onClose: { editorVM.closeTab(tab.id) },
                                 onMoveLeft: index > 0 ? { terminalVM.moveTab(from: index, to: index - 1) } : nil,
                                 onMoveRight: index < terminalVM.tabs.count - 1 ? { terminalVM.moveTab(from: index, to: index + 1) } : nil

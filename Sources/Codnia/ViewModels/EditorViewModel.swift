@@ -55,17 +55,44 @@ public final class EditorViewModel: ObservableObject {
     }
 
     private func loadTabs(from project: Project) {
+        print("=== loadTabs from project: \(project.name) ===")
+        print("  project.fileTabs count: \(project.fileTabs.count)")
+        print("  fileContents keys: \(fileContents.keys)")
+        
         // Always load tabs from project
         tabs = project.fileTabs
         terminal.tabs = project.terminalTabs
         activeTabId = project.activeTabId
+        print("  activeTabId: \(activeTabId ?? "nil")")
 
-        // Restore file contents for file tabs
+        // Restore file contents for file tabs (only if not already loaded)
         for tab in project.fileTabs where tab.type == .file && !tab.path.isEmpty {
-            let content = fs.readFile(path: tab.path)
-            fileContents[tab.id] = content
+            if fileContents[tab.id] == nil {
+                let content = fs.readFile(path: tab.path)
+                fileContents[tab.id] = content
+            }
         }
 
+        // Restore editor content for active tab
+        if let activeId = activeTabId,
+           let tab = tabs.first(where: { $0.id == activeId }),
+           tab.type == .file {
+            let savedContent = fileContents[tab.id]
+            print("  tab.id: \(tab.id)")
+            print("  fileContents[tab.id] exists: \(savedContent != nil)")
+            print("  fileContents[tab.id] length: \(savedContent?.count ?? 0)")
+            if let saved = savedContent {
+                editorContent = saved
+                print("  Restored editorContent from fileContents, length: \(saved.count)")
+            } else if !tab.path.isEmpty {
+                let content = fs.readFile(path: tab.path)
+                editorContent = content
+                print("  Restored editorContent from disk, length: \(content.count)")
+            }
+            currentLanguage = tab.language
+        }
+
+        print("  Final editorContent length: \(editorContent.count)")
         // Force UI update
         objectWillChange.send()
     }
@@ -143,18 +170,31 @@ public final class EditorViewModel: ObservableObject {
     }
 
     public func activateTab(_ id: String) {
+        print("=== activateTab: \(id) ===")
+        
+        // Save current file content before switching (if it's a file tab)
+        if let currentTabId = activeTabId,
+           let currentTabIdx = tabs.firstIndex(where: { $0.id == currentTabId }),
+           tabs[currentTabIdx].type == .file {
+            fileContents[currentTabId] = editorContent
+            print("  Saved current content: \(editorContent.count)")
+        }
+        
         activeTabId = id
         if let tab = tabs.first(where: { $0.id == id }) {
             // Use fileContents dictionary for unsaved content, fallback to reading from disk
             if let savedContent = fileContents[tab.id] {
+                print("  Using savedContent, length: \(savedContent.count)")
                 editorContent = savedContent
             } else {
                 let content = fs.readFile(path: tab.path)
+                print("  Reading from disk, length: \(content.count)")
                 editorContent = content
                 fileContents[tab.id] = content
             }
             currentLanguage = tab.language
             detectLanguage(from: tab.name)
+            print("  Final editorContent: \(editorContent.count)")
             // Force UI update
             objectWillChange.send()
             saveTabsToProject()

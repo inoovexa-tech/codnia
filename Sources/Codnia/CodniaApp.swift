@@ -100,7 +100,7 @@ struct CodniaApp: App {
                 .keyboardShortcut("b", modifiers: .command)
                 Button("Toggle Terminal") {
                     if let tab = appDelegate.appState.terminalVM.tabs.first {
-                        appDelegate.appState.editorVM.activeTabId = tab.id
+                        appDelegate.appState.editorVM.activateTab(tab.id)
                     } else {
                         appDelegate.appState.editorVM.createTerminalTab(type: .terminal)
                     }
