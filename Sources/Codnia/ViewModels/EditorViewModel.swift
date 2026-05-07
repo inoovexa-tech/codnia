@@ -259,6 +259,38 @@ public final class EditorViewModel: ObservableObject {
         }
     }
 
+    public func nextTab() {
+        let all = allTabs
+        guard let currentId = activeTabId, !all.isEmpty else {
+            activeTabId = all.first?.id
+            return
+        }
+        guard let currentIndex = all.firstIndex(where: { $0.id == currentId }) else { return }
+        let nextIndex = (currentIndex + 1) % all.count
+        let nextTab = all[nextIndex]
+        if tabs.contains(where: { $0.id == nextTab.id }) {
+            activateTab(nextTab.id)
+        } else {
+            activeTabId = nextTab.id
+        }
+    }
+
+    public func previousTab() {
+        let all = allTabs
+        guard let currentId = activeTabId, !all.isEmpty else {
+            activeTabId = all.first?.id
+            return
+        }
+        guard let currentIndex = all.firstIndex(where: { $0.id == currentId }) else { return }
+        let previousIndex = (currentIndex - 1 + all.count) % all.count
+        let prevTab = all[previousIndex]
+        if tabs.contains(where: { $0.id == prevTab.id }) {
+            activateTab(prevTab.id)
+        } else {
+            activeTabId = prevTab.id
+        }
+    }
+
     public func updateCursorPosition(line: Int, column: Int) {
         cursorPosition = "Ln \(line), Col \(column)"
     }

@@ -25,6 +25,7 @@ class CodniaApplicationDelegate: NSObject, NSApplicationDelegate {
 
         let contentView = ContentView()
             .environmentObject(appState)
+            .environmentObject(appState.settings)
             .frame(minWidth: 900, minHeight: 600)
 
         let hostingView = NSHostingView(rootView: contentView)
@@ -117,6 +118,13 @@ struct CodniaApp: App {
                     }
                 }
                 .keyboardShortcut("f", modifiers: [.command, .shift])
+            }
+
+            CommandMenu("Window") {
+                Button("Next Tab") { appDelegate.appState.editorVM.nextTab() }
+                    .keyboardShortcut(.tab, modifiers: .control)
+                Button("Previous Tab") { appDelegate.appState.editorVM.previousTab() }
+                    .keyboardShortcut(.tab, modifiers: [.control, .shift])
             }
         }
     }

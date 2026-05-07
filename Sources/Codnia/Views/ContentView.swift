@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject var appState: AppState
+    @EnvironmentObject var settings: SettingsService
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -15,26 +16,24 @@ struct ContentView: View {
                 // Main area
                 HStack(spacing: 0) {
                     SidebarView(expanded: $appState.leftSidebarExpanded)
-                        .frame(width: appState.leftSidebarExpanded ? appState.settings.leftSidebarWidth : 52)
+                        .frame(width: appState.leftSidebarExpanded ? settings.leftSidebarWidth : 52)
                         .background(Color.bgPrimary)
                         .overlay(Rectangle().frame(width: 1).foregroundColor(.borderDefault), alignment: .trailing)
                         .environmentObject(appState)
                         .environmentObject(appState.workspaceVM)
                         .environmentObject(appState.editorVM)
-                        .environmentObject(appState.settings)
+                        .environmentObject(appState.terminalVM)
+                        .environmentObject(settings)
 
                     EditorAreaView()
                         .background(Color.bgPrimary)
                         .environmentObject(appState.editorVM)
                         .environmentObject(appState.terminalVM)
-                        .environmentObject(appState.settings)
+                        .environmentObject(settings)
 
                     if appState.rightSidebarExpanded {
                         ResizableDivider(
-                            width: .init(
-                                get: { appState.settings.activityBarWidth },
-                                set: { appState.settings.activityBarWidth = $0 }
-                            ),
+                            width: $settings.activityBarWidth,
                             minWidth: 320,
                             maxWidth: 600,
                             side: .right
@@ -44,12 +43,9 @@ struct ContentView: View {
 
                         ActivityBarView(
                             tab: $appState.rightSidebarTab,
-                            width: .init(
-                                get: { appState.settings.activityBarWidth },
-                                set: { appState.settings.activityBarWidth = $0 }
-                            )
+                            width: $settings.activityBarWidth
                         )
-                        .frame(width: appState.settings.activityBarWidth)
+                        .frame(width: settings.activityBarWidth)
                         .background(Color.bgSecondary)
                         .environmentObject(appState.workspaceVM)
                         .environmentObject(appState.editorVM)
