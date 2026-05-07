@@ -9,33 +9,40 @@ public final class WorkspaceService: ObservableObject {
     @Published public var branches: [String: String] = [:]
     @Published public var changesCount: [String: (added: Int, deleted: Int)] = [:]
     @Published public var projectRunningStates: [String: Bool] = [:]
-    
-    private var timer: Timer?
+
+    private var refreshTask: Task<Void, Never>?
+    private var gitTasks: [String: Task<Void, Never>] = [:]
     private var fileObservers: [String: DispatchSourceFileSystemObject] = [:]
 
     public init() {
         loadProjects()
         startAutoRefresh()
     }
-    
+
     deinit {
-        timer?.invalidate()
+        refreshTask?.cancel()
+        gitTasks.values.forEach { $0.cancel() }
+        gitTasks.removeAll()
         fileObservers.values.forEach { $0.cancel() }
         fileObservers.removeAll()
     }
-    
+
     public func stopAutoRefresh() {
-        timer?.invalidate()
-        timer = nil
+        refreshTask?.cancel()
+        refreshTask = nil
+        gitTasks.values.forEach { $0.cancel() }
+        gitTasks.removeAll()
         fileObservers.values.forEach { $0.cancel() }
         fileObservers.removeAll()
     }
-    
+
     private func startAutoRefresh() {
-        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            DispatchQueue.main.async {
-                self?.refreshAllChanges()
-                self?.refreshRunningStates()
+        refreshTask?.cancel()
+        refreshTask = Task { [weak self] in
+            while !Task.isCancelled {
+                await self?.refreshAllChanges()
+                await self?.refreshRunningStates()
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
             }
         }
     }
@@ -53,7 +60,7 @@ public final class WorkspaceService: ObservableObject {
         )
 
         source.setEventHandler { [weak self] in
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 self?.refreshChanges(for: project)
             }
         }
@@ -64,11 +71,12 @@ public final class WorkspaceService: ObservableObject {
     }
 
     private func refreshChanges(for project: Project) {
-        GitService.shared.getChangesCount(path: project.path) { [weak self] added, deleted in
-            DispatchQueue.main.async {
-                self?.changesCount[project.id] = (added: added, deleted: deleted)
-                self?.objectWillChange.send()
-            }
+        // Cancel stale task for this project before starting a new one
+        gitTasks[project.id]?.cancel()
+        gitTasks[project.id] = Task { [weak self] in
+            let result = await GitService.shared.getChangesCount(path: project.path)
+            guard !Task.isCancelled else { return }
+            self?.changesCount[project.id] = result
         }
     }
 
@@ -76,22 +84,25 @@ public final class WorkspaceService: ObservableObject {
         fileObservers[projectId]?.cancel()
         fileObservers.removeValue(forKey: projectId)
     }
-    
-    private func refreshAllChanges() {
-        for project in projects {
-            GitService.shared.getChangesCount(path: project.path) { [weak self] added, deleted in
-                DispatchQueue.main.async {
-                    guard let self = self else { return }
-                    self.changesCount[project.id] = (added: added, deleted: deleted)
-                    self.objectWillChange.send()
+
+    private func refreshAllChanges() async {
+        await withTaskGroup(of: Void.self) { group in
+            for project in projects {
+                group.addTask { [weak self] in
+                    let result = await GitService.shared.getChangesCount(path: project.path)
+                    await MainActor.run {
+                        self?.changesCount[project.id] = result
+                    }
                 }
             }
         }
     }
 
-    private func refreshRunningStates() {
+    private func refreshRunningStates() async {
         for project in projects {
-            let hasAITerminal = project.terminalTabs.contains { $0.type == .opencode || $0.type == .claude || $0.type == .codex }
+            let hasAITerminal = project.terminalTabs.contains {
+                $0.type == .opencode || $0.type == .claude || $0.type == .codex
+            }
             projectRunningStates[project.id] = hasAITerminal
         }
     }
@@ -110,7 +121,6 @@ public final class WorkspaceService: ObservableObject {
                 setupFileObserver(for: project)
                 refreshChanges(for: project)
             }
-            // Load active
             let activeFile = baseURL.appendingPathComponent("active-project.json")
             if let activeData = try? Data(contentsOf: activeFile),
                let activeId = String(data: activeData, encoding: .utf8),
@@ -156,6 +166,8 @@ public final class WorkspaceService: ObservableObject {
 
     public func removeProject(id: String) {
         cleanupFileObserver(for: id)
+        gitTasks[id]?.cancel()
+        gitTasks.removeValue(forKey: id)
         projects.removeAll { $0.id == id }
         changesCount.removeValue(forKey: id)
         if activeProject?.id == id {
@@ -230,15 +242,14 @@ public final class WorkspaceService: ObservableObject {
     }
 
     private func loadBranch(for project: Project) {
-        GitService.shared.getBranch(path: project.path) { [weak self] branch in
-            DispatchQueue.main.async {
-                self?.branches[project.id] = branch
-            }
-        }
-        GitService.shared.getChangesCount(path: project.path) { [weak self] added, deleted in
-            DispatchQueue.main.async {
-                self?.changesCount[project.id] = (added: added, deleted: deleted)
-            }
+        gitTasks[project.id]?.cancel()
+        gitTasks[project.id] = Task { [weak self] in
+            async let branch = GitService.shared.getBranch(path: project.path)
+            async let changes = GitService.shared.getChangesCount(path: project.path)
+            let (b, c) = await (branch, changes)
+            guard !Task.isCancelled else { return }
+            self?.branches[project.id] = b
+            self?.changesCount[project.id] = c
         }
     }
 
