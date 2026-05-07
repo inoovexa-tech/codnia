@@ -1,3 +1,12 @@
+## [0.5.1] — 2026-05-07
+
+### Fixed
+- Eliminate app hangs caused by thread starvation in GitService
+  - Replace `waitUntilExit()` with `terminationHandler` + `async/await` — threads no longer block waiting for git processes
+  - Run diff, staged, and untracked git commands concurrently instead of sequentially
+  - Add cancellable `Task` management in `WorkspaceService` to prevent stale git requests from piling up
+  - Replace `Timer`-based auto-refresh with `Task.sleep` to avoid spawning unbounded background threads
+
 ## [0.5.0] — 2026-05-07
 
 ### Added
