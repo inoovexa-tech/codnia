@@ -1,3 +1,15 @@
+## [0.3.0] — 2026-05-07
+
+### Added
+- Auto-save with 2-second debounce after typing stops
+- Resizable sidebar with persisted widths (file explorer and right panel)
+- Show hidden files toggle in file explorer
+
+### Fixed
+- Save editor content when switching tabs
+- Disable window drag from content area, add dedicated drag area in tab bar
+- Fix right sidebar resizable divider width updates
+
 ## [0.2.0] — 2026-05-06
 
 ### Added
