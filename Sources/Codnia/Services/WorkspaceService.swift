@@ -131,7 +131,7 @@ public final class WorkspaceService: ObservableObject {
         }
     }
 
-    public func updateProjectIcon(id: String, iconPath: String) {
+    public func updateProjectIcon(id: String, iconPath: String?) {
         if let idx = projects.firstIndex(where: { $0.id == id }) {
             let oldProject = projects[idx]
             let updatedProject = Project(

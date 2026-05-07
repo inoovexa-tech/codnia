@@ -47,6 +47,14 @@ struct IconPickerView: View {
                 chooseCustomImage()
             }
 
+            if selectedIcon != nil && project.customIconPath != nil {
+                Button("Remove Custom Icon") {
+                    workspaceVM.updateProjectIcon(id: project.id, iconPath: nil)
+                    presentationMode.wrappedValue.dismiss()
+                }
+                .foregroundColor(.red)
+            }
+
             HStack(spacing: 12) {
                 Button("Cancel") {
                     presentationMode.wrappedValue.dismiss()
@@ -57,11 +65,12 @@ struct IconPickerView: View {
                     if let iconPath = selectedIcon {
                         let persistedPath = copyIconToAppSupport(originalPath: iconPath)
                         workspaceVM.updateProjectIcon(id: project.id, iconPath: persistedPath ?? iconPath)
+                    } else {
+                        workspaceVM.updateProjectIcon(id: project.id, iconPath: nil)
                     }
                     presentationMode.wrappedValue.dismiss()
                 }
                 .keyboardShortcut(.defaultAction)
-                .disabled(selectedIcon == nil)
             }
         }
         .padding(24)
@@ -73,7 +82,25 @@ struct IconPickerView: View {
 
     private func findIconsInProject() -> [String] {
         let fm = FileManager.default
-        let iconNames = ["favicon.ico", "icon.png", "logo.png", "icon.svg", "Icon.png", "icon.jpg", "logo.jpg"]
+        let iconNames = [
+            "favicon.ico",
+            "icon.png",
+            "logo.png",
+            "icon.svg",
+            "Icon.png",
+            "apple-touch-icon.png",
+            "apple-touch-icon-precomposed.png",
+            "favicon.svg",
+            "logo.svg",
+            "logo.jpg",
+            "logo.jpeg",
+            "icon.webp",
+            "favicon-16x16.png",
+            "favicon-32x32.png",
+            "android-chrome-192x192.png",
+            "android-chrome-512x512.png",
+            "mstile-150x150.png"
+        ]
         return iconNames.compactMap { name in
             let path = (project.path as NSString).appendingPathComponent(name)
             return fm.fileExists(atPath: path) ? path : nil

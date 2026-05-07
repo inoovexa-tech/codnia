@@ -130,7 +130,7 @@ struct SidebarExpandedProjectsList: View {
 
     var body: some View {
         ForEach(workspaceVM.projects) { project in
-            ProjectRowExpanded(project: project)
+            ProjectRowExpanded(projectId: project.id)
         }
 
         Button(action: { addProject() }) {
@@ -168,7 +168,7 @@ struct SidebarCollapsedProjectsList: View {
 
     var body: some View {
         ForEach(workspaceVM.projects) { project in
-            ProjectRowCollapsed(project: project)
+            ProjectRowCollapsed(projectId: project.id)
         }
 
         Button(action: { addProject() }) {
@@ -199,7 +199,7 @@ struct SidebarCollapsedProjectsList: View {
 }
 
 struct ProjectRowExpanded: View {
-    let project: Project
+    let projectId: String
     @EnvironmentObject var workspaceVM: WorkspaceService
     @EnvironmentObject var terminalVM: TerminalViewModel
     @State private var showRenameModal = false
@@ -207,12 +207,17 @@ struct ProjectRowExpanded: View {
     @State private var renameDirectory = false
     @State private var showIconPicker = false
 
+    private var project: Project? {
+        workspaceVM.projects.first { $0.id == projectId }
+    }
+
     var isActive: Bool {
-        workspaceVM.activeProject?.id == project.id
+        workspaceVM.activeProject?.id == projectId
     }
 
     private var initials: String {
-        project.name
+        guard let project = project else { return "" }
+        return project.name
             .split { $0.isWhitespace || $0 == "_" || $0 == "-" }
             .prefix(2)
             .compactMap { $0.first?.uppercased() }
@@ -220,7 +225,8 @@ struct ProjectRowExpanded: View {
     }
 
     private var hasActiveTerminal: Bool {
-        !project.terminalTabs.isEmpty
+        guard let project = project else { return false }
+        return !project.terminalTabs.isEmpty
     }
 
     private var isProjectRunning: Bool {
@@ -229,7 +235,7 @@ struct ProjectRowExpanded: View {
 
     @ViewBuilder
     private var projectIcon: some View {
-        if let iconPath = project.detectedIconPath,
+        if let project = project, let iconPath = project.detectedIconPath,
            let nsImage = NSImage(contentsOfFile: iconPath) {
             Image(nsImage: nsImage)
                 .resizable()
@@ -247,14 +253,14 @@ struct ProjectRowExpanded: View {
 
     var body: some View {
         Button(action: {
-            workspaceVM.setActiveProject(id: project.id)
+            workspaceVM.setActiveProject(id: projectId)
         }) {
             HStack(spacing: 8) {
                 projectIcon
 
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 4) {
-                        Text(project.name)
+                        Text(project?.name ?? "")
                             .font(.system(size: 12, weight: .medium))
                             .foregroundColor(.white)
                             .lineLimit(1)
@@ -287,15 +293,24 @@ struct ProjectRowExpanded: View {
         .buttonStyle(BorderlessButtonStyle())
         .contextMenu {
             Button("Change Icon") { showIconPicker = true }
+            if project?.hasCustomIcon == true {
+                Divider()
+                Button("Remove Icon") {
+                    workspaceVM.updateProjectIcon(id: projectId, iconPath: nil)
+                }
+            }
+            Divider()
             Button("Rename") {
-                renameName = project.name
+                renameName = project?.name ?? ""
                 renameDirectory = false
                 showRenameModal = true
             }
-            Button("Remove") { workspaceVM.removeProject(id: project.id) }
+            Button("Remove") { workspaceVM.removeProject(id: projectId) }
         }
         .sheet(isPresented: $showIconPicker) {
-            IconPickerView(project: project, workspaceVM: workspaceVM)
+            if let project = project {
+                IconPickerView(project: project, workspaceVM: workspaceVM)
+            }
         }
         .sheet(isPresented: $showRenameModal) {
             VStack(spacing: 16) {
@@ -313,7 +328,7 @@ struct ProjectRowExpanded: View {
                         .keyboardShortcut(.cancelAction)
                     Button("Rename") {
                         if !renameName.isEmpty {
-                            workspaceVM.renameProject(id: project.id, newName: renameName, renameDirectory: renameDirectory)
+                            workspaceVM.renameProject(id: projectId, newName: renameName, renameDirectory: renameDirectory)
                         }
                         showRenameModal = false
                     }
@@ -326,12 +341,12 @@ struct ProjectRowExpanded: View {
     }
 
     private var branchText: String {
-        workspaceVM.branches[project.id] ?? ""
+        workspaceVM.branches[projectId] ?? ""
     }
 
     @ViewBuilder
     private var changesBadge: some View {
-        if let changes = workspaceVM.changesCount[project.id], changes.added > 0 || changes.deleted > 0 {
+        if let changes = workspaceVM.changesCount[projectId], changes.added > 0 || changes.deleted > 0 {
             HStack(spacing: 2) {
                 Text("+\(changes.added)")
                     .foregroundColor(.green)
@@ -343,16 +358,21 @@ struct ProjectRowExpanded: View {
 }
 
 struct ProjectRowCollapsed: View {
-    let project: Project
+    let projectId: String
     @EnvironmentObject var workspaceVM: WorkspaceService
     @EnvironmentObject var terminalVM: TerminalViewModel
 
+    private var project: Project? {
+        workspaceVM.projects.first { $0.id == projectId }
+    }
+
     var isActive: Bool {
-        workspaceVM.activeProject?.id == project.id
+        workspaceVM.activeProject?.id == projectId
     }
 
     private var initials: String {
-        project.name
+        guard let project = project else { return "" }
+        return project.name
             .split { $0.isWhitespace || $0 == "_" || $0 == "-" }
             .prefix(2)
             .compactMap { $0.first?.uppercased() }
@@ -365,7 +385,7 @@ struct ProjectRowCollapsed: View {
 
     @ViewBuilder
     private var projectIcon: some View {
-        if let iconPath = project.detectedIconPath,
+        if let project = project, let iconPath = project.detectedIconPath,
            let nsImage = NSImage(contentsOfFile: iconPath) {
             Image(nsImage: nsImage)
                 .resizable()
@@ -383,7 +403,7 @@ struct ProjectRowCollapsed: View {
 
     var body: some View {
         Button(action: {
-            workspaceVM.setActiveProject(id: project.id)
+            workspaceVM.setActiveProject(id: projectId)
         }) {
             ZStack(alignment: .bottomTrailing) {
                 projectIcon
@@ -397,6 +417,6 @@ struct ProjectRowCollapsed: View {
         }
         .buttonStyle(BorderlessButtonStyle())
         .frame(width: 36, height: 36)
-        .help(project.name)
+        .help(project?.name ?? "")
     }
 }
