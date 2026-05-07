@@ -229,6 +229,28 @@ public final class WorkspaceService: ObservableObject {
         }
     }
 
+    public func nextProject() {
+        guard !projects.isEmpty else { return }
+        guard let current = activeProject else {
+            setActiveProject(id: projects[0].id)
+            return
+        }
+        guard let index = projects.firstIndex(where: { $0.id == current.id }) else { return }
+        let nextIndex = (index + 1) % projects.count
+        setActiveProject(id: projects[nextIndex].id)
+    }
+
+    public func previousProject() {
+        guard !projects.isEmpty else { return }
+        guard let current = activeProject else {
+            setActiveProject(id: projects[0].id)
+            return
+        }
+        guard let index = projects.firstIndex(where: { $0.id == current.id }) else { return }
+        let previousIndex = (index - 1 + projects.count) % projects.count
+        setActiveProject(id: projects[previousIndex].id)
+    }
+
     public func refreshFileTree() {
         guard let path = activeProject?.path else {
             fileTree = []

@@ -128,6 +128,11 @@ struct CodniaApp: App {
                     .keyboardShortcut(.tab, modifiers: .control)
                 Button("Previous Tab") { appDelegate.appState.editorVM.previousTab() }
                     .keyboardShortcut(.tab, modifiers: [.control, .shift])
+                Divider()
+                Button("Next Project") { appDelegate.appState.workspaceVM.nextProject() }
+                    .keyboardShortcut(.downArrow, modifiers: .command)
+                Button("Previous Project") { appDelegate.appState.workspaceVM.previousProject() }
+                    .keyboardShortcut(.upArrow, modifiers: .command)
             }
         }
     }

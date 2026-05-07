@@ -49,6 +49,8 @@ public final class KeyboardShortcutsService: ObservableObject {
             "settings": "Cmd+,",
             "nextTab": "Cmd+Tab",
             "previousTab": "Cmd+Shift+Tab",
+            "nextProject": "Cmd+Down",
+            "previousProject": "Cmd+Up",
         ]
     }
 }
