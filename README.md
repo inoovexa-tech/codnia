@@ -125,10 +125,12 @@ codnia/
 
 Contributions are welcome! Please follow this process:
 
-1. **Open an Issue** - Report bugs, errors, or suggest new features.
-2. **Discussion & Approval** - The issue will be reviewed and approved for development.
-3. **Pull Request** - Submit your changes via PR for review and adjustments.
-4. **Merge & Release** - Once approved, the changes will be included in the next release.
+1. **Create an Issue** - Report bugs, errors, or suggest new features.
+2. **Issue Approval** - The issue will be reviewed and approved for development.
+3. **Development** - Develop the fix/feature in a dedicated branch.
+4. **Pull Request** - Submit your changes to the `main` branch.
+5. **PR Approval** - The pull request will be reviewed and approved.
+6. **Release** - Once approved, the changes will be included in the next version.
 
 ## License
 
