@@ -1,3 +1,12 @@
+## [0.4.0] — 2026-05-07
+
+### Added
+- Project icon picker with auto-detection and custom upload
+
+### Fixed
+- Forward mouse scroll wheel to TUI apps as mouse button events
+- Improve git changes count accuracy with numstat and real-time observers
+
 ## [0.3.0] — 2026-05-07
 
 ### Added
