@@ -11,6 +11,7 @@ public final class WorkspaceService: ObservableObject {
     @Published public var projectRunningStates: [String: Bool] = [:]
     
     private var timer: Timer?
+    private var fileObservers: [String: DispatchSourceFileSystemObject] = [:]
 
     public init() {
         loadProjects()
@@ -19,15 +20,54 @@ public final class WorkspaceService: ObservableObject {
     
     deinit {
         timer?.invalidate()
+        fileObservers.values.forEach { $0.cancel() }
+        fileObservers.removeAll()
     }
     
     private func startAutoRefresh() {
-        timer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { [weak self] _ in
+        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             DispatchQueue.main.async {
                 self?.refreshAllChanges()
                 self?.refreshRunningStates()
             }
         }
+    }
+
+    private func setupFileObserver(for project: Project) {
+        let fd = open(project.path, O_EVTONLY)
+        guard fd >= 0 else { return }
+
+        fileObservers[project.id]?.cancel()
+
+        let source = DispatchSource.makeFileSystemObjectSource(
+            fileDescriptor: fd,
+            eventMask: [.write, .delete, .rename, .extend],
+            queue: .global(qos: .userInitiated)
+        )
+
+        source.setEventHandler { [weak self] in
+            DispatchQueue.main.async {
+                self?.refreshChanges(for: project)
+            }
+        }
+
+        source.setCancelHandler { close(fd) }
+        source.resume()
+        fileObservers[project.id] = source
+    }
+
+    private func refreshChanges(for project: Project) {
+        GitService.shared.getChangesCount(path: project.path) { [weak self] added, deleted in
+            DispatchQueue.main.async {
+                self?.changesCount[project.id] = (added: added, deleted: deleted)
+                self?.objectWillChange.send()
+            }
+        }
+    }
+
+    private func cleanupFileObserver(for projectId: String) {
+        fileObservers[projectId]?.cancel()
+        fileObservers.removeValue(forKey: projectId)
     }
     
     private func refreshAllChanges() {
@@ -59,6 +99,10 @@ public final class WorkspaceService: ObservableObject {
            let data = try? Data(contentsOf: workspaceFile),
            let decoded = try? JSONDecoder().decode([Project].self, from: data) {
             projects = decoded
+            for project in projects {
+                setupFileObserver(for: project)
+                refreshChanges(for: project)
+            }
             // Load active
             let activeFile = baseURL.appendingPathComponent("active-project.json")
             if let activeData = try? Data(contentsOf: activeFile),
@@ -98,11 +142,15 @@ public final class WorkspaceService: ObservableObject {
             RecentProjectsService.shared.add(path)
             refreshFileTree()
             loadBranch(for: project)
+            setupFileObserver(for: project)
+            refreshChanges(for: project)
         }
     }
 
     public func removeProject(id: String) {
+        cleanupFileObserver(for: id)
         projects.removeAll { $0.id == id }
+        changesCount.removeValue(forKey: id)
         if activeProject?.id == id {
             activeProject = projects.first
             refreshFileTree()
