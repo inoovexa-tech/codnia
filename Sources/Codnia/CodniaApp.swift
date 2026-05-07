@@ -45,7 +45,7 @@ class CodniaApplicationDelegate: NSObject, NSApplicationDelegate {
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
         window.isOpaque = true
-        window.isMovableByWindowBackground = true
+        window.isMovableByWindowBackground = false
 
         if let toolbar = window.toolbar {
             toolbar.isVisible = false

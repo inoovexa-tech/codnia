@@ -1,4 +1,22 @@
 import SwiftUI
+import AppKit
+
+struct WindowDragView: View {
+    var body: some View {
+        Rectangle()
+            .fill(Color.clear)
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 1)
+                    .onChanged { _ in
+                        if let window = NSApp.mainWindow,
+                           let event = NSApp.currentEvent {
+                            window.performDrag(with: event)
+                        }
+                    }
+            )
+    }
+}
 
 struct TabBarView: View {
     @ObservedObject var editorVM: EditorViewModel
@@ -12,7 +30,8 @@ struct TabBarView: View {
     var body: some View {
         ZStack {
             HStack(spacing: 0) {
-                Spacer().frame(width: 90)
+                WindowDragView()
+                    .frame(width: 90)
 
                 Menu {
                     Button("New File") { editorVM.newFile() }
