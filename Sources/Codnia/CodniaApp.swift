@@ -8,7 +8,16 @@ class CodniaApplicationDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.regular)
 
-        if let icon = Bundle.main.image(forResource: "icon") ?? NSImage(named: "icon") {
+        let icon: NSImage? = {
+            let spmBundle = Bundle.main.bundleURL.appendingPathComponent("Codnia_Codnia.bundle")
+            if let bundle = Bundle(url: spmBundle),
+               let image = bundle.image(forResource: "icon") {
+                return image
+            }
+            return Bundle.main.image(forResource: "icon")
+        }()
+
+        if let icon {
             NSApp.applicationIconImage = icon
         }
 
