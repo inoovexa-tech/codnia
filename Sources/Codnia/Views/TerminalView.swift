@@ -26,19 +26,77 @@ class TerminalManager {
             _ = window.makeFirstResponder(terminal)
         }
     }
+
+    func getAllTerminals() -> [LocalProcessTerminalView] {
+        Array(terminals.values)
+    }
 }
 
-// Global container that persists across SwiftUI view recreation
+@MainActor
+class TerminalEventMonitor {
+    static let shared = TerminalEventMonitor()
+    private var monitor: Any?
+
+    func install() {
+        guard monitor == nil else { return }
+        monitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { [weak self] event in
+            guard let self = self else { return event }
+            let result = self.handle(event)
+            return result ? nil : event
+        }
+    }
+
+    private func handle(_ event: NSEvent) -> Bool {
+        let mouseLocation = NSEvent.mouseLocation
+        for terminal in TerminalManager.shared.getAllTerminals() {
+            guard !terminal.isHidden else { continue }
+            guard let window = terminal.window else { continue }
+            let windowPoint = window.convertPoint(fromScreen: mouseLocation)
+            let viewPoint = terminal.convert(windowPoint, from: nil)
+            guard terminal.bounds.contains(viewPoint) else { continue }
+            guard terminal.allowMouseReporting else { continue }
+            let mode = terminal.terminal?.mouseMode
+            guard mode != nil, mode != .off else { continue }
+
+            let cols = terminal.terminal!.cols
+            let rows = terminal.terminal!.rows
+            let cellW = terminal.bounds.width / CGFloat(cols)
+            let cellH = terminal.bounds.height / CGFloat(rows)
+            let col = max(0, min(Int(viewPoint.x / cellW), cols - 1))
+            let row = max(0, min(Int(viewPoint.y / cellH), rows - 1))
+            let pixelX = Int(viewPoint.x)
+            let pixelY = Int(viewPoint.y)
+            let button = event.deltaY > 0 ? 4 : 5
+            let flags = terminal.terminal!.encodeButton(button: button, release: false, shift: false, meta: false, control: false)
+            terminal.terminal!.sendEvent(buttonFlags: flags, x: col, y: row, pixelX: pixelX, pixelY: pixelY)
+            return true
+        }
+        return false
+    }
+}
+
+class TerminalContainerView: NSView {
+    override var acceptsFirstResponder: Bool { true }
+
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        let activeTerminal = subviews.first(where: { !$0.isHidden && $0 is LocalProcessTerminalView })
+        if let terminal = activeTerminal, terminal.frame.contains(point) {
+            return terminal
+        }
+        return super.hitTest(point)
+    }
+}
+
 @MainActor
 class TerminalContainerManager {
     static let shared = TerminalContainerManager()
-    private var container: NSView?
+    private var container: TerminalContainerView?
 
-    func getContainer() -> NSView {
+    func getContainer() -> TerminalContainerView {
         if let existing = container, existing.window != nil {
             return existing
         }
-        let newContainer = NSView()
+        let newContainer = TerminalContainerView()
         newContainer.autoresizingMask = [.width, .height]
         container = newContainer
         return newContainer
@@ -51,8 +109,8 @@ struct TerminalHostView: NSViewRepresentable {
     let fontSize: Double
 
     func makeNSView(context: Context) -> NSView {
+        TerminalEventMonitor.shared.install()
         let container = TerminalContainerManager.shared.getContainer()
-        // Ensure container is properly sized when added to view hierarchy
         DispatchQueue.main.async {
             if let superview = container.superview {
                 container.frame = superview.bounds
@@ -62,11 +120,9 @@ struct TerminalHostView: NSViewRepresentable {
     }
 
     func updateNSView(_ nsView: NSView, context: Context) {
-        // Ensure all terminal tabs have a view in the container
         for tab in tabs {
             guard let termId = tab.terminalId else { continue }
             if let existing = TerminalManager.shared.get(for: termId) {
-                // Re-add to container if needed
                 if existing.superview == nil {
                     nsView.addSubview(existing)
                     existing.frame = nsView.bounds
@@ -78,7 +134,6 @@ struct TerminalHostView: NSViewRepresentable {
             }
         }
 
-        // Show active terminal
         if let activeTab = tabs.first(where: { $0.id == activeTabId }),
            let termId = activeTab.terminalId {
             TerminalManager.shared.show(id: termId)

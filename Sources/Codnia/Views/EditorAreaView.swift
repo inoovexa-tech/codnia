@@ -5,6 +5,11 @@ struct EditorAreaView: View {
     @EnvironmentObject var terminalVM: TerminalViewModel
     @EnvironmentObject var settings: SettingsService
 
+    private var isTerminalVisible: Bool {
+        guard let activeTab = editorVM.currentTab else { return false }
+        return terminalVM.tabs.contains { $0.id == activeTab.id }
+    }
+
     var body: some View {
         ZStack {
             // File editor
@@ -17,6 +22,7 @@ struct EditorAreaView: View {
                     }
                 )
                 .environmentObject(settings)
+                .allowsHitTesting(!isTerminalVisible)
             }
 
             // Terminals - persistent container keeps sessions alive across tab/project switches
@@ -25,6 +31,7 @@ struct EditorAreaView: View {
                 activeTabId: $editorVM.activeTabId
             )
             .opacity(terminalVisibility)
+            .allowsHitTesting(isTerminalVisible)
 
             if editorVM.currentTab == nil {
                 EmptyStateView()

@@ -1,5 +1,4 @@
 import SwiftUI
-import AppKit
 
 class CodniaWindow: NSWindow {
     override func mouseDown(with event: NSEvent) {
