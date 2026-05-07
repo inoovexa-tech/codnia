@@ -7,7 +7,8 @@ Repository layout
 
 Developer commands
 - `swift build` — Build the project
-- `swift run` — Run the app
+- `swift run` — Run the app (no .app bundle; Dock icon appears square)
+- `bash run.sh` — Build + launch as proper .app bundle (recommended; rounded Dock icon)
 - No test, lint, or typecheck scripts exist. `swift build` is the only verification step.
 
 Architecture
