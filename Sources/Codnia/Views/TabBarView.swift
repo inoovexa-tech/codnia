@@ -236,6 +236,12 @@ struct WindowDragView: View {
                         window.isMovable = false
                     }
             )
+            .simultaneousGesture(
+                TapGesture(count: 2)
+                    .onEnded {
+                        NSApp.mainWindow?.performZoom(nil)
+                    }
+            )
     }
 }
 
