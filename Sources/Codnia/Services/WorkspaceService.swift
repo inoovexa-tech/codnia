@@ -24,6 +24,13 @@ public final class WorkspaceService: ObservableObject {
         fileObservers.removeAll()
     }
     
+    public func stopAutoRefresh() {
+        timer?.invalidate()
+        timer = nil
+        fileObservers.values.forEach { $0.cancel() }
+        fileObservers.removeAll()
+    }
+    
     private func startAutoRefresh() {
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             DispatchQueue.main.async {

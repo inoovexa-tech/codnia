@@ -52,6 +52,10 @@ class CodniaApplicationDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         return true
     }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        appState.workspaceVM.stopAutoRefresh()
+    }
 }
 
 @main
