@@ -2,31 +2,28 @@
 
 A modern, lightweight desktop IDE built with Swift and SwiftUI for macOS.
 
-![Version](https://img.shields.io/badge/version-0.1.0-blue)
+![Version](https://img.shields.io/badge/version-0.4.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
-![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20macOS%20%7C%20macOS-lightgrey)
+![Platform](https://img.shields.io/badge/platform-macOS%2013%2B-lightgrey)
 
 ## Features
 
 ### Editor
-- **Monaco Editor** with custom "codnia-dark" theme (pure-black background)
-- Syntax highlighting for **20+ languages** (Rust, TypeScript, JavaScript, Python, Go, Java, C/C++, C#, Swift, Kotlin, Ruby, HTML, CSS, SCSS, Markdown, YAML, TOML, Shell, and more)
+- **Native NSTextView** editor with dark theme
 - File model caching, Save / Save As, modified indicators
-- Configurable font, minimap, line numbers, word wrap, tab size, whitespace rendering
+- Configurable font size
 
 ### Terminal
-- **Native PTY** via portable-pty with real shell spawning
-- xterm.js rendering with ANSI 256-color support
+- **SwiftTerm** native terminal with real shell spawning
 - Multiple terminal instances in separate tabs
 - Custom shell and command execution support
 
 ### AI Agent Integration
 - Built-in terminal tabs for **OpenCode**, **Claude Code**, and **Codex**
 - One-click launch from the New Tab dropdown
-- Missing tool detection with install guidance
 
 ### Search
-- **ripgrep-powered** global search with regex and case-sensitive toggles
+- Global search with regex and case-sensitive toggles
 - File name and content search with match highlighting
 - Smart directory exclusion (node_modules, .git, target, dist, etc.)
 
@@ -48,25 +45,25 @@ A modern, lightweight desktop IDE built with Swift and SwiftUI for macOS.
 - Auto-detect from file extension
 
 ### Settings
-- Separate settings window with four tabs: Editor, Appearance, Terminal, Keyboard
-- 11 rebindable keyboard shortcuts with recording input
+- Separate settings window with multiple tabs
+- Rebindable keyboard shortcuts with recording input
 - Persistent settings with cross-window sync
 
 ### Keyboard Shortcuts
 | Shortcut | Action |
 |----------|--------|
-| `Cmd/Ctrl+N` | New File |
-| `Cmd/Ctrl+O` | Open File |
-| `Cmd/Ctrl+S` | Save |
-| `Cmd/Ctrl+Shift+S` | Save As |
-| `Cmd/Ctrl+W` | Close Tab |
-| `Cmd/Ctrl+B` | Toggle Sidebar |
-| `Cmd/Ctrl+`` ` | Toggle Terminal |
-| `Cmd/Ctrl+Shift+F` | Global Search |
-| `Cmd/Ctrl+Shift+O` | Run OpenCode |
-| `Cmd/Ctrl+Shift+C` | Run Claude Code |
-| `Cmd/Ctrl+Shift+X` | Run Codex |
-| `Cmd/Ctrl+,` | Open Settings |
+| `Cmd+N` | New File |
+| `Cmd+O` | Open File |
+| `Cmd+S` | Save |
+| `Cmd+Shift+S` | Save As |
+| `Cmd+W` | Close Tab |
+| `Cmd+B` | Toggle Sidebar |
+| `` Cmd+` `` | Toggle Terminal |
+| `Cmd+Shift+F` | Global Search |
+| `Cmd+Shift+O` | Run OpenCode |
+| `Cmd+Shift+C` | Run Claude Code |
+| `Cmd+Shift+X` | Run Codex |
+| `Cmd+,` | Open Settings |
 
 ## Tech Stack
 
@@ -74,8 +71,8 @@ A modern, lightweight desktop IDE built with Swift and SwiftUI for macOS.
 |-------|-----------|
 | Desktop framework | **SwiftUI** (macOS 13+) |
 | Language | **Swift 5.9+** |
-| Code editor | **Monaco Editor** (via WKWebView) |
-| Terminal | **xterm.js** + **portable-pty** |
+| Code editor | **NSTextView** (native) |
+| Terminal | **SwiftTerm** |
 | Build | **Swift Package Manager** |
 
 ## Getting Started
@@ -83,8 +80,7 @@ A modern, lightweight desktop IDE built with Swift and SwiftUI for macOS.
 ### Prerequisites
 
 - [Xcode](https://developer.apple.com/xcode/) (15+)
-- [Rust](https://rustup.rs/) (stable) - for portable-pty
-- Platform-specific build tools (macOS SDK)
+- macOS 13 (Ventura) or later
 
 ### Development
 
@@ -111,13 +107,15 @@ Build output: `.build/release/Codnia`
 codnia/
 ├── Sources/
 │   └── Codnia/
-│       ├── App/           # App entry point and configuration
-│       ├── Views/        # SwiftUI views
-│       ├── ViewModels/   # ObservableObject classes
-│       ├── Services/    # Business logic services
-│       └── Models/       # Data models
-├── Resources/            # App resources
-├── Package.swift        # Swift Package Manager config
+│       ├── CodniaApp.swift    # App entry point and configuration
+│       ├── Views/             # SwiftUI views
+│       ├── ViewModels/       # ObservableObject classes
+│       ├── Services/         # Business logic services
+│       ├── Models/           # Data models
+│       ├── Components/       # Reusable UI components
+│       ├── Extensions/       # Swift extensions
+│       └── Resources/        # App resources
+├── Package.swift             # Swift Package Manager config
 └── README.md
 ```
 
