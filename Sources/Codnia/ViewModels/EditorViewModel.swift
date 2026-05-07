@@ -16,12 +16,15 @@ public final class EditorViewModel: ObservableObject {
     private let fs = FileSystemService.shared
     private var cancellables = Set<AnyCancellable>()
     private var fileContents: [String: String] = [:] // tabId -> original content
+    private var autoSaveTimer: AnyCancellable?
 
     public init(workspace: WorkspaceService, settings: SettingsService, terminal: TerminalViewModel) {
         self.workspace = workspace
         self.settings = settings
         self.terminal = terminal
         terminal.workspace = workspace
+
+        setupAutoSave()
 
         // Load tabs from active project
         if let project = workspace.activeProject {
@@ -95,6 +98,22 @@ public final class EditorViewModel: ObservableObject {
         print("  Final editorContent length: \(editorContent.count)")
         // Force UI update
         objectWillChange.send()
+    }
+
+    private func setupAutoSave() {
+        $editorContent
+            .dropFirst()
+            .debounce(for: .seconds(2), scheduler: RunLoop.main)
+            .sink { [weak self] content in
+                guard let self = self else { return }
+                guard self.settings.autoSave else { return }
+                guard let tab = self.currentTab, tab.type == .file, !tab.path.isEmpty else { return }
+                let original = self.fileContents[tab.id] ?? ""
+                if content != original {
+                    self.saveCurrentFile()
+                }
+            }
+            .store(in: &cancellables)
     }
 
     private func saveTabsToProject() {
