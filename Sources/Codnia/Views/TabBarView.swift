@@ -1,23 +1,6 @@
 import SwiftUI
 import AppKit
 
-struct WindowDragView: View {
-    var body: some View {
-        Rectangle()
-            .fill(Color.clear)
-            .contentShape(Rectangle())
-            .gesture(
-                DragGesture(minimumDistance: 1)
-                    .onChanged { _ in
-                        if let window = NSApp.mainWindow,
-                           let event = NSApp.currentEvent {
-                            window.performDrag(with: event)
-                        }
-                    }
-            )
-    }
-}
-
 struct TabBarView: View {
     @ObservedObject var editorVM: EditorViewModel
     @ObservedObject var terminalVM: TerminalViewModel
@@ -26,6 +9,8 @@ struct TabBarView: View {
     var onToggleSearch: () -> Void
     var isRightSidebarExpanded: Bool
     var isSearchActive: Bool
+
+    @State private var draggedTabId: String?
 
     var body: some View {
         ZStack {
@@ -52,9 +37,13 @@ struct TabBarView: View {
                         ForEach(Array(editorVM.tabs.enumerated()), id: \.element.id) { index, tab in
                             TabButton(
                                 tab: tab,
+                                index: index,
                                 isActive: tab.id == editorVM.activeTabId,
+                                allTabs: editorVM.tabs,
                                 onSelect: { editorVM.activateTab(tab.id) },
                                 onClose: { editorVM.closeTab(tab.id) },
+                                moveAction: { editorVM.moveTab(from: $0, to: $1) },
+                                draggedTabId: $draggedTabId,
                                 onMoveLeft: index > 0 ? { editorVM.moveTab(from: index, to: index - 1) } : nil,
                                 onMoveRight: index < editorVM.tabs.count - 1 ? { editorVM.moveTab(from: index, to: index + 1) } : nil
                             )
@@ -62,9 +51,13 @@ struct TabBarView: View {
                         ForEach(Array(terminalVM.tabs.enumerated()), id: \.element.id) { index, tab in
                             TabButton(
                                 tab: tab,
+                                index: index,
                                 isActive: tab.id == editorVM.activeTabId,
+                                allTabs: terminalVM.tabs,
                                 onSelect: { editorVM.activateTab(tab.id) },
                                 onClose: { editorVM.closeTab(tab.id) },
+                                moveAction: { terminalVM.moveTab(from: $0, to: $1) },
+                                draggedTabId: $draggedTabId,
                                 onMoveLeft: index > 0 ? { terminalVM.moveTab(from: index, to: index - 1) } : nil,
                                 onMoveRight: index < terminalVM.tabs.count - 1 ? { terminalVM.moveTab(from: index, to: index + 1) } : nil
                             )
@@ -72,7 +65,8 @@ struct TabBarView: View {
                     }
                 }
 
-                Spacer()
+                WindowDragView()
+                    .frame(maxWidth: .infinity)
 
                 HStack(spacing: 4) {
                     Button(action: onToggleSearch) {
@@ -104,9 +98,13 @@ struct TabBarView: View {
 
 struct TabButton: View {
     let tab: Tab
+    let index: Int
     let isActive: Bool
+    let allTabs: [Tab]
     let onSelect: () -> Void
     let onClose: () -> Void
+    let moveAction: (Int, Int) -> Void
+    @Binding var draggedTabId: String?
     var onMoveLeft: (() -> Void)? = nil
     var onMoveRight: (() -> Void)? = nil
 
@@ -139,7 +137,10 @@ struct TabButton: View {
         }
         .padding(.horizontal, 12)
         .frame(height: 36)
-        .background(isActive ? Color.bgActive : Color.clear)
+        .background(
+            isActive ? Color.bgActive :
+            draggedTabId == tab.id ? Color.bgActive.opacity(0.5) : Color.clear
+        )
         .foregroundColor(isActive ? .textPrimary : .textSecondary)
         .overlay(
             Rectangle().frame(height: 2).foregroundColor(isActive ? .accentBlue : .clear),
@@ -148,6 +149,17 @@ struct TabButton: View {
         .contentShape(Rectangle())
         .onTapGesture { onSelect() }
         .onHover { isHovered = $0 }
+        .onDrag {
+            draggedTabId = tab.id
+            return NSItemProvider(object: tab.id as NSString)
+        }
+        .onDrop(of: [.text], delegate: TabDropDelegate(
+            tab: tab,
+            index: index,
+            allTabs: allTabs,
+            draggedTabId: $draggedTabId,
+            moveAction: moveAction
+        ))
         .contextMenu {
             Button("Close Tab") { onClose() }
             if onMoveLeft != nil {
@@ -207,5 +219,44 @@ struct TabButton: View {
         case .codex: return Image(systemName: "square.stack.3d.up")
         default: return Image(systemName: "terminal")
         }
+    }
+}
+
+struct WindowDragView: View {
+    var body: some View {
+        Color.clear
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 1)
+                    .onChanged { _ in
+                        guard let window = NSApp.mainWindow,
+                              let event = NSApp.currentEvent else { return }
+                        window.isMovable = true
+                        window.performDrag(with: event)
+                        window.isMovable = false
+                    }
+            )
+    }
+}
+
+struct TabDropDelegate: DropDelegate {
+    let tab: Tab
+    let index: Int
+    let allTabs: [Tab]
+    @Binding var draggedTabId: String?
+    let moveAction: (Int, Int) -> Void
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        DropProposal(operation: .move)
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        defer { draggedTabId = nil }
+        guard let draggedId = draggedTabId,
+              let sourceIndex = allTabs.firstIndex(where: { $0.id == draggedId }),
+              sourceIndex != index
+        else { return false }
+        moveAction(sourceIndex, index)
+        return true
     }
 }
