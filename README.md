@@ -6,6 +6,8 @@ A modern, lightweight desktop IDE built with Swift and SwiftUI for macOS.
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platform](https://img.shields.io/badge/platform-macOS%2013%2B-lightgrey)
 
+![Screenshot](screenshot.png)
+
 ## Features
 
 ### Editor
