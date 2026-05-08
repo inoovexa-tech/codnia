@@ -13,9 +13,8 @@ public final class GitService {
         task.currentDirectoryURL = URL(fileURLWithPath: path)
 
         let outPipe = Pipe()
-        let errPipe = Pipe()
         task.standardOutput = outPipe
-        task.standardError = errPipe
+        task.standardError = FileHandle.nullDevice
 
         return await withCheckedContinuation { continuation in
             task.terminationHandler = { _ in
@@ -25,6 +24,7 @@ public final class GitService {
 
             do {
                 try task.run()
+                outPipe.fileHandleForWriting.closeFile()
             } catch {
                 continuation.resume(returning: nil)
             }
@@ -58,7 +58,6 @@ public final class GitService {
     }
 
     public func getChangesCount(path: String) async -> (added: Int, deleted: Int) {
-        // Run all three git commands concurrently — none block threads
         async let diffData = runGit(args: ["diff", "--numstat"], in: path)
         async let stagedData = runGit(args: ["diff", "--cached", "--numstat"], in: path)
         async let untrackedData = runGit(args: ["ls-files", "--others", "--exclude-standard"], in: path)
