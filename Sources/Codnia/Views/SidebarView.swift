@@ -127,13 +127,14 @@ struct SidebarView: View {
 
 struct SidebarExpandedProjectsList: View {
     @EnvironmentObject var workspaceVM: WorkspaceService
+    @State private var showImporter = false
 
     var body: some View {
         ForEach(workspaceVM.projects) { project in
             ProjectRowExpanded(projectId: project.id)
         }
 
-        Button(action: { addProject() }) {
+        Button(action: { showImporter = true }) {
             HStack(spacing: 8) {
                 Image(systemName: "plus")
                     .font(.system(size: 14))
@@ -150,29 +151,33 @@ struct SidebarExpandedProjectsList: View {
         }
         .buttonStyle(PlainButtonStyle())
         .padding(.top, 4)
-    }
-
-    private func addProject() {
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = false
-        panel.canChooseDirectories = true
-        panel.allowsMultipleSelection = false
-        panel.prompt = "Select"
-        if panel.runModal() == .OK, let url = panel.url {
-            workspaceVM.addProject(path: url.path)
+        .fileImporter(
+            isPresented: $showImporter,
+            allowedContentTypes: [.folder],
+            allowsMultipleSelection: false
+        ) { result in
+            switch result {
+            case .success(let urls):
+                if let url = urls.first {
+                    workspaceVM.addProject(path: url.path)
+                }
+            case .failure(let error):
+                print("Failed to import folder: \(error)")
+            }
         }
     }
 }
 
 struct SidebarCollapsedProjectsList: View {
     @EnvironmentObject var workspaceVM: WorkspaceService
+    @State private var showImporter = false
 
     var body: some View {
         ForEach(workspaceVM.projects) { project in
             ProjectRowCollapsed(projectId: project.id)
         }
 
-        Button(action: { addProject() }) {
+        Button(action: { showImporter = true }) {
             Image(systemName: "plus")
                 .font(.system(size: 14))
         }
@@ -185,16 +190,19 @@ struct SidebarCollapsedProjectsList: View {
                 .stroke(Color.borderLight, style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
         )
         .padding(.top, 4)
-    }
-
-    private func addProject() {
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = false
-        panel.canChooseDirectories = true
-        panel.allowsMultipleSelection = false
-        panel.prompt = "Select"
-        if panel.runModal() == .OK, let url = panel.url {
-            workspaceVM.addProject(path: url.path)
+        .fileImporter(
+            isPresented: $showImporter,
+            allowedContentTypes: [.folder],
+            allowsMultipleSelection: false
+        ) { result in
+            switch result {
+            case .success(let urls):
+                if let url = urls.first {
+                    workspaceVM.addProject(path: url.path)
+                }
+            case .failure(let error):
+                print("Failed to import folder: \(error)")
+            }
         }
     }
 }
