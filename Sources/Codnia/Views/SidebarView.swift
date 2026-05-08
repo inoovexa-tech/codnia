@@ -127,6 +127,7 @@ struct SidebarView: View {
 
 struct SidebarExpandedProjectsList: View {
     @EnvironmentObject var workspaceVM: WorkspaceService
+    @State private var clicked = false
 
     var body: some View {
         ForEach(workspaceVM.projects) { project in
@@ -140,25 +141,35 @@ struct SidebarExpandedProjectsList: View {
                 .font(.system(size: 12))
         }
         .frame(maxWidth: .infinity, minHeight: 32)
-        .foregroundColor(.textSecondary)
+        .foregroundColor(clicked ? .green : .textSecondary)
         .overlay(
             RoundedRectangle(cornerRadius: 8)
                 .stroke(Color.borderLight, style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
         )
         .contentShape(Rectangle())
         .onTapGesture {
+            print("DEBUG: Add Project tapped!")
+            clicked = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                clicked = false
+            }
             addProject()
         }
         .padding(.top, 4)
     }
 
     private func addProject() {
+        print("DEBUG: addProject() called")
         let panel = NSOpenPanel()
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
         panel.prompt = "Select"
-        if panel.runModal() == .OK, let url = panel.url {
+        print("DEBUG: About to run panel")
+        let result = panel.runModal()
+        print("DEBUG: panel result = \(result.rawValue)")
+        if result == .OK, let url = panel.url {
+            print("DEBUG: Selected URL = \(url.path)")
             workspaceVM.addProject(path: url.path)
         }
     }
@@ -166,6 +177,7 @@ struct SidebarExpandedProjectsList: View {
 
 struct SidebarCollapsedProjectsList: View {
     @EnvironmentObject var workspaceVM: WorkspaceService
+    @State private var clicked = false
 
     var body: some View {
         ForEach(workspaceVM.projects) { project in
@@ -175,7 +187,7 @@ struct SidebarCollapsedProjectsList: View {
         Image(systemName: "plus")
             .font(.system(size: 14))
             .frame(width: 36, height: 36)
-            .background(Color.bgTertiary)
+            .background(clicked ? Color.green : Color.bgTertiary)
             .cornerRadius(8)
             .overlay(
                 RoundedRectangle(cornerRadius: 8)
@@ -183,18 +195,28 @@ struct SidebarCollapsedProjectsList: View {
             )
             .contentShape(Rectangle())
             .onTapGesture {
+                print("DEBUG: Add Project (collapsed) tapped!")
+                clicked = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    clicked = false
+                }
                 addProject()
             }
             .padding(.top, 4)
     }
 
     private func addProject() {
+        print("DEBUG: addProject() called (collapsed)")
         let panel = NSOpenPanel()
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
         panel.prompt = "Select"
-        if panel.runModal() == .OK, let url = panel.url {
+        print("DEBUG: About to run panel")
+        let result = panel.runModal()
+        print("DEBUG: panel result = \(result.rawValue)")
+        if result == .OK, let url = panel.url {
+            print("DEBUG: Selected URL = \(url.path)")
             workspaceVM.addProject(path: url.path)
         }
     }
