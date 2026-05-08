@@ -1,3 +1,8 @@
+## [0.7.1] — 2026-05-08
+
+### Fixed
+- Add contentShape to collapsed sidebar Add Project button
+
 ## [0.7.0] — 2026-05-08
 
 ### Added
