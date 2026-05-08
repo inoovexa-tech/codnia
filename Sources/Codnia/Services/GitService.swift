@@ -223,8 +223,29 @@ public final class GitService {
     // MARK: - Discard
 
     public func discardFileChanges(path: String, filePath: String) async -> Bool {
-        let result = await runGitWithResult(args: ["restore", filePath], in: path)
-        return result.success
+        let fullPath = (path as NSString).appendingPathComponent(filePath)
+        var isDirectory: ObjCBool = false
+        let fileExists = FileManager.default.fileExists(atPath: fullPath, isDirectory: &isDirectory)
+
+        if !fileExists {
+            return true
+        }
+
+        let checkoutResult = await runGitWithResult(args: ["checkout", "--", filePath], in: path)
+        if checkoutResult.success {
+            return true
+        }
+
+        do {
+            if isDirectory.boolValue {
+                try FileManager.default.removeItem(atPath: fullPath)
+            } else {
+                try FileManager.default.removeItem(atPath: fullPath)
+            }
+            return true
+        } catch {
+            return false
+        }
     }
 
     // MARK: - Commit
