@@ -157,8 +157,20 @@ struct SidebarExpandedProjectsList: View {
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
         panel.prompt = "Select"
-        if panel.runModal() == .OK, let url = panel.url {
-            workspaceVM.addProject(path: url.path)
+
+        if let window = NSApp.mainWindow {
+            panel.beginSheetModal(for: window) { response in
+                if response == .OK, let url = panel.url {
+                    Task { @MainActor in
+                        workspaceVM.addProject(path: url.path)
+                    }
+                }
+            }
+        } else {
+            let response = panel.runModal()
+            if response == .OK, let url = panel.url {
+                workspaceVM.addProject(path: url.path)
+            }
         }
     }
 }
@@ -192,8 +204,20 @@ struct SidebarCollapsedProjectsList: View {
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
         panel.prompt = "Select"
-        if panel.runModal() == .OK, let url = panel.url {
-            workspaceVM.addProject(path: url.path)
+
+        if let window = NSApp.mainWindow {
+            panel.beginSheetModal(for: window) { response in
+                if response == .OK, let url = panel.url {
+                    Task { @MainActor in
+                        workspaceVM.addProject(path: url.path)
+                    }
+                }
+            }
+        } else {
+            let response = panel.runModal()
+            if response == .OK, let url = panel.url {
+                workspaceVM.addProject(path: url.path)
+            }
         }
     }
 }
