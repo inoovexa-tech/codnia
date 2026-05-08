@@ -1,3 +1,10 @@
+## [0.6.1] — 2026-05-08
+
+### Fixed
+- Fix Add Project button not opening folder picker on macOS
+  - Replace `NSOpenPanel().runModal()` with SwiftUI `.fileImporter()` modifier
+  - Applies to both expanded and collapsed sidebar layouts
+
 ## [0.6.0] — 2026-05-08
 
 ### Added
