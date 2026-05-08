@@ -146,6 +146,7 @@ struct SidebarExpandedProjectsList: View {
                 RoundedRectangle(cornerRadius: 8)
                     .stroke(Color.borderLight, style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
             )
+            .contentShape(Rectangle())
         }
         .buttonStyle(PlainButtonStyle())
         .padding(.top, 4)
