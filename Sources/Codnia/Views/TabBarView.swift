@@ -7,8 +7,10 @@ struct TabBarView: View {
 
     var onToggleRightSidebar: () -> Void
     var onToggleSearch: () -> Void
+    var onToggleSourceControl: () -> Void
     var isRightSidebarExpanded: Bool
     var isSearchActive: Bool
+    var isSourceControlActive: Bool
 
     @State private var draggedTabId: String?
 
@@ -76,6 +78,13 @@ struct TabBarView: View {
                     .buttonStyle(PlainButtonStyle())
                     .foregroundColor(isSearchActive ? .accentBlue : .textSecondary)
 
+                    Button(action: onToggleSourceControl) {
+                        Image(systemName: "arrow.triangle.branch")
+                            .font(.system(size: 13))
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .foregroundColor(isSourceControlActive ? .accentGreen : .textSecondary)
+
                     Button(action: onToggleRightSidebar) {
                         Image(systemName: isRightSidebarExpanded ? "sidebar.right" : "sidebar.left")
                             .font(.system(size: 13))
@@ -115,6 +124,10 @@ struct TabButton: View {
             HStack(spacing: 6) {
                 if tab.type == .file {
                     fileIcon(for: tab.name)
+                        .foregroundColor(iconColor)
+                        .font(.system(size: 13))
+                } else if tab.type == .diff {
+                    Image(systemName: "plus.forwardslash.minus")
                         .foregroundColor(iconColor)
                         .font(.system(size: 13))
                 } else {
@@ -177,6 +190,7 @@ struct TabButton: View {
         case .opencode: return .accentBlue
         case .claude: return .accentOrange
         case .codex: return .accentPurple
+        case .diff: return .accentGreen
         case .file: return fileColor(for: tab.name)
         }
     }

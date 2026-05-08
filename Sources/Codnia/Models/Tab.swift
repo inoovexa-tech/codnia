@@ -6,6 +6,7 @@ public enum TabType: String, Codable, Equatable {
     case opencode
     case claude
     case codex
+    case diff
 }
 
 public enum PreviewType: String, Codable, Equatable {

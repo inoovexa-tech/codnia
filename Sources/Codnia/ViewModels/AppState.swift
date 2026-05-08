@@ -8,6 +8,7 @@ public final class AppState: ObservableObject {
     public let searchVM: SearchService
     public let terminalVM: TerminalViewModel
     public let editorVM: EditorViewModel
+    public let gitVM: GitViewModel
     @Published public var showGlobalSearch: Bool = false
     @Published var leftSidebarExpanded: Bool = true
     @Published var rightSidebarExpanded: Bool = false
@@ -19,10 +20,12 @@ public final class AppState: ObservableObject {
         let sr = SearchService()
         let tm = TerminalViewModel()
         let ed = EditorViewModel(workspace: ws, settings: s, terminal: tm)
+        let gv = GitViewModel(workspace: ws, editorVM: ed)
         self.workspaceVM = ws
         self.settings = s
         self.searchVM = sr
         self.terminalVM = tm
         self.editorVM = ed
+        self.gitVM = gv
     }
 }

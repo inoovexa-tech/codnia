@@ -66,6 +66,7 @@ public final class TerminalViewModel: ObservableObject {
         case .codex: return "Codex"
         case .terminal: return "Terminal"
         case .file: return "Terminal"
+        case .diff: return "Terminal"
         }
     }
 

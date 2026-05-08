@@ -12,6 +12,16 @@ struct EditorAreaView: View {
 
     var body: some View {
         ZStack {
+            // Diff viewer for diff tabs
+            if let activeTab = editorVM.currentTab, activeTab.type == .diff {
+                if let diffLines = editorVM.diffData[activeTab.id] {
+                    DiffView(diffLines: diffLines, fileName: activeTab.name)
+                        .allowsHitTesting(!isTerminalVisible)
+                } else {
+                    EmptyDiffView()
+                }
+            }
+
             // File editor
             if let activeTab = editorVM.currentTab, activeTab.type == .file {
                 if editorVM.isCurrentTabMarkdown && editorVM.showMarkdownPreview {
@@ -93,6 +103,22 @@ struct EditorAreaView: View {
     private var terminalVisibility: Double {
         guard let activeTab = editorVM.currentTab else { return 0 }
         return terminalVM.tabs.contains { $0.id == activeTab.id } ? 1 : 0
+    }
+}
+
+struct EmptyDiffView: View {
+    var body: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "plus.forwardslash.minus")
+                .font(.system(size: 48))
+                .foregroundColor(.textTertiary)
+
+            Text("No diff available")
+                .font(.system(size: 13))
+                .foregroundColor(.textTertiary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(hex: "#0d1117"))
     }
 }
 

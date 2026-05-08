@@ -16,6 +16,7 @@ public final class EditorViewModel: ObservableObject {
     private let fs = FileSystemService.shared
     private var cancellables = Set<AnyCancellable>()
     private var fileContents: [String: String] = [:] // tabId -> original content
+    @Published public var diffData: [String: [DiffLine]] = [:] // tabId -> diff lines
     private var autoSaveTimer: AnyCancellable?
     private var markdownPreviewTabs: Set<String> = []
 
@@ -85,17 +86,21 @@ public final class EditorViewModel: ObservableObject {
         print("  activeTabId: \(activeTabId ?? "nil")")
 
         // Restore file contents for file tabs (only if not already loaded)
-        for tab in project.fileTabs where tab.type == .file && !tab.path.isEmpty {
+        for tab in project.fileTabs where (tab.type == .file || tab.type == .diff) && !tab.path.isEmpty {
             if fileContents[tab.id] == nil {
-                let content = fs.readFile(path: tab.path)
-                fileContents[tab.id] = content
+                if tab.type == .diff {
+                    fileContents[tab.id] = ""
+                } else {
+                    let content = fs.readFile(path: tab.path)
+                    fileContents[tab.id] = content
+                }
             }
         }
 
         // Restore editor content for active tab
         if let activeId = activeTabId,
            let tab = tabs.first(where: { $0.id == activeId }),
-           tab.type == .file {
+           tab.type == .file || tab.type == .diff {
             let savedContent = fileContents[tab.id]
             print("  tab.id: \(tab.id)")
             print("  fileContents[tab.id] exists: \(savedContent != nil)")
@@ -210,25 +215,37 @@ public final class EditorViewModel: ObservableObject {
         // Save current file content before switching (if it's a file tab)
         if let currentTabId = activeTabId,
            let currentTabIdx = tabs.firstIndex(where: { $0.id == currentTabId }),
-           tabs[currentTabIdx].type == .file {
+           tabs[currentTabIdx].type == .file || tabs[currentTabIdx].type == .diff {
             fileContents[currentTabId] = editorContent
             print("  Saved current content: \(editorContent.count)")
         }
         
         activeTabId = id
         if let tab = tabs.first(where: { $0.id == id }) {
-            // Use fileContents dictionary for unsaved content, fallback to reading from disk
-            if let savedContent = fileContents[tab.id] {
-                print("  Using savedContent, length: \(savedContent.count)")
-                editorContent = savedContent
+            if tab.type == .diff {
+                // For diff tabs, use saved content only (never read from disk)
+                if let savedContent = fileContents[tab.id] {
+                    print("  Using savedContent for diff, length: \(savedContent.count)")
+                    editorContent = savedContent
+                } else {
+                    editorContent = ""
+                    print("  Diff tab has no saved content")
+                }
+                currentLanguage = "Diff"
             } else {
-                let content = fs.readFile(path: tab.path)
-                print("  Reading from disk, length: \(content.count)")
-                editorContent = content
-                fileContents[tab.id] = content
+                // Use fileContents dictionary for unsaved content, fallback to reading from disk
+                if let savedContent = fileContents[tab.id] {
+                    print("  Using savedContent, length: \(savedContent.count)")
+                    editorContent = savedContent
+                } else {
+                    let content = fs.readFile(path: tab.path)
+                    print("  Reading from disk, length: \(content.count)")
+                    editorContent = content
+                    fileContents[tab.id] = content
+                }
+                currentLanguage = tab.language
+                detectLanguage(from: tab.name)
             }
-            currentLanguage = tab.language
-            detectLanguage(from: tab.name)
             print("  Final editorContent: \(editorContent.count)")
             // Force UI update
             objectWillChange.send()
@@ -240,6 +257,7 @@ public final class EditorViewModel: ObservableObject {
         if tabs.firstIndex(where: { $0.id == id }) != nil {
             tabs.removeAll { $0.id == id }
             fileContents.removeValue(forKey: id)
+            diffData.removeValue(forKey: id)
 
             if activeTabId == id {
                 activeTabId = tabs.last?.id ?? terminal.tabs.last?.id

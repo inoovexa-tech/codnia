@@ -6,6 +6,7 @@ struct ActivityBarView: View {
     @EnvironmentObject var workspaceVM: WorkspaceService
     @EnvironmentObject var editorVM: EditorViewModel
     @EnvironmentObject var searchVM: SearchService
+    @EnvironmentObject var gitVM: GitViewModel
 
     var body: some View {
         VStack(spacing: 0) {
@@ -37,6 +38,21 @@ struct ActivityBarView: View {
                     .padding(.vertical, 4)
                     .background(tab == .search ? Color(bgHex: "#1c1c1c") : Color.clear)
                     .foregroundColor(tab == .search ? .textPrimary : .textTertiary)
+                    .cornerRadius(5)
+                }
+                .buttonStyle(PlainButtonStyle())
+
+                Button(action: { tab = .sourceControl }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrow.triangle.branch")
+                            .font(.system(size: 13))
+                        Text("Git")
+                            .font(.system(size: 12, weight: .medium))
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(tab == .sourceControl ? Color(bgHex: "#1c1c1c") : Color.clear)
+                    .foregroundColor(tab == .sourceControl ? .textPrimary : .textTertiary)
                     .cornerRadius(5)
                 }
                 .buttonStyle(PlainButtonStyle())
@@ -78,11 +94,16 @@ struct ActivityBarView: View {
                 )
                 .background(Color.bgPrimary)
                 .frame(maxHeight: .infinity)
-            } else {
+            } else if tab == .search {
                 GlobalSearchView()
                     .environmentObject(searchVM)
                     .environmentObject(workspaceVM)
                     .environmentObject(editorVM)
+                    .background(Color.bgPrimary)
+            } else {
+                SourceControlView()
+                    .environmentObject(gitVM)
+                    .environmentObject(workspaceVM)
                     .background(Color.bgPrimary)
             }
         }

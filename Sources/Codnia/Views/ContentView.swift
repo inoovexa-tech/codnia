@@ -50,6 +50,7 @@ struct ContentView: View {
                         .environmentObject(appState.workspaceVM)
                         .environmentObject(appState.editorVM)
                         .environmentObject(appState.searchVM)
+                        .environmentObject(appState.gitVM)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -72,8 +73,17 @@ struct ContentView: View {
                         appState.editorVM.showGlobalSearch = true
                     }
                 },
+                onToggleSourceControl: {
+                    if appState.rightSidebarExpanded && appState.rightSidebarTab == .sourceControl {
+                        appState.rightSidebarExpanded = false
+                    } else {
+                        appState.rightSidebarTab = .sourceControl
+                        appState.rightSidebarExpanded = true
+                    }
+                },
                 isRightSidebarExpanded: appState.rightSidebarExpanded,
-                isSearchActive: appState.rightSidebarExpanded && appState.rightSidebarTab == .search
+                isSearchActive: appState.rightSidebarExpanded && appState.rightSidebarTab == .search,
+                isSourceControlActive: appState.rightSidebarExpanded && appState.rightSidebarTab == .sourceControl
             )
             .frame(height: 36)
         }
