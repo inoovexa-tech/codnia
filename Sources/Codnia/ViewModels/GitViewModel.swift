@@ -214,6 +214,10 @@ public final class GitViewModel: ObservableObject {
             actionError = "Commit message cannot be empty"
             return
         }
+        guard !stagedEntries.isEmpty else {
+            actionError = "No files staged for commit"
+            return
+        }
 
         isCommitting = true
         actionError = nil

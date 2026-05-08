@@ -565,7 +565,7 @@ struct SourceControlView: View {
             }
             .buttonStyle(PlainButtonStyle())
             .foregroundColor(.white)
-            .disabled(gitVM.isCommitting || gitVM.commitMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .disabled(gitVM.isCommitting || gitVM.stagedEntries.isEmpty || gitVM.commitMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
@@ -575,7 +575,7 @@ struct SourceControlView: View {
         if gitVM.isCommitting {
             return Color.accentBlue.opacity(0.5)
         }
-        if gitVM.commitMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        if gitVM.stagedEntries.isEmpty || gitVM.commitMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             return Color.accentBlue.opacity(0.3)
         }
         return Color.accentBlue

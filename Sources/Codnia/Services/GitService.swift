@@ -137,8 +137,13 @@ public final class GitService {
         }
         var entries: [GitStatusEntry] = []
         for line in output.components(separatedBy: .newlines) where !line.isEmpty {
-            let statusPart = line.prefix(2)
-            let filePart = line.dropFirst(3)
+            var statusPart = line.prefix(2)
+            var filePart = line.dropFirst(3)
+
+            if filePart.hasPrefix("\"") && filePart.hasSuffix("\"") {
+                filePart = filePart.dropFirst().dropLast()
+            }
+
             let filePath = String(filePart)
 
             let stagedStatus = statusPart.prefix(1)
@@ -216,8 +221,29 @@ public final class GitService {
     }
 
     public func unstageFile(path: String, filePath: String) async -> Bool {
-        let result = await runGitWithResult(args: ["restore", "--staged", filePath], in: path)
-        return result.success
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/bin/sh")
+        task.arguments = ["-c", "cd \(path) && git reset HEAD -- \"\(filePath)\""]
+        task.currentDirectoryURL = URL(fileURLWithPath: path)
+
+        let outPipe = Pipe()
+        let errPipe = Pipe()
+        task.standardOutput = outPipe
+        task.standardError = errPipe
+
+        return await withCheckedContinuation { continuation in
+            task.terminationHandler = { process in
+                continuation.resume(returning: process.terminationStatus == 0)
+            }
+
+            do {
+                try task.run()
+                outPipe.fileHandleForWriting.closeFile()
+                errPipe.fileHandleForWriting.closeFile()
+            } catch {
+                continuation.resume(returning: false)
+            }
+        }
     }
 
     // MARK: - Discard
