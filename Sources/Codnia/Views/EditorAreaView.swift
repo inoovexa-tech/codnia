@@ -14,14 +14,35 @@ struct EditorAreaView: View {
         ZStack {
             // File editor
             if let activeTab = editorVM.currentTab, activeTab.type == .file {
-                CodeEditorView(
-                    content: $editorVM.editorContent,
-                    language: editorVM.currentLanguage,
-                    onChange: {
-                        editorVM.markModified(tabId: activeTab.id)
+                if editorVM.isCurrentTabMarkdown && editorVM.showMarkdownPreview {
+                    MarkdownPreviewView(content: editorVM.editorContent)
+                        .allowsHitTesting(!isTerminalVisible)
+                } else {
+                    CodeEditorView(
+                        content: $editorVM.editorContent,
+                        language: editorVM.currentLanguage,
+                        onChange: {
+                            editorVM.markModified(tabId: activeTab.id)
+                        }
+                    )
+                    .environmentObject(settings)
+                    .allowsHitTesting(!isTerminalVisible)
+                }
+            }
+
+            // Preview toggle for markdown files
+            if let activeTab = editorVM.currentTab,
+               activeTab.type == .file,
+               editorVM.isCurrentTabMarkdown {
+                VStack {
+                    HStack {
+                        Spacer()
+                        markdownToggleButton
+                            .padding(.trailing, 20)
+                            .padding(.top, 8)
                     }
-                )
-                .environmentObject(settings)
+                    Spacer()
+                }
                 .allowsHitTesting(!isTerminalVisible)
             }
 
@@ -39,6 +60,34 @@ struct EditorAreaView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.bgPrimary)
+    }
+
+    private var markdownToggleButton: some View {
+        HStack(spacing: 4) {
+            Image(systemName: editorVM.showMarkdownPreview ? "doc.plaintext" : "eye")
+                .font(.system(size: 11, weight: .medium))
+            Text(editorVM.showMarkdownPreview ? "Code" : "Preview")
+                .font(.system(size: 11, weight: .medium))
+        }
+        .foregroundColor(.textSecondary)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 5)
+        .background(Color.bgTertiary.opacity(0.6))
+        .cornerRadius(6)
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .stroke(Color.borderLight.opacity(0.5), lineWidth: 0.5)
+        )
+        .onHover { hovering in
+            if hovering { NSCursor.pointingHand.push() }
+            else { NSCursor.pop() }
+        }
+        .onTapGesture {
+            withAnimation(.easeInOut(duration: 0.15)) {
+                editorVM.showMarkdownPreview.toggle()
+            }
+        }
+        .help(editorVM.showMarkdownPreview ? "Show code editor" : "Show markdown preview")
     }
 
     private var terminalVisibility: Double {

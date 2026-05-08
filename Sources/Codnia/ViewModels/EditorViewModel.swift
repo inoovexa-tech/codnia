@@ -17,6 +17,22 @@ public final class EditorViewModel: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     private var fileContents: [String: String] = [:] // tabId -> original content
     private var autoSaveTimer: AnyCancellable?
+    private var markdownPreviewTabs: Set<String> = []
+
+    public var isCurrentTabMarkdown: Bool {
+        currentTab?.language == "Markdown"
+    }
+
+    public var showMarkdownPreview: Bool {
+        get { activeTabId.flatMap { markdownPreviewTabs.contains($0) } ?? false }
+        set {
+            if let id = activeTabId {
+                if newValue { markdownPreviewTabs.insert(id) }
+                else { markdownPreviewTabs.remove(id) }
+                objectWillChange.send()
+            }
+        }
+    }
 
     public init(workspace: WorkspaceService, settings: SettingsService, terminal: TerminalViewModel) {
         self.workspace = workspace
