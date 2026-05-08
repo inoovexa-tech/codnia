@@ -10,6 +10,7 @@ public final class GitViewModel: ObservableObject {
     @Published public var branches: [String] = []
     @Published public var commitMessage: String = ""
     @Published public var isLoading: Bool = false
+    @Published public var isRefreshing: Bool = false
     @Published public var isCommitting: Bool = false
     @Published public var actionMessage: String? = nil
     @Published public var actionError: String? = nil
@@ -19,6 +20,7 @@ public final class GitViewModel: ObservableObject {
     private weak var editorVM: EditorViewModel?
     private var cancellables = Set<AnyCancellable>()
     private var refreshTask: Task<Void, Never>?
+    private var autoRefreshTask: Task<Void, Never>?
 
     public init(workspace: WorkspaceService, editorVM: EditorViewModel) {
         self.workspace = workspace
@@ -29,6 +31,7 @@ public final class GitViewModel: ObservableObject {
 
     deinit {
         refreshTask?.cancel()
+        autoRefreshTask?.cancel()
     }
 
     private func observeProjectChanges() {
@@ -38,9 +41,34 @@ public final class GitViewModel: ObservableObject {
             .receive(on: RunLoop.main)
             .sink { [weak self] project in
                 guard let self = self, let project = project else { return }
+                self.stopAutoRefresh()
                 self.refreshAll(for: project.path)
+                self.startAutoRefresh()
             }
             .store(in: &cancellables)
+    }
+
+    private func startAutoRefresh() {
+        autoRefreshTask?.cancel()
+        autoRefreshTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 3_000_000_000)
+                guard !Task.isCancelled else { break }
+                await MainActor.run {
+                    self?.refreshIfNeeded()
+                }
+            }
+        }
+    }
+
+    private func stopAutoRefresh() {
+        autoRefreshTask?.cancel()
+        autoRefreshTask = nil
+    }
+
+    private func refreshIfNeeded() {
+        guard !isRefreshing, !isLoading, !isCommitting else { return }
+        refreshAll()
     }
 
     public func refreshAll(for path: String? = nil) {
@@ -50,6 +78,7 @@ public final class GitViewModel: ObservableObject {
 
         refreshTask = Task { [weak self] in
             guard let self = self else { return }
+            self.isRefreshing = true
             self.isLoading = true
 
             async let status = self.git.getStatus(path: projectPath)
@@ -66,6 +95,7 @@ public final class GitViewModel: ObservableObject {
             self.currentBranch = branchResult
             self.branches = branchesResult
             self.isLoading = false
+            self.isRefreshing = false
         }
     }
 
