@@ -1,3 +1,19 @@
+## [0.7.0] — 2026-05-08
+
+### Added
+- Collapsible commit history section in sidebar (GitService)
+- Bulk discard options with file selection in git sidebar
+- WindowDragArea and TopbarFreeArea components for window dragging
+- Image and PDF preview in tabs
+- In-file search with Cmd+F shortcut, highlight matches, and auto-scroll navigation
+- Tab bar overflow dropdown menu
+
+### Fixed
+- Unstage files with spaces in path using shell
+- Handle discard for untracked files by removing from filesystem
+- Real-time refresh and fix refresh button state
+- Tab bar height fix
+
 ## [0.6.1] — 2026-05-08
 
 ### Fixed
