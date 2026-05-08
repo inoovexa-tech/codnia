@@ -127,34 +127,26 @@ struct SidebarView: View {
 
 struct SidebarExpandedProjectsList: View {
     @EnvironmentObject var workspaceVM: WorkspaceService
-    @State private var clicked = false
 
     var body: some View {
         ForEach(workspaceVM.projects) { project in
             ProjectRowExpanded(projectId: project.id)
         }
 
-        HStack(spacing: 8) {
-            Image(systemName: "plus")
-                .font(.system(size: 14))
-            Text("Add Project")
-                .font(.system(size: 12))
-        }
-        .frame(maxWidth: .infinity, minHeight: 32)
-        .foregroundColor(clicked ? .green : .textSecondary)
-        .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color.borderLight, style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
-        )
-        .contentShape(Rectangle())
-        .onTapGesture {
-            print("DEBUG: Add Project tapped!")
-            clicked = true
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                clicked = false
-            }
+        Button(action: {
+            print("DEBUG: Button tapped!")
             addProject()
+        }) {
+            HStack(spacing: 8) {
+                Image(systemName: "plus")
+                    .font(.system(size: 14))
+                Text("Add Project")
+                    .font(.system(size: 12))
+            }
+            .frame(maxWidth: .infinity, minHeight: 32)
+            .foregroundColor(.textSecondary)
         }
+        .buttonStyle(.plain)
         .padding(.top, 4)
     }
 
@@ -177,32 +169,24 @@ struct SidebarExpandedProjectsList: View {
 
 struct SidebarCollapsedProjectsList: View {
     @EnvironmentObject var workspaceVM: WorkspaceService
-    @State private var clicked = false
 
     var body: some View {
         ForEach(workspaceVM.projects) { project in
             ProjectRowCollapsed(projectId: project.id)
         }
 
-        Image(systemName: "plus")
-            .font(.system(size: 14))
-            .frame(width: 36, height: 36)
-            .background(clicked ? Color.green : Color.bgTertiary)
-            .cornerRadius(8)
-            .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(Color.borderLight, style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
-            )
-            .contentShape(Rectangle())
-            .onTapGesture {
-                print("DEBUG: Add Project (collapsed) tapped!")
-                clicked = true
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    clicked = false
-                }
-                addProject()
-            }
-            .padding(.top, 4)
+        Button(action: {
+            print("DEBUG: Button (collapsed) tapped!")
+            addProject()
+        }) {
+            Image(systemName: "plus")
+                .font(.system(size: 14))
+        }
+        .buttonStyle(.plain)
+        .frame(width: 36, height: 36)
+        .background(Color.bgTertiary)
+        .cornerRadius(8)
+        .padding(.top, 4)
     }
 
     private func addProject() {
