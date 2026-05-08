@@ -67,6 +67,8 @@ public final class TerminalViewModel: ObservableObject {
         case .terminal: return "Terminal"
         case .file: return "Terminal"
         case .diff: return "Terminal"
+        case .image: return "Image Viewer"
+        case .pdf: return "PDF Viewer"
         }
     }
 

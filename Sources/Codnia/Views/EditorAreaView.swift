@@ -27,6 +27,18 @@ struct EditorAreaView: View {
                 }
             }
 
+            // Image preview
+            if let activeTab = editorVM.currentTab, activeTab.type == .image {
+                ImagePreviewView(path: activeTab.path)
+                    .allowsHitTesting(!isTerminalVisible)
+            }
+
+            // PDF preview
+            if let activeTab = editorVM.currentTab, activeTab.type == .pdf {
+                PDFPreviewView(path: activeTab.path)
+                    .allowsHitTesting(!isTerminalVisible)
+            }
+
             // File editor
             if let activeTab = editorVM.currentTab, activeTab.type == .file {
                 if editorVM.isCurrentTabMarkdown && editorVM.showMarkdownPreview {

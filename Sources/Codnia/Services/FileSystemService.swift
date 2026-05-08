@@ -6,12 +6,17 @@ public final class FileSystemService {
     private init() {}
 
     public func readFile(path: String) -> String {
-        guard 
+        guard
             FileManager.default.isReadableFile(atPath: path),
             let data = FileManager.default.contents(atPath: path),
             let text = String(data: data, encoding: .utf8)
         else { return "" }
         return text
+    }
+
+    public func readBinaryFile(path: String) -> Data? {
+        guard FileManager.default.isReadableFile(atPath: path) else { return nil }
+        return FileManager.default.contents(atPath: path)
     }
 
     public func writeFile(path: String, content: String) throws {

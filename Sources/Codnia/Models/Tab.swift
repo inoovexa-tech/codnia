@@ -7,6 +7,8 @@ public enum TabType: String, Codable, Equatable {
     case claude
     case codex
     case diff
+    case image
+    case pdf
 }
 
 public enum PreviewType: String, Codable, Equatable {

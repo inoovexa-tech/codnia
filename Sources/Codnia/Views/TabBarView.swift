@@ -214,6 +214,8 @@ struct TabButton: View {
         case .codex: return .accentPurple
         case .diff: return .accentGreen
         case .file: return fileColor(for: tab.name)
+        case .image: return .accentBlue
+        case .pdf: return .accentRed
         }
     }
 

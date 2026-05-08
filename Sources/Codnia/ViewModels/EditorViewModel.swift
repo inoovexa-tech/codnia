@@ -179,8 +179,38 @@ public final class EditorViewModel: ObservableObject {
 
     public func openFile(_ path: String) {
         let name = URL(fileURLWithPath: path).lastPathComponent
-        // Detect language
         let ext = URL(fileURLWithPath: path).pathExtension.lowercased()
+
+        if isImageExtension(ext) {
+            if let existing = tabs.first(where: { $0.path == path }) {
+                activeTabId = existing.id
+                objectWillChange.send()
+                saveTabsToProject()
+                return
+            }
+            let tab = Tab(path: path, name: name, language: "Image", type: .image)
+            tabs.append(tab)
+            activeTabId = tab.id
+            objectWillChange.send()
+            saveTabsToProject()
+            return
+        }
+
+        if isPDFExtension(ext) {
+            if let existing = tabs.first(where: { $0.path == path }) {
+                activeTabId = existing.id
+                objectWillChange.send()
+                saveTabsToProject()
+                return
+            }
+            let tab = Tab(path: path, name: name, language: "PDF", type: .pdf)
+            tabs.append(tab)
+            activeTabId = tab.id
+            objectWillChange.send()
+            saveTabsToProject()
+            return
+        }
+
         let language = languageForExtension(ext)
         let content = fs.readFile(path: path)
 
@@ -349,8 +379,19 @@ public final class EditorViewModel: ObservableObject {
         case "sh": return "Shell"
         case "yaml", "yml": return "YAML"
         case "toml": return "TOML"
+        case "png", "jpg", "jpeg", "gif", "bmp", "tiff", "webp": return "Image"
+        case "pdf": return "PDF"
         default: return "Plain Text"
         }
+    }
+
+    public func isImageExtension(_ ext: String) -> Bool {
+        let imageExts = ["png", "jpg", "jpeg", "gif", "bmp", "tiff", "webp"]
+        return imageExts.contains(ext.lowercased())
+    }
+
+    public func isPDFExtension(_ ext: String) -> Bool {
+        return ext.lowercased() == "pdf"
     }
 
     public func nextTab() {
