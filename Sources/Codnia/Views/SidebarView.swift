@@ -153,22 +153,15 @@ struct SidebarExpandedProjectsList: View {
     }
 
     private func addProject() {
-        DispatchQueue.main.async {
-            let panel = NSOpenPanel()
-            panel.canChooseFiles = false
-            panel.canChooseDirectories = true
-            panel.allowsMultipleSelection = false
-            panel.prompt = "Select"
-            if let keyWindow = NSApp.keyWindow {
-                panel.beginSheetModal(for: keyWindow) { result in
-                    if result == .OK, let url = panel.url {
-                        workspaceVM.addProject(path: url.path)
-                    }
-                }
-            } else {
-                if panel.runModal() == .OK, let url = panel.url {
-                    workspaceVM.addProject(path: url.path)
-                }
+        guard let window = NSApp.mainWindow ?? NSApp.windows.first else { return }
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.prompt = "Select"
+        panel.beginSheetModal(for: window) { response in
+            if response == .OK, let url = panel.url {
+                workspaceVM.addProject(path: url.path)
             }
         }
     }
@@ -198,22 +191,15 @@ struct SidebarCollapsedProjectsList: View {
     }
 
     private func addProject() {
-        DispatchQueue.main.async {
-            let panel = NSOpenPanel()
-            panel.canChooseFiles = false
-            panel.canChooseDirectories = true
-            panel.allowsMultipleSelection = false
-            panel.prompt = "Select"
-            if let keyWindow = NSApp.keyWindow {
-                panel.beginSheetModal(for: keyWindow) { result in
-                    if result == .OK, let url = panel.url {
-                        workspaceVM.addProject(path: url.path)
-                    }
-                }
-            } else {
-                if panel.runModal() == .OK, let url = panel.url {
-                    workspaceVM.addProject(path: url.path)
-                }
+        guard let window = NSApp.mainWindow ?? NSApp.windows.first else { return }
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.prompt = "Select"
+        panel.beginSheetModal(for: window) { response in
+            if response == .OK, let url = panel.url {
+                workspaceVM.addProject(path: url.path)
             }
         }
     }
