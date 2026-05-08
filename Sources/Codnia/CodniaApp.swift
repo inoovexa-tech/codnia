@@ -123,6 +123,10 @@ struct CodniaApp: App {
                     }
                 }
                 .keyboardShortcut("f", modifiers: [.command, .shift])
+                Button("Find in File") {
+                    appDelegate.appState.editorVM.showInFileSearch.toggle()
+                }
+                .keyboardShortcut("f", modifiers: .command)
             }
 
             CommandMenu("Window") {

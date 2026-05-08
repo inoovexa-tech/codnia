@@ -9,6 +9,7 @@ public final class EditorViewModel: ObservableObject {
     @Published public var currentLanguage: String = "Plain Text"
     @Published public var editorContent: String = ""
     @Published public var showGlobalSearch: Bool = false
+    @Published public var showInFileSearch: Bool = false
 
     private let workspace: WorkspaceService
     private let settings: SettingsService

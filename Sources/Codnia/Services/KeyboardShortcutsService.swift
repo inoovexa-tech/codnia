@@ -46,6 +46,7 @@ public final class KeyboardShortcutsService: ObservableObject {
             "toggleSidebar": "Cmd+B",
             "toggleTerminal": "Cmd+`",
             "globalSearch": "Cmd+Shift+F",
+            "findInFile": "Cmd+F",
             "settings": "Cmd+,",
             "nextTab": "Cmd+Tab",
             "previousTab": "Cmd+Shift+Tab",

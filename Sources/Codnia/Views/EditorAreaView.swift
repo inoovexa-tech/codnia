@@ -10,6 +10,11 @@ struct EditorAreaView: View {
         return terminalVM.tabs.contains { $0.id == activeTab.id }
     }
 
+    @State private var inFileSearchQuery: String = ""
+    @State private var inFileSearchResults: [NSRange] = []
+    @State private var inFileSearchCurrentIndex: Int = 0
+    @FocusState private var inFileSearchFocused: Bool
+
     var body: some View {
         ZStack {
             // Diff viewer for diff tabs
@@ -33,11 +38,99 @@ struct EditorAreaView: View {
                         language: editorVM.currentLanguage,
                         onChange: {
                             editorVM.markModified(tabId: activeTab.id)
-                        }
+                        },
+                        searchResults: inFileSearchResults,
+                        currentSearchIndex: inFileSearchCurrentIndex
                     )
                     .environmentObject(settings)
                     .allowsHitTesting(!isTerminalVisible)
                 }
+            }
+
+            // In-file search bar
+            if editorVM.showInFileSearch {
+                VStack(spacing: 0) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 11))
+                            .foregroundColor(.textTertiary)
+
+                        TextField("Find in file", text: $inFileSearchQuery)
+                            .font(.system(size: 12))
+                            .foregroundColor(.textPrimary)
+                            .textFieldStyle(PlainTextFieldStyle())
+                            .frame(width: 200)
+                            .focused($inFileSearchFocused)
+                            .onAppear {
+                                inFileSearchFocused = true
+                            }
+                            .onSubmit {
+                                if inFileSearchResults.count > 1 {
+                                    performInFileSearchNext()
+                                } else {
+                                    performInFileSearch()
+                                }
+                            }
+                            .onChange(of: inFileSearchQuery) { _ in
+                                performInFileSearch()
+                            }
+
+                        if !inFileSearchQuery.isEmpty {
+                            Text("\(inFileSearchResults.isEmpty ? 0 : inFileSearchCurrentIndex + 1)/\(inFileSearchResults.count)")
+                                .font(.system(size: 11))
+                                .foregroundColor(.textTertiary)
+                        }
+
+                        Button(action: performInFileSearchPrevious) {
+                            Image(systemName: "chevron.up")
+                                .font(.system(size: 10, weight: .medium))
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .onHover { hovering in
+                            if hovering { NSCursor.pointingHand.push() }
+                            else { NSCursor.pop() }
+                        }
+                        .disabled(inFileSearchResults.isEmpty)
+
+                        Button(action: performInFileSearchNext) {
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 10, weight: .medium))
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .onHover { hovering in
+                            if hovering { NSCursor.pointingHand.push() }
+                            else { NSCursor.pop() }
+                        }
+                        .disabled(inFileSearchResults.isEmpty)
+
+                        Button(action: {
+                            editorVM.showInFileSearch = false
+                            inFileSearchQuery = ""
+                            inFileSearchResults = []
+                        }) {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 10))
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .onHover { hovering in
+                            if hovering { NSCursor.pointingHand.push() }
+                            else { NSCursor.pop() }
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(Color.bgSecondary)
+                    .cornerRadius(6)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6)
+                            .stroke(Color.borderLight, lineWidth: 0.5)
+                    )
+
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
             }
 
             // Preview toggle for markdown files
@@ -103,6 +196,40 @@ struct EditorAreaView: View {
     private var terminalVisibility: Double {
         guard let activeTab = editorVM.currentTab else { return 0 }
         return terminalVM.tabs.contains { $0.id == activeTab.id } ? 1 : 0
+    }
+
+    private func performInFileSearch() {
+        guard !inFileSearchQuery.isEmpty else {
+            inFileSearchResults = []
+            return
+        }
+        let content = editorVM.editorContent as NSString
+        var ranges: [NSRange] = []
+        let searchRange = NSRange(location: 0, length: content.length)
+        content.enumerateSubstrings(in: searchRange, options: .byLines) { substring, lineRange, _, _ in
+            if let line = substring {
+                var searchStart = 0
+                while searchStart < line.count {
+                    let range = (line as NSString).range(of: self.inFileSearchQuery, options: .caseInsensitive, range: NSRange(location: searchStart, length: line.count - searchStart))
+                    if range.location == NSNotFound { break }
+                    let fullRange = NSRange(location: lineRange.location + range.location, length: range.length)
+                    ranges.append(fullRange)
+                    searchStart = lineRange.location + range.location + range.length
+                }
+            }
+        }
+        inFileSearchResults = ranges
+        inFileSearchCurrentIndex = ranges.isEmpty ? 0 : 0
+    }
+
+    private func performInFileSearchNext() {
+        guard !inFileSearchResults.isEmpty else { return }
+        inFileSearchCurrentIndex = (inFileSearchCurrentIndex + 1) % inFileSearchResults.count
+    }
+
+    private func performInFileSearchPrevious() {
+        guard !inFileSearchResults.isEmpty else { return }
+        inFileSearchCurrentIndex = inFileSearchCurrentIndex == 0 ? inFileSearchResults.count - 1 : inFileSearchCurrentIndex - 1
     }
 }
 

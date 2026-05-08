@@ -4,6 +4,8 @@ struct CodeEditorView: View {
     @Binding var content: String
     let language: String
     let onChange: () -> Void
+    var searchResults: [NSRange] = []
+    var currentSearchIndex: Int = 0
     @EnvironmentObject var settings: SettingsService
 
     var body: some View {
@@ -12,7 +14,9 @@ struct CodeEditorView: View {
                 text: $content,
                 fontSize: settings.fontSize,
                 language: language,
-                onChange: onChange
+                onChange: onChange,
+                searchResults: searchResults,
+                currentSearchIndex: currentSearchIndex
             )
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -25,6 +29,8 @@ struct EditorNSTextView: NSViewRepresentable {
     let fontSize: Double
     let language: String
     let onChange: () -> Void
+    var searchResults: [NSRange] = []
+    var currentSearchIndex: Int = 0
 
     func makeNSView(context: Context) -> NSScrollView {
         let scrollView = NSScrollView()
@@ -88,6 +94,7 @@ struct EditorNSTextView: NSViewRepresentable {
         }
 
         context.coordinator.applyHighlighting(textView)
+        context.coordinator.highlightSearchResults(textView, results: searchResults, currentIndex: currentSearchIndex)
     }
 
     func makeCoordinator() -> Coordinator {
@@ -99,6 +106,8 @@ struct EditorNSTextView: NSViewRepresentable {
         let onChange: () -> Void
         var highlighter: SyntaxHighlighter?
         private var isHighlighting = false
+        private var searchHighlightColor = NSColor(red: 255/255, green: 213/255, blue: 0/255, alpha: 0.3)
+        private var currentHighlightColor = NSColor(red: 255/255, green: 140/255, blue: 0/255, alpha: 0.5)
 
         init(text: Binding<String>, language: String, onChange: @escaping () -> Void) {
             self._text = text
@@ -116,6 +125,31 @@ struct EditorNSTextView: NSViewRepresentable {
             isHighlighting = true
             highlighter.highlight(textStorage)
             isHighlighting = false
+        }
+
+        @MainActor func highlightSearchResults(_ textView: NSTextView, results: [NSRange], currentIndex: Int) {
+            guard let textStorage = textView.textStorage else { return }
+
+            textStorage.beginEditing()
+            textStorage.removeAttribute(.backgroundColor, range: NSRange(location: 0, length: textStorage.length))
+
+            for (index, range) in results.enumerated() {
+                let color = index == currentIndex ? currentHighlightColor : searchHighlightColor
+                textStorage.addAttribute(.backgroundColor, value: color, range: range)
+            }
+
+            textStorage.endEditing()
+
+            if currentIndex < results.count {
+                scrollToRange(textView, range: results[currentIndex])
+            }
+        }
+
+        @MainActor func scrollToRange(_ textView: NSTextView, range: NSRange) {
+            guard let layoutManager = textView.layoutManager else { return }
+            let glyphRange = layoutManager.glyphRange(forCharacterRange: range, actualCharacterRange: nil)
+            let rect = layoutManager.boundingRect(forGlyphRange: glyphRange, in: textView.textContainer ?? NSTextContainer())
+            textView.scrollToVisible(rect)
         }
 
         func textDidChange(_ notification: Notification) {
