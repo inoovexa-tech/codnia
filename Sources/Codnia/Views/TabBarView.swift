@@ -13,6 +13,11 @@ struct TabBarView: View {
     var isSourceControlActive: Bool
 
     @State private var draggedTabId: String?
+    @State private var showTabDropdown = false
+
+    private var allTabs: [Tab] {
+        editorVM.tabs + terminalVM.tabs
+    }
 
     var body: some View {
         ZStack {
@@ -34,41 +39,58 @@ struct TabBarView: View {
                 .buttonStyle(PlainButtonStyle())
                 .foregroundColor(.textSecondary)
 
-                ScrollView(.horizontal, showsIndicators: false) {
+                GeometryReader { geometry in
+                    let availableWidth = geometry.size.width
+                    let tabWidth: CGFloat = 150
+                    let maxVisibleTabs = max(1, Int(availableWidth / tabWidth))
+                    let hasOverflow = allTabs.count > maxVisibleTabs
+
                     HStack(spacing: 0) {
-                        ForEach(Array(editorVM.tabs.enumerated()), id: \.element.id) { index, tab in
-                            TabButton(
-                                tab: tab,
-                                index: index,
-                                isActive: tab.id == editorVM.activeTabId,
-                                allTabs: editorVM.tabs,
-                                onSelect: { editorVM.activateTab(tab.id) },
-                                onClose: { editorVM.closeTab(tab.id) },
-                                moveAction: { editorVM.moveTab(from: $0, to: $1) },
-                                draggedTabId: $draggedTabId,
-                                onMoveLeft: index > 0 ? { editorVM.moveTab(from: index, to: index - 1) } : nil,
-                                onMoveRight: index < editorVM.tabs.count - 1 ? { editorVM.moveTab(from: index, to: index + 1) } : nil
-                            )
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 0) {
+                                ForEach(Array(editorVM.tabs.enumerated()), id: \.element.id) { index, tab in
+                                    TabButton(
+                                        tab: tab,
+                                        index: index,
+                                        isActive: tab.id == editorVM.activeTabId,
+                                        allTabs: editorVM.tabs,
+                                        onSelect: { editorVM.activateTab(tab.id) },
+                                        onClose: { editorVM.closeTab(tab.id) },
+                                        moveAction: { editorVM.moveTab(from: $0, to: $1) },
+                                        draggedTabId: $draggedTabId,
+                                        onMoveLeft: index > 0 ? { editorVM.moveTab(from: index, to: index - 1) } : nil,
+                                        onMoveRight: index < editorVM.tabs.count - 1 ? { editorVM.moveTab(from: index, to: index + 1) } : nil
+                                    )
+                                }
+                                ForEach(Array(terminalVM.tabs.enumerated()), id: \.element.id) { index, tab in
+                                    TabButton(
+                                        tab: tab,
+                                        index: index,
+                                        isActive: tab.id == editorVM.activeTabId,
+                                        allTabs: terminalVM.tabs,
+                                        onSelect: { editorVM.activateTab(tab.id) },
+                                        onClose: { editorVM.closeTab(tab.id) },
+                                        moveAction: { terminalVM.moveTab(from: $0, to: $1) },
+                                        draggedTabId: $draggedTabId,
+                                        onMoveLeft: index > 0 ? { terminalVM.moveTab(from: index, to: index - 1) } : nil,
+                                        onMoveRight: index < terminalVM.tabs.count - 1 ? { terminalVM.moveTab(from: index, to: index + 1) } : nil
+                                    )
+                                }
+                            }
                         }
-                        ForEach(Array(terminalVM.tabs.enumerated()), id: \.element.id) { index, tab in
-                            TabButton(
-                                tab: tab,
-                                index: index,
-                                isActive: tab.id == editorVM.activeTabId,
-                                allTabs: terminalVM.tabs,
-                                onSelect: { editorVM.activateTab(tab.id) },
-                                onClose: { editorVM.closeTab(tab.id) },
-                                moveAction: { terminalVM.moveTab(from: $0, to: $1) },
-                                draggedTabId: $draggedTabId,
-                                onMoveLeft: index > 0 ? { terminalVM.moveTab(from: index, to: index - 1) } : nil,
-                                onMoveRight: index < terminalVM.tabs.count - 1 ? { terminalVM.moveTab(from: index, to: index + 1) } : nil
+                        .frame(maxWidth: .infinity)
+                        .clipped()
+
+                        if hasOverflow {
+                            TabOverflowMenu(
+                                allTabs: allTabs,
+                                activeTabId: editorVM.activeTabId,
+                                onSelect: { editorVM.activateTab($0) },
+                                onClose: { editorVM.closeTab($0) }
                             )
                         }
                     }
                 }
-
-                WindowDragView()
-                    .frame(maxWidth: .infinity)
 
                 HStack(spacing: 4) {
                     Button(action: onToggleSearch) {
@@ -94,7 +116,7 @@ struct TabBarView: View {
                 }
                 .padding(.horizontal, 8)
             }
-            .frame(maxHeight: .infinity)
+            .frame(height: 36)
         }
         .frame(height: 36)
         .background(Color.bgPrimary)
@@ -278,5 +300,45 @@ struct TabDropDelegate: DropDelegate {
         else { return false }
         moveAction(sourceIndex, index)
         return true
+    }
+}
+
+struct TabOverflowMenu: View {
+    let allTabs: [Tab]
+    let activeTabId: String?
+    let onSelect: (String) -> Void
+    let onClose: (String) -> Void
+
+    var body: some View {
+        Menu {
+            ForEach(allTabs, id: \.id) { tab in
+                Button {
+                    onSelect(tab.id)
+                } label: {
+                    HStack {
+                        Text(tab.name)
+                        Spacer()
+                        if tab.id == activeTabId {
+                            Image(systemName: "checkmark")
+                        }
+                    }
+                }
+            }
+            Divider()
+            ForEach(allTabs, id: \.id) { tab in
+                Button(role: .destructive) {
+                    onClose(tab.id)
+                } label: {
+                    Text("Close \(tab.name)")
+                }
+            }
+        } label: {
+            Image(systemName: "ellipsis")
+                .font(.system(size: 13))
+                .frame(width: 28, height: 36)
+        }
+        .menuStyle(BorderlessButtonMenuStyle())
+        .buttonStyle(PlainButtonStyle())
+        .foregroundColor(.textSecondary)
     }
 }
