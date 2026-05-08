@@ -133,21 +133,22 @@ struct SidebarExpandedProjectsList: View {
             ProjectRowExpanded(projectId: project.id)
         }
 
-        Button(action: { addProject() }) {
-            HStack(spacing: 8) {
-                Image(systemName: "plus")
-                    .font(.system(size: 14))
-                Text("Add Project")
-                    .font(.system(size: 12))
-            }
-            .frame(maxWidth: .infinity, minHeight: 32)
-            .foregroundColor(.textSecondary)
-            .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(Color.borderLight, style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
-            )
+        HStack(spacing: 8) {
+            Image(systemName: "plus")
+                .font(.system(size: 14))
+            Text("Add Project")
+                .font(.system(size: 12))
         }
-        .buttonStyle(PlainButtonStyle())
+        .frame(maxWidth: .infinity, minHeight: 32)
+        .foregroundColor(.textSecondary)
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.borderLight, style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
+        )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            addProject()
+        }
         .padding(.top, 4)
     }
 
@@ -171,19 +172,20 @@ struct SidebarCollapsedProjectsList: View {
             ProjectRowCollapsed(projectId: project.id)
         }
 
-        Button(action: { addProject() }) {
-            Image(systemName: "plus")
-                .font(.system(size: 14))
-        }
-        .buttonStyle(PlainButtonStyle())
-        .frame(width: 36, height: 36)
-        .background(Color.bgTertiary)
-        .cornerRadius(8)
-        .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color.borderLight, style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
-        )
-        .padding(.top, 4)
+        Image(systemName: "plus")
+            .font(.system(size: 14))
+            .frame(width: 36, height: 36)
+            .background(Color.bgTertiary)
+            .cornerRadius(8)
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(Color.borderLight, style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
+            )
+            .contentShape(Rectangle())
+            .onTapGesture {
+                addProject()
+            }
+            .padding(.top, 4)
     }
 
     private func addProject() {
