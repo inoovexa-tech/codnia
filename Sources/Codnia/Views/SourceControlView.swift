@@ -16,62 +16,76 @@ struct SourceControlView: View {
             if workspaceVM.activeProject == nil {
                 emptyState
             } else {
-                ScrollView {
-                    VStack(spacing: 0) {
-                        branchHeader
-                        actionButtons
-                        stagedSection
-                        unstagedSection
-                        commitSection
-                    }
-                }
+                VStack(spacing: 0) {
+                    branchHeader
+                    actionButtons
+                    stagedSection
+                    unstagedSection
+                    commitSection
 
-                if let message = gitVM.actionMessage {
-                    HStack(spacing: 4) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundColor(.green)
-                            .font(.system(size: 12))
-                        Text(message)
-                            .font(.system(size: 11))
-                            .foregroundColor(.green)
-                        Spacer()
-                        Button { gitVM.clearMessages() } label: {
-                            Image(systemName: "xmark")
-                                .font(.system(size: 9))
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                        .foregroundColor(.textTertiary)
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(Color.green.opacity(0.1))
-                }
+                    Spacer()
 
-                if let error = gitVM.actionError {
-                    HStack(spacing: 4) {
-                        Image(systemName: "exclamationmark.circle.fill")
-                            .foregroundColor(.red)
-                            .font(.system(size: 12))
-                        Text(error)
-                            .font(.system(size: 11))
-                            .foregroundColor(.red)
-                        Spacer()
-                        Button { gitVM.clearMessages() } label: {
-                            Image(systemName: "xmark")
-                                .font(.system(size: 9))
+                    if !gitVM.commitHistory.isEmpty {
+                        ScrollView {
+                            commitHistorySection
                         }
-                        .buttonStyle(PlainButtonStyle())
-                        .foregroundColor(.textTertiary)
+                        .frame(maxHeight: 200)
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(Color.red.opacity(0.1))
+
+                    messagesView
                 }
+                .frame(maxHeight: .infinity, alignment: .top)
             }
         }
         .onAppear {
             if workspaceVM.activeProject != nil {
                 gitVM.refreshAll()
+            }
+        }
+    }
+
+    private var messagesView: some View {
+        VStack(spacing: 0) {
+            if let message = gitVM.actionMessage {
+                HStack(spacing: 4) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(.green)
+                        .font(.system(size: 12))
+                    Text(message)
+                        .font(.system(size: 11))
+                        .foregroundColor(.green)
+                    Spacer()
+                    Button { gitVM.clearMessages() } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 9))
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .foregroundColor(.textTertiary)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(Color.green.opacity(0.1))
+            }
+
+            if let error = gitVM.actionError {
+                HStack(spacing: 4) {
+                    Image(systemName: "exclamationmark.circle.fill")
+                        .foregroundColor(.red)
+                        .font(.system(size: 12))
+                    Text(error)
+                        .font(.system(size: 11))
+                        .foregroundColor(.red)
+                    Spacer()
+                    Button { gitVM.clearMessages() } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 9))
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .foregroundColor(.textTertiary)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(Color.red.opacity(0.1))
             }
         }
     }
@@ -88,6 +102,96 @@ struct SourceControlView: View {
                 .foregroundColor(.textTertiary)
         }
         .frame(maxHeight: .infinity)
+    }
+
+    // MARK: - Commit History Section
+
+    private var commitHistorySection: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Divider()
+                .foregroundColor(.borderDefault)
+                .padding(.top, 8)
+
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    gitVM.showCommitHistory.toggle()
+                }
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: gitVM.showCommitHistory ? "chevron.down" : "chevron.right")
+                        .font(.system(size: 10))
+                        .foregroundColor(.textTertiary)
+                    Text("History")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(.textTertiary)
+                    Spacer()
+                    Text("\(gitVM.commitHistory.count)")
+                        .font(.system(size: 10))
+                        .foregroundColor(.textTertiary)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color(bgHex: "#2a2a2a"))
+                        .cornerRadius(8)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+            }
+            .buttonStyle(PlainButtonStyle())
+
+            if gitVM.showCommitHistory {
+                ForEach(gitVM.commitHistory) { commit in
+                    commitRow(commit: commit)
+                }
+            }
+        }
+    }
+
+    private func commitRow(commit: GitService.CommitInfo) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            VStack(spacing: 2) {
+                Circle()
+                    .fill(Color.accentBlue)
+                    .frame(width: 8, height: 8)
+                Rectangle()
+                    .fill(Color.borderDefault)
+                    .frame(width: 1, height: 24)
+            }
+            .padding(.leading, 14)
+            .padding(.top, 6)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(commit.message)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.textPrimary)
+                    .lineLimit(2)
+
+                HStack(spacing: 4) {
+                    Text(commit.shortHash)
+                        .font(.system(size: 9, weight: .medium, design: .monospaced))
+                        .foregroundColor(.accentBlue)
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 1)
+                        .background(Color.accentBlue.opacity(0.15))
+                        .cornerRadius(3)
+
+                    Text(commit.author)
+                        .font(.system(size: 10))
+                        .foregroundColor(.textTertiary)
+
+                    Text("·")
+                        .font(.system(size: 10))
+                        .foregroundColor(.textTertiary)
+
+                    Text(commit.date)
+                        .font(.system(size: 10))
+                        .foregroundColor(.textTertiary)
+                }
+            }
+            .padding(.vertical, 6)
+            .padding(.trailing, 12)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
     }
 
     // MARK: - Branch Header

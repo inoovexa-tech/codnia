@@ -326,11 +326,39 @@ public final class GitService {
 
     // MARK: - Log
 
-    public func getLog(path: String, count: Int = 10) async -> [String] {
-        guard let output = await runGitOutput(args: ["log", "--oneline", "-\(count)"], in: path) else {
+    public struct CommitInfo: Identifiable {
+        public let id: String
+        public let hash: String
+        public let shortHash: String
+        public let message: String
+        public let author: String
+        public let date: String
+
+        public init(hash: String, message: String, author: String, date: String) {
+            self.id = hash
+            self.hash = hash
+            self.shortHash = String(hash.prefix(7))
+            self.message = message
+            self.author = author
+            self.date = date
+        }
+    }
+
+    public func getLog(path: String, count: Int = 20) async -> [CommitInfo] {
+        let format = "%H|%s|%an|%ad"
+        guard let output = await runGitOutput(args: ["log", "--format=\(format)", "--date=short", "-\(count)"], in: path) else {
             return []
         }
-        return output.components(separatedBy: .newlines).filter { !$0.isEmpty }
+        return output.components(separatedBy: .newlines).filter { !$0.isEmpty }.compactMap { line in
+            let parts = line.split(separator: "|", omittingEmptySubsequences: false)
+            guard parts.count >= 4 else { return nil }
+            return CommitInfo(
+                hash: String(parts[0]),
+                message: String(parts[1]),
+                author: String(parts[2]),
+                date: String(parts[3])
+            )
+        }
     }
 }
 

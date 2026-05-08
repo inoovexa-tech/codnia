@@ -14,6 +14,8 @@ public final class GitViewModel: ObservableObject {
     @Published public var isCommitting: Bool = false
     @Published public var actionMessage: String? = nil
     @Published public var actionError: String? = nil
+    @Published public var commitHistory: [GitService.CommitInfo] = []
+    @Published public var showCommitHistory: Bool = false
 
     private let git = GitService.shared
     private weak var workspace: WorkspaceService?
@@ -84,8 +86,9 @@ public final class GitViewModel: ObservableObject {
             async let status = self.git.getStatus(path: projectPath)
             async let branch = self.git.getBranch(path: projectPath)
             async let branches = self.git.getBranches(path: projectPath)
+            async let history = self.git.getLog(path: projectPath, count: 20)
 
-            let (statusResult, branchResult, branchesResult) = await (status, branch, branches)
+            let (statusResult, branchResult, branchesResult, historyResult) = await (status, branch, branches, history)
 
             guard !Task.isCancelled else { return }
 
@@ -94,6 +97,7 @@ public final class GitViewModel: ObservableObject {
             self.unstagedEntries = statusResult.filter { !$0.isStaged }
             self.currentBranch = branchResult
             self.branches = branchesResult
+            self.commitHistory = historyResult
             self.isLoading = false
             self.isRefreshing = false
         }
