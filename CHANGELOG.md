@@ -1,9 +1,9 @@
 ## [0.6.1] — 2026-05-08
 
 ### Fixed
-- Fix Add Project button not opening folder picker on macOS
-  - Replace `NSOpenPanel().runModal()` with SwiftUI `.fileImporter()` modifier
-  - Applies to both expanded and collapsed sidebar layouts
+- Fix Add Project button freezing on DMG builds
+  - Restore `NSOpenPanel.runModal()` instead of `beginSheetModal` which caused HIRunLoopSemaphore deadlock
+  - Add `.contentShape(Rectangle())` for full clickable button area
 
 ## [0.6.0] — 2026-05-08
 
