@@ -9,6 +9,7 @@ struct SourceControlView: View {
     @State private var mergeBranchName: String = ""
     @State private var showMergeDialog: Bool = false
     @State private var hoveredFileId: String? = nil
+    @State private var selectedForDiscard: Set<String> = []
 
     var body: some View {
         VStack(spacing: 0) {
@@ -377,13 +378,85 @@ struct SourceControlView: View {
             ForEach(gitVM.unstagedEntries) { entry in
                 fileRow(entry: entry, isStaged: false)
             }
+
+            if !gitVM.unstagedEntries.isEmpty {
+                discardBar
+            }
         }
+    }
+
+    private var discardBar: some View {
+        HStack(spacing: 8) {
+            Button {
+                if selectedForDiscard.isEmpty {
+                    discardAll()
+                } else {
+                    discardSelected()
+                }
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "trash")
+                        .font(.system(size: 11))
+                    Text(selectedForDiscard.isEmpty ? "Discard All" : "Discard Selected (\(selectedForDiscard.count))")
+                        .font(.system(size: 11))
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(selectedForDiscard.isEmpty ? Color.red.opacity(0.2) : Color.accentBlue.opacity(0.2))
+                .foregroundColor(selectedForDiscard.isEmpty ? .red : .accentBlue)
+                .cornerRadius(4)
+            }
+            .buttonStyle(PlainButtonStyle())
+
+            if !selectedForDiscard.isEmpty {
+                Button {
+                    selectedForDiscard.removeAll()
+                } label: {
+                    Text("Clear Selection")
+                        .font(.system(size: 10))
+                }
+                .buttonStyle(PlainButtonStyle())
+                .foregroundColor(.textTertiary)
+            }
+
+            Spacer()
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+    }
+
+    private func discardAll() {
+        for entry in gitVM.unstagedEntries {
+            gitVM.discardFile(entry.filePath)
+        }
+    }
+
+    private func discardSelected() {
+        for filePath in selectedForDiscard {
+            gitVM.discardFile(filePath)
+        }
+        selectedForDiscard.removeAll()
     }
 
     // MARK: - File Row
 
     private func fileRow(entry: GitStatusEntry, isStaged: Bool) -> some View {
         HStack(spacing: 6) {
+            if !selectedForDiscard.isEmpty && !isStaged {
+                Button {
+                    if selectedForDiscard.contains(entry.filePath) {
+                        selectedForDiscard.remove(entry.filePath)
+                    } else {
+                        selectedForDiscard.insert(entry.filePath)
+                    }
+                } label: {
+                    Image(systemName: selectedForDiscard.contains(entry.filePath) ? "checkmark.circle.fill" : "circle")
+                        .font(.system(size: 12))
+                        .foregroundColor(selectedForDiscard.contains(entry.filePath) ? .accentBlue : .textTertiary)
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+
             statusIcon(for: entry.status, isStaged: isStaged)
 
             Button {
@@ -415,7 +488,7 @@ struct SourceControlView: View {
                 }
                 .buttonStyle(PlainButtonStyle())
                 .foregroundColor(.red.opacity(0.7))
-                .opacity(hoveredFileId == entry.id ? 0.8 : 0)
+                .opacity(hoveredFileId == entry.id && selectedForDiscard.isEmpty ? 0.8 : 0)
                 .help("Discard changes")
             }
         }
