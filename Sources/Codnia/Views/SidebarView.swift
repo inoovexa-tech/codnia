@@ -133,10 +133,7 @@ struct SidebarExpandedProjectsList: View {
             ProjectRowExpanded(projectId: project.id)
         }
 
-        Button(action: {
-            print("DEBUG: Button tapped!")
-            addProject()
-        }) {
+        Button(action: { addProject() }) {
             HStack(spacing: 8) {
                 Image(systemName: "plus")
                     .font(.system(size: 14))
@@ -145,23 +142,22 @@ struct SidebarExpandedProjectsList: View {
             }
             .frame(maxWidth: .infinity, minHeight: 32)
             .foregroundColor(.textSecondary)
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(Color.borderLight, style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
+            )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PlainButtonStyle())
         .padding(.top, 4)
     }
 
     private func addProject() {
-        print("DEBUG: addProject() called")
         let panel = NSOpenPanel()
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
         panel.prompt = "Select"
-        print("DEBUG: About to run panel")
-        let result = panel.runModal()
-        print("DEBUG: panel result = \(result.rawValue)")
-        if result == .OK, let url = panel.url {
-            print("DEBUG: Selected URL = \(url.path)")
+        if panel.runModal() == .OK, let url = panel.url {
             workspaceVM.addProject(path: url.path)
         }
     }
@@ -175,32 +171,28 @@ struct SidebarCollapsedProjectsList: View {
             ProjectRowCollapsed(projectId: project.id)
         }
 
-        Button(action: {
-            print("DEBUG: Button (collapsed) tapped!")
-            addProject()
-        }) {
+        Button(action: { addProject() }) {
             Image(systemName: "plus")
                 .font(.system(size: 14))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PlainButtonStyle())
         .frame(width: 36, height: 36)
         .background(Color.bgTertiary)
         .cornerRadius(8)
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.borderLight, style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
+        )
         .padding(.top, 4)
     }
 
     private func addProject() {
-        print("DEBUG: addProject() called (collapsed)")
         let panel = NSOpenPanel()
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
         panel.prompt = "Select"
-        print("DEBUG: About to run panel")
-        let result = panel.runModal()
-        print("DEBUG: panel result = \(result.rawValue)")
-        if result == .OK, let url = panel.url {
-            print("DEBUG: Selected URL = \(url.path)")
+        if panel.runModal() == .OK, let url = panel.url {
             workspaceVM.addProject(path: url.path)
         }
     }
