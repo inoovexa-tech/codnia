@@ -127,14 +127,13 @@ struct SidebarView: View {
 
 struct SidebarExpandedProjectsList: View {
     @EnvironmentObject var workspaceVM: WorkspaceService
-    @State private var showImporter = false
 
     var body: some View {
         ForEach(workspaceVM.projects) { project in
             ProjectRowExpanded(projectId: project.id)
         }
 
-        Button(action: { showImporter = true }) {
+        Button(action: { addProject() }) {
             HStack(spacing: 8) {
                 Image(systemName: "plus")
                     .font(.system(size: 14))
@@ -151,18 +150,25 @@ struct SidebarExpandedProjectsList: View {
         }
         .buttonStyle(PlainButtonStyle())
         .padding(.top, 4)
-        .fileImporter(
-            isPresented: $showImporter,
-            allowedContentTypes: [.folder],
-            allowsMultipleSelection: false
-        ) { result in
-            switch result {
-            case .success(let urls):
-                if let url = urls.first {
+    }
+
+    private func addProject() {
+        DispatchQueue.main.async {
+            let panel = NSOpenPanel()
+            panel.canChooseFiles = false
+            panel.canChooseDirectories = true
+            panel.allowsMultipleSelection = false
+            panel.prompt = "Select"
+            if let keyWindow = NSApp.keyWindow {
+                panel.beginSheetModal(for: keyWindow) { result in
+                    if result == .OK, let url = panel.url {
+                        workspaceVM.addProject(path: url.path)
+                    }
+                }
+            } else {
+                if panel.runModal() == .OK, let url = panel.url {
                     workspaceVM.addProject(path: url.path)
                 }
-            case .failure(let error):
-                print("Failed to import folder: \(error)")
             }
         }
     }
@@ -170,14 +176,13 @@ struct SidebarExpandedProjectsList: View {
 
 struct SidebarCollapsedProjectsList: View {
     @EnvironmentObject var workspaceVM: WorkspaceService
-    @State private var showImporter = false
 
     var body: some View {
         ForEach(workspaceVM.projects) { project in
             ProjectRowCollapsed(projectId: project.id)
         }
 
-        Button(action: { showImporter = true }) {
+        Button(action: { addProject() }) {
             Image(systemName: "plus")
                 .font(.system(size: 14))
         }
@@ -190,18 +195,25 @@ struct SidebarCollapsedProjectsList: View {
                 .stroke(Color.borderLight, style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
         )
         .padding(.top, 4)
-        .fileImporter(
-            isPresented: $showImporter,
-            allowedContentTypes: [.folder],
-            allowsMultipleSelection: false
-        ) { result in
-            switch result {
-            case .success(let urls):
-                if let url = urls.first {
+    }
+
+    private func addProject() {
+        DispatchQueue.main.async {
+            let panel = NSOpenPanel()
+            panel.canChooseFiles = false
+            panel.canChooseDirectories = true
+            panel.allowsMultipleSelection = false
+            panel.prompt = "Select"
+            if let keyWindow = NSApp.keyWindow {
+                panel.beginSheetModal(for: keyWindow) { result in
+                    if result == .OK, let url = panel.url {
+                        workspaceVM.addProject(path: url.path)
+                    }
+                }
+            } else {
+                if panel.runModal() == .OK, let url = panel.url {
                     workspaceVM.addProject(path: url.path)
                 }
-            case .failure(let error):
-                print("Failed to import folder: \(error)")
             }
         }
     }
