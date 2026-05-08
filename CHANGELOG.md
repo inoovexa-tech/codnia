@@ -1,3 +1,17 @@
+## [0.6.0] — 2026-05-08
+
+### Added
+- Source Control panel in right sidebar with diff viewer
+- Markdown preview toggle with full text selection
+- Project switching with Cmd+Up/Down keyboard shortcuts
+
+### Fixed
+- Make add project button area fully clickable
+- Close pipe write end to unblock git changes counting and prevent deadlock on stderr
+- Skip runtime icon assignment in .app bundle to preserve Dock rounded corners
+- Load app icon from SPM resource bundle for proper Dock display
+- Restore double-click to zoom window on title bar drag area
+
 ## [0.5.1] — 2026-05-07
 
 ### Fixed
