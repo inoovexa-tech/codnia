@@ -15,8 +15,8 @@ struct ContentView: View {
 
                 // Main area
                 HStack(spacing: 0) {
-                    SidebarView(expanded: $appState.leftSidebarExpanded)
-                        .frame(width: appState.leftSidebarExpanded ? settings.leftSidebarWidth : 52)
+                    SidebarView(expanded: $settings.leftSidebarExpanded)
+                        .frame(width: settings.leftSidebarExpanded ? settings.leftSidebarWidth : 52)
                         .background(Color.bgPrimary)
                         .overlay(Rectangle().frame(width: 1).foregroundColor(.borderDefault), alignment: .trailing)
                         .environmentObject(appState)
@@ -63,7 +63,14 @@ struct ContentView: View {
             TabBarView(
                 editorVM: appState.editorVM,
                 terminalVM: appState.terminalVM,
-                onToggleRightSidebar: { appState.rightSidebarExpanded.toggle() },
+                onToggleExplorer: {
+                    if appState.rightSidebarExpanded && appState.rightSidebarTab == .explorer {
+                        appState.rightSidebarExpanded = false
+                    } else {
+                        appState.rightSidebarTab = .explorer
+                        appState.rightSidebarExpanded = true
+                    }
+                },
                 onToggleSearch: {
                     if appState.rightSidebarExpanded && appState.rightSidebarTab == .search {
                         appState.rightSidebarExpanded = false
@@ -82,7 +89,9 @@ struct ContentView: View {
                         appState.rightSidebarExpanded = true
                     }
                 },
+                onToggleRightSidebar: { appState.rightSidebarExpanded.toggle() },
                 isRightSidebarExpanded: appState.rightSidebarExpanded,
+                isExplorerActive: appState.rightSidebarExpanded && appState.rightSidebarTab == .explorer,
                 isSearchActive: appState.rightSidebarExpanded && appState.rightSidebarTab == .search,
                 isSourceControlActive: appState.rightSidebarExpanded && appState.rightSidebarTab == .sourceControl
             )
@@ -90,6 +99,10 @@ struct ContentView: View {
         }
         .background(Color.bgPrimary)
         .edgesIgnoringSafeArea(.top)
-        .onAppear { appState.workspaceVM.loadProjects() }
+        .onAppear {
+            if appState.workspaceVM.projects.isEmpty {
+                appState.workspaceVM.loadProjects()
+            }
+        }
     }
 }

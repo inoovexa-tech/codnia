@@ -100,7 +100,7 @@ struct CodniaApp: App {
 
             CommandMenu("View") {
                 Button("Toggle Sidebar") {
-                    appDelegate.appState.leftSidebarExpanded.toggle()
+                    appDelegate.appState.settings.leftSidebarExpanded.toggle()
                 }
                 .keyboardShortcut("b", modifiers: .command)
                 Button("Toggle Terminal") {
