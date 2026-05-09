@@ -20,8 +20,13 @@ struct SourceControlView: View {
                 VStack(spacing: 0) {
                     branchHeader
                     actionButtons
-                    stagedSection
-                    unstagedSection
+                    ScrollView {
+                        VStack(spacing: 0) {
+                            stagedSection
+                            unstagedSection
+                        }
+                    }
+                    .frame(maxHeight: 300)
                     commitSection
 
                     Spacer()
