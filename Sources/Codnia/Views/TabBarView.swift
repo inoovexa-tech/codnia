@@ -16,6 +16,7 @@ struct TabBarView: View {
 
     @State private var draggedTabId: String?
     @State private var showTabDropdown = false
+    @ObservedObject private var shortcutsService = KeyboardShortcutsService.shared
 
     private var allTabs: [Tab] {
         editorVM.tabs + terminalVM.tabs
@@ -28,14 +29,12 @@ struct TabBarView: View {
                     .frame(width: 90)
 
                 Menu {
-                    Button("New File") { editorVM.newFile() }
-                        .keyboardShortcut("n", modifiers: .command)
-                    Button("New Terminal") { editorVM.createTerminalTab(type: .terminal) }
-                        .keyboardShortcut("t", modifiers: .command)
+                    menuItem("New File", shortcutKey: "newFile") { editorVM.newFile() }
+                    menuItem("New Terminal", shortcutKey: "newTerminal") { editorVM.createTerminalTab(type: .terminal) }
                     Divider()
-                    Button("OpenCode") { editorVM.createTerminalTab(type: .opencode) }
-                    Button("Claude Code") { editorVM.createTerminalTab(type: .claude) }
-                    Button("Codex") { editorVM.createTerminalTab(type: .codex) }
+                    menuItem("OpenCode", shortcutKey: "openOpenCode") { editorVM.createTerminalTab(type: .opencode) }
+                    menuItem("Claude Code", shortcutKey: "openClaude") { editorVM.createTerminalTab(type: .claude) }
+                    menuItem("Codex", shortcutKey: "openCodex") { editorVM.createTerminalTab(type: .codex) }
                 } label: {
                     Image(systemName: "plus")
                         .font(.system(size: 13))
@@ -137,6 +136,22 @@ struct TabBarView: View {
             Rectangle().frame(height: 1).foregroundColor(.borderDefault),
             alignment: .bottom
         )
+    }
+
+    @ViewBuilder
+    private func menuItem(_ label: String, shortcutKey: String, handler: @escaping () -> Void) -> some View {
+        Button(action: handler) {
+            HStack {
+                Text(label)
+                    .font(.system(size: 13))
+                Spacer()
+                if let shortcut = shortcutsService.shortcuts[shortcutKey], !shortcut.isEmpty {
+                    Text(shortcut)
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundColor(.textSecondary)
+                }
+            }
+        }
     }
 }
 

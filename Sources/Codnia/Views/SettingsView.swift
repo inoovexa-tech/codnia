@@ -171,17 +171,16 @@ struct TerminalSettingsSection: View {
 }
 
 struct KeyboardSettingsSection: View {
-    @StateObject private var shortcutsService = KeyboardShortcutsService()
     @State private var editingAction: String? = nil
     @State private var editingValue: String = ""
+    @ObservedObject private var shortcutsService = KeyboardShortcutsService.shared
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             SettingsSectionHeader("Shortcuts")
-            
-            ForEach(shortcutsService.shortcuts.sorted(by: { $0.key < $1.key }), id: \.key) { item in
-                let action = item.key
-                let shortcut = item.value
+
+            ForEach(Array(shortcutsService.shortcuts.keys.sorted()), id: \.self) { action in
+                let shortcut = shortcutsService.shortcuts[action] ?? ""
                 HStack {
                     Text(action)
                         .font(.system(size: 13))

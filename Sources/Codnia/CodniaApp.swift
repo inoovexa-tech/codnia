@@ -85,6 +85,12 @@ struct CodniaApp: App {
                     .keyboardShortcut("n", modifiers: .command)
                 Button("New Terminal") { appDelegate.appState.editorVM.createTerminalTab(type: .terminal) }
                     .keyboardShortcut("t", modifiers: .command)
+                Button("OpenCode") { appDelegate.appState.editorVM.createTerminalTab(type: .opencode) }
+                    .keyboardShortcut("o", modifiers: [.command, .shift])
+                Button("Claude Code") { appDelegate.appState.editorVM.createTerminalTab(type: .claude) }
+                    .keyboardShortcut("c", modifiers: [.command, .shift])
+                Button("Codex") { appDelegate.appState.editorVM.createTerminalTab(type: .codex) }
+                    .keyboardShortcut("x", modifiers: [.command, .shift])
                 Divider()
                 Button("Open File...") { appDelegate.appState.editorVM.openFileDialog() }
                     .keyboardShortcut("o", modifiers: .command)
