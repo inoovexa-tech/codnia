@@ -11,6 +11,7 @@ public final class GitViewModel: ObservableObject {
     @Published public var commitMessage: String = ""
     @Published public var isLoading: Bool = false
     @Published public var isRefreshing: Bool = false
+    @Published public var isAutoRefreshing: Bool = false
     @Published public var isCommitting: Bool = false
     @Published public var actionMessage: String? = nil
     @Published public var actionError: String? = nil
@@ -71,7 +72,12 @@ public final class GitViewModel: ObservableObject {
 
     private func refreshIfNeeded() {
         guard !isRefreshing, !isLoading, !isCommitting else { return }
+        isAutoRefreshing = true
         refreshAll()
+    }
+
+    private func setAutoRefreshing(_ value: Bool) {
+        isAutoRefreshing = value
     }
 
     public func refreshAll(for path: String? = nil) {
@@ -103,6 +109,7 @@ public final class GitViewModel: ObservableObject {
             self.fileChangesCounts = countsResult
             self.isLoading = false
             self.isRefreshing = false
+            self.isAutoRefreshing = false
         }
     }
 

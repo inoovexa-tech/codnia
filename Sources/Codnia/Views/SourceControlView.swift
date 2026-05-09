@@ -222,7 +222,7 @@ struct SourceControlView: View {
 
             Spacer()
 
-            if gitVM.isLoading || gitVM.isRefreshing {
+            if gitVM.isLoading || (gitVM.isRefreshing && !gitVM.isAutoRefreshing) {
                 ProgressView()
                     .scaleEffect(0.6)
                     .frame(width: 16, height: 16)
