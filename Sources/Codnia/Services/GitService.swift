@@ -265,29 +265,8 @@ public final class GitService {
     }
 
     public func unstageFile(path: String, filePath: String) async -> Bool {
-        let task = Process()
-        task.executableURL = URL(fileURLWithPath: "/bin/sh")
-        task.arguments = ["-c", "cd \(path) && git reset HEAD -- \"\(filePath)\""]
-        task.currentDirectoryURL = URL(fileURLWithPath: path)
-
-        let outPipe = Pipe()
-        let errPipe = Pipe()
-        task.standardOutput = outPipe
-        task.standardError = errPipe
-
-        return await withCheckedContinuation { continuation in
-            task.terminationHandler = { process in
-                continuation.resume(returning: process.terminationStatus == 0)
-            }
-
-            do {
-                try task.run()
-                outPipe.fileHandleForWriting.closeFile()
-                errPipe.fileHandleForWriting.closeFile()
-            } catch {
-                continuation.resume(returning: false)
-            }
-        }
+        let result = await runGitWithResult(args: ["reset", "HEAD", "--", filePath], in: path)
+        return result.success
     }
 
     // MARK: - Discard

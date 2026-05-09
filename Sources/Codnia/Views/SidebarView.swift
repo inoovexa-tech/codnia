@@ -8,8 +8,6 @@ struct SidebarView: View {
     @EnvironmentObject var terminalVM: TerminalViewModel
     @EnvironmentObject var settings: SettingsService
 
-    static var settingsWindowController: NSWindowController?
-
     var body: some View {
         VStack(spacing: 0) {
             ScrollView {
@@ -26,102 +24,13 @@ struct SidebarView: View {
 
             Spacer()
 
-            if expanded {
-                HStack(spacing: 4) {
-                    Button(action: { openSettingsWindow() }) {
-                        Image(systemName: "gear")
-                            .font(.system(size: 16))
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    .frame(width: 36, height: 36)
-                    .background(Color.clear)
-                    .cornerRadius(8)
-
-                    Spacer()
-
-                    Button(action: { expanded.toggle() }) {
-                        Image(systemName: expanded ? "sidebar.left" : "sidebar.right")
-                            .font(.system(size: 14))
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    .frame(width: 36, height: 36)
-                    .background(Color.clear)
-                    .cornerRadius(8)
-                }
-                .padding(.vertical, 8)
-                .padding(.horizontal, 8)
-                .foregroundColor(.textPrimary)
-                .overlay(
-                    Rectangle()
-                        .frame(height: 1)
-                        .foregroundColor(.borderDefault),
-                    alignment: .top
-                )
-            } else {
-                VStack(spacing: 4) {
-                    Button(action: { openSettingsWindow() }) {
-                        Image(systemName: "gear")
-                            .font(.system(size: 16))
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    .frame(width: 36, height: 36)
-                    .background(Color.clear)
-                    .cornerRadius(8)
-
-                    Button(action: { expanded.toggle() }) {
-                        Image(systemName: expanded ? "sidebar.left" : "sidebar.right")
-                            .font(.system(size: 14))
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    .frame(width: 36, height: 36)
-                    .background(Color.clear)
-                    .cornerRadius(8)
-                }
-                .padding(.vertical, 8)
-                .padding(.horizontal, 4)
-                .foregroundColor(.textPrimary)
-                .overlay(
-                    Rectangle()
-                        .frame(height: 1)
-                        .foregroundColor(.borderDefault),
-                    alignment: .top
-                )
-            }
+            SidebarBottomBar(expanded: $expanded, onOpenSettings: openSettingsWindow)
         }
         .background(Color.clear)
     }
 
     private func openSettingsWindow() {
-        if let existingController = Self.settingsWindowController,
-           let window = existingController.window,
-           window.isVisible {
-            window.makeKeyAndOrderFront(nil)
-            return
-        }
-
-        let settingsView = SettingsView()
-            .environmentObject(settings)
-            .frame(minWidth: 700, minHeight: 540)
-
-        let hostingView = NSHostingView(rootView: settingsView)
-        hostingView.frame = NSRect(x: 0, y: 0, width: 700, height: 540)
-        hostingView.wantsLayer = true
-
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 700, height: 540),
-            styleMask: [.titled, .closable, .miniaturizable],
-            backing: .buffered,
-            defer: false
-        )
-        window.title = "Settings"
-        window.contentView = hostingView
-        window.minSize = NSSize(width: 700, height: 540)
-        window.backgroundColor = NSColor(Color.bgPrimary)
-        window.center()
-
-        let controller = NSWindowController(window: window)
-        Self.settingsWindowController = controller
-        controller.showWindow(nil)
+        NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
     }
 }
 
@@ -437,9 +346,8 @@ struct ProjectRowExpanded: View {
     }
 
     private var sortedWorktrees: [Worktree] {
-        let _ = workspaceVM.worktreeRefreshSignal
-        guard let worktrees = project?.worktrees else { return [] }
-        return worktrees.sorted { wt1, wt2 in
+        guard let proj = workspaceVM.projects.first(where: { $0.id == projectId }) else { return [] }
+        proj.worktrees.sorted { wt1, wt2 in
             if wt1.isMain { return true }
             if wt2.isMain { return false }
             return wt1.name < wt2.name
@@ -447,9 +355,8 @@ struct ProjectRowExpanded: View {
     }
 
     private var canAddWorktree: Bool {
-        let _ = workspaceVM.worktreeRefreshSignal
-        guard let worktrees = project?.worktrees else { return false }
-        return worktrees.count < 5
+        guard let proj = workspaceVM.projects.first(where: { $0.id == projectId }) else { return false }
+        proj.worktrees.count < 5
     }
 }
 
@@ -507,6 +414,60 @@ struct WorktreeRow: View {
         .padding(.vertical, 4)
         .background(isActive ? Color.textSecondary.opacity(0.2) : Color.clear)
         .cornerRadius(4)
+    }
+}
+
+struct SidebarBottomBar: View {
+    @Binding var expanded: Bool
+    let onOpenSettings: () -> Void
+
+    var body: some View {
+        Group {
+            if expanded {
+                HStack(spacing: 4) {
+                    bottomButtons
+                }
+                .padding(.vertical, 8)
+                .padding(.horizontal, 8)
+            } else {
+                VStack(spacing: 4) {
+                    bottomButtons
+                }
+                .padding(.vertical, 8)
+                .padding(.horizontal, 4)
+            }
+        }
+        .foregroundColor(.textPrimary)
+        .overlay(
+            Rectangle()
+                .frame(height: 1)
+                .foregroundColor(.borderDefault),
+            alignment: .top
+        )
+    }
+
+    private var bottomButtons: some View {
+        Group {
+            Button(action: onOpenSettings) {
+                Image(systemName: "gear")
+                    .font(.system(size: 16))
+            }
+            .buttonStyle(PlainButtonStyle())
+            .frame(width: 36, height: 36)
+            .background(Color.clear)
+            .cornerRadius(8)
+
+            if expanded { Spacer() }
+
+            Button(action: { expanded.toggle() }) {
+                Image(systemName: expanded ? "sidebar.left" : "sidebar.right")
+                    .font(.system(size: 14))
+            }
+            .buttonStyle(PlainButtonStyle())
+            .frame(width: 36, height: 36)
+            .background(Color.clear)
+            .cornerRadius(8)
+        }
     }
 }
 

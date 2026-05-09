@@ -9,7 +9,6 @@ public final class WorkspaceService: ObservableObject {
     @Published public var branches: [String: String] = [:]
     @Published public var changesCount: [String: (added: Int, deleted: Int)] = [:]
     @Published     public var projectRunningStates: [String: Bool] = [:]
-    @Published public var worktreeRefreshSignal: Int = 0
 
     private var refreshTask: Task<Void, Never>?
     private var gitTasks: [String: Task<Void, Never>] = [:]
@@ -43,7 +42,7 @@ public final class WorkspaceService: ObservableObject {
             while !Task.isCancelled {
                 await self?.refreshAllChanges()
                 await self?.refreshRunningStates()
-                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                try? await Task.sleep(nanoseconds: 5_000_000_000)
             }
         }
     }
@@ -225,7 +224,6 @@ public final class WorkspaceService: ObservableObject {
 
     public func updateProjectIcon(id: String, iconPath: String?) {
         if let idx = projects.firstIndex(where: { $0.id == id }) {
-            let oldProject = projects[idx]
             projects[idx].customIconPath = iconPath
             if activeProject?.id == id {
                 activeProject = projects[idx]
@@ -280,7 +278,6 @@ public final class WorkspaceService: ObservableObject {
                 }
 
                 if self.activeProject?.id == project.id {
-                    self.worktreeRefreshSignal += 1
                     self.objectWillChange.send()
                     self.saveProjects()
                 }
@@ -290,7 +287,7 @@ public final class WorkspaceService: ObservableObject {
 
     public func setActiveWorktree(projectId: String, worktreeId: String) {
         guard let projIdx = projects.firstIndex(where: { $0.id == projectId }),
-              let wtIdx = projects[projIdx].worktrees.firstIndex(where: { $0.id == worktreeId }) else { return }
+              projects[projIdx].worktrees.contains(where: { $0.id == worktreeId }) else { return }
 
         projects[projIdx].activeWorktreeId = worktreeId
 
@@ -333,7 +330,6 @@ public final class WorkspaceService: ObservableObject {
                     updated[idx].worktrees.append(newWorktree)
                     self.projects = updated
                     self.saveProjects()
-                    self.worktreeRefreshSignal += 1
                 }
             }
         }
@@ -383,7 +379,6 @@ public final class WorkspaceService: ObservableObject {
                     self.loadBranch(for: self.projects[projIdx])
                 }
 
-                self.worktreeRefreshSignal += 1
                 self.saveProjects()
             }
         }

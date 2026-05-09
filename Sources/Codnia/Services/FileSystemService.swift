@@ -1,6 +1,5 @@
 import Foundation
 
-@MainActor
 public final class FileSystemService {
     public static let shared = FileSystemService()
     private init() {}
@@ -93,47 +92,5 @@ public final class FileSystemService {
         return entries
     }
 
-    public func searchFiles(root: String, query: String, maxResults: Int = 100) -> [String] {
-        let fm = FileManager.default
-        let rootURL = URL(fileURLWithPath: root)
-        guard let enumerator = fm.enumerator(at: rootURL, includingPropertiesForKeys: [.isRegularFileKey], options: .skipsHiddenFiles) else { return [] }
 
-        var results: [String] = []
-        for case let fileURL as URL in enumerator {
-            if results.count >= maxResults { break }
-            let filename = fileURL.lastPathComponent
-            if filename.localizedCaseInsensitiveContains(query) {
-                results.append(fileURL.path)
-            }
-        }
-        return results
-    }
-
-    public func searchContent(root: String, query: String, maxResults: Int = 100) -> [(String, String)] {
-        let fm = FileManager.default
-        let rootURL = URL(fileURLWithPath: root)
-        guard let enumerator = fm.enumerator(at: rootURL, includingPropertiesForKeys: [.isRegularFileKey], options: .skipsHiddenFiles) else { return [] }
-
-        var results: [(String, String)] = []
-        for case let fileURL as URL in enumerator {
-            if results.count >= maxResults { break }
-            // Skip binary files
-            let ext = fileURL.pathExtension.lowercased()
-            let textExts = Set(["txt", "md", "swift", "rs", "ts", "tsx", "js", "jsx", "json", "html", "css", "scss", "yaml", "yml", "toml", "sh", "py", "go", "c", "cpp", "h", "java"])
-            guard textExts.contains(ext) else { continue }
-
-            guard let data = try? Data(contentsOf: fileURL),
-                  let text = String(data: data, encoding: .utf8)
-            else { continue }
-
-            let lines = text.components(separatedBy: .newlines)
-            for line in lines {
-                if line.localizedCaseInsensitiveContains(query) {
-                    results.append((fileURL.path, line))
-                    break
-                }
-            }
-        }
-        return results
-    }
 }

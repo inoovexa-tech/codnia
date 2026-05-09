@@ -9,7 +9,6 @@ public final class AppState: ObservableObject {
     public let terminalVM: TerminalViewModel
     public let editorVM: EditorViewModel
     public let gitVM: GitViewModel
-    @Published public var showGlobalSearch: Bool = false
     @Published var rightSidebarExpanded: Bool = false
     @Published var rightSidebarTab: RightSidebarTab = .explorer
 

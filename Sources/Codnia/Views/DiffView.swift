@@ -3,7 +3,7 @@ import SwiftUI
 struct DiffView: View {
     let diffLines: [DiffLine]
     let fileName: String
-    @State private var scrollProxy: ScrollViewProxy? = nil
+    @StateObject private var scrollProxy = ScrollViewProxyHolder()
     @State private var selectedLineId: UUID? = nil
     @State private var showMinimap: Bool = true
 
@@ -58,7 +58,7 @@ struct DiffView: View {
                                 }
                             }
                             .onAppear {
-                                scrollProxy = proxy
+                                scrollProxy.proxy = proxy
                             }
                         }
                     }
@@ -67,12 +67,8 @@ struct DiffView: View {
                     if showMinimap {
                         MinimapBar(
                             diffLines: diffLines,
-                            onSelectLine: { id in
-                                withAnimation(.easeInOut(duration: 0.2)) {
-                                    scrollProxy?.scrollTo(id, anchor: .center)
-                                    selectedLineId = id
-                                }
-                            }
+                            selectedLineId: $selectedLineId,
+                            scrollProxy: scrollProxy
                         )
                     }
                 }
@@ -160,51 +156,6 @@ struct DiffView: View {
         )
     }
 
-    // MARK: - Minimap
-
-    private var minimapBar: some View {
-        GeometryReader { geo in
-            let availableHeight = geo.size.height
-            let rowCount = diffLines.count
-            let rowHeight = max(1.5, availableHeight / CGFloat(max(rowCount, 1)))
-            let totalHeight = CGFloat(rowCount) * rowHeight
-
-            ScrollView(.vertical, showsIndicators: false) {
-                VStack(spacing: 0) {
-                    ForEach(diffLines) { line in
-                        let color: Color = {
-                            switch line.type {
-                            case .added: return .green.opacity(0.7)
-                            case .removed: return .red.opacity(0.7)
-                            case .changed: return .yellow.opacity(0.7)
-                            case .unchanged: return Color.bgSecondary.opacity(0.5)
-                            }
-                        }()
-
-                        Rectangle()
-                            .fill(color)
-                            .frame(height: rowHeight)
-                            .frame(maxWidth: .infinity)
-                            .onTapGesture {
-                                withAnimation(.easeInOut(duration: 0.2)) {
-                                    scrollProxy?.scrollTo(line.id, anchor: .center)
-                                    selectedLineId = line.id
-                                }
-                            }
-                    }
-                }
-                .frame(width: 8, height: max(totalHeight, availableHeight))
-            }
-        }
-        .frame(width: 12)
-        .padding(.horizontal, 2)
-        .background(Color.bgSecondary)
-        .overlay(
-            Rectangle().frame(width: 1).foregroundColor(.borderDefault),
-            alignment: .leading
-        )
-    }
-
     // MARK: - Navigation
 
     private func jumpToNextChange() {
@@ -214,7 +165,7 @@ struct DiffView: View {
             if let first = changeIndices.first {
                 let lineId = diffLines[first].id
                 withAnimation(.easeInOut(duration: 0.2)) {
-                    scrollProxy?.scrollTo(lineId, anchor: .center)
+                    scrollProxy.proxy?.scrollTo(lineId, anchor: .center)
                     selectedLineId = lineId
                 }
             }
@@ -223,7 +174,7 @@ struct DiffView: View {
 
         let lineId = diffLines[nextIdx].id
         withAnimation(.easeInOut(duration: 0.2)) {
-            scrollProxy?.scrollTo(lineId, anchor: .center)
+            scrollProxy.proxy?.scrollTo(lineId, anchor: .center)
             selectedLineId = lineId
         }
     }
@@ -235,7 +186,7 @@ struct DiffView: View {
             if let last = changeIndices.last {
                 let lineId = diffLines[last].id
                 withAnimation(.easeInOut(duration: 0.2)) {
-                    scrollProxy?.scrollTo(lineId, anchor: .center)
+                    scrollProxy.proxy?.scrollTo(lineId, anchor: .center)
                     selectedLineId = lineId
                 }
             }
@@ -244,7 +195,7 @@ struct DiffView: View {
 
         let lineId = diffLines[prevIdx].id
         withAnimation(.easeInOut(duration: 0.2)) {
-            scrollProxy?.scrollTo(lineId, anchor: .center)
+            scrollProxy.proxy?.scrollTo(lineId, anchor: .center)
             selectedLineId = lineId
         }
     }
@@ -401,11 +352,18 @@ struct DiffRowView: View {
     }
 }
 
+// MARK: - Scroll Proxy Holder
+
+class ScrollViewProxyHolder: ObservableObject {
+    var proxy: ScrollViewProxy?
+}
+
 // MARK: - Minimap Bar
 
 struct MinimapBar: View {
     let diffLines: [DiffLine]
-    let onSelectLine: (UUID) -> Void
+    @Binding var selectedLineId: UUID?
+    @ObservedObject var scrollProxy: ScrollViewProxyHolder
 
     var body: some View {
         GeometryReader { geo in
@@ -431,7 +389,10 @@ struct MinimapBar: View {
                             .frame(height: rowHeight)
                             .frame(maxWidth: .infinity)
                             .onTapGesture {
-                                onSelectLine(line.id)
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    scrollProxy.proxy?.scrollTo(line.id, anchor: .center)
+                                    selectedLineId = line.id
+                                }
                             }
                     }
                 }
