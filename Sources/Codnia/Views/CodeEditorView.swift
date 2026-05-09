@@ -83,9 +83,11 @@ struct EditorNSTextView: NSViewRepresentable {
     func updateNSView(_ nsView: NSScrollView, context: Context) {
         guard let textView = nsView.documentView as? NSTextView else { return }
 
+        let languageChanged = context.coordinator.currentLanguage != language
         context.coordinator.updateHighlighter(language: language)
 
-        if textView.string != text {
+        let textChanged = textView.string != text
+        if textChanged {
             let selected = textView.selectedRange()
             textView.string = text
             if selected.location <= text.count && selected.location >= 0 {
@@ -93,7 +95,9 @@ struct EditorNSTextView: NSViewRepresentable {
             }
         }
 
-        context.coordinator.applyHighlighting(textView)
+        if languageChanged || textChanged {
+            context.coordinator.applyHighlighting(textView)
+        }
         context.coordinator.highlightSearchResults(textView, results: searchResults, currentIndex: currentSearchIndex)
     }
 
@@ -105,6 +109,7 @@ struct EditorNSTextView: NSViewRepresentable {
         @Binding var text: String
         let onChange: () -> Void
         var highlighter: SyntaxHighlighter?
+        var currentLanguage: String = ""
         private var isHighlighting = false
         private var searchHighlightColor = NSColor(red: 255/255, green: 213/255, blue: 0/255, alpha: 0.3)
         private var currentHighlightColor = NSColor(red: 255/255, green: 140/255, blue: 0/255, alpha: 0.5)
@@ -112,11 +117,15 @@ struct EditorNSTextView: NSViewRepresentable {
         init(text: Binding<String>, language: String, onChange: @escaping () -> Void) {
             self._text = text
             self.onChange = onChange
+            self.currentLanguage = language
             self.highlighter = SyntaxHighlighter(language: language)
         }
 
         func updateHighlighter(language: String) {
-            highlighter = SyntaxHighlighter(language: language)
+            if currentLanguage != language {
+                currentLanguage = language
+                highlighter = SyntaxHighlighter(language: language)
+            }
         }
 
         @MainActor func applyHighlighting(_ textView: NSTextView) {
@@ -156,7 +165,6 @@ struct EditorNSTextView: NSViewRepresentable {
             guard let textView = notification.object as? NSTextView else { return }
             text = textView.string
             onChange()
-            applyHighlighting(textView)
         }
     }
 }

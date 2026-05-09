@@ -24,7 +24,6 @@ public final class GitViewModel: ObservableObject {
     private weak var editorVM: EditorViewModel?
     private var cancellables = Set<AnyCancellable>()
     private var refreshTask: Task<Void, Never>?
-    private var autoRefreshTask: Task<Void, Never>?
 
     public init(workspace: WorkspaceService, editorVM: EditorViewModel) {
         self.workspace = workspace
@@ -35,49 +34,35 @@ public final class GitViewModel: ObservableObject {
 
     deinit {
         refreshTask?.cancel()
-        autoRefreshTask?.cancel()
     }
 
     private func observeWorktreeChanges() {
         guard let workspace = workspace else { return }
 
+        if let project = workspace.activeProject, let worktree = project.activeWorktree {
+            refreshAll(for: worktree.path)
+        }
+
         workspace.$activeProject
             .receive(on: RunLoop.main)
             .sink { [weak self] project in
                 guard let self = self, let project = project, let worktree = project.activeWorktree else { return }
-                self.stopAutoRefresh()
                 self.refreshAll(for: worktree.path)
-                self.startAutoRefresh()
             }
             .store(in: &cancellables)
-    }
 
-    private func startAutoRefresh() {
-        autoRefreshTask?.cancel()
-        autoRefreshTask = Task { [weak self] in
-            while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: 3_000_000_000)
-                guard !Task.isCancelled else { break }
-                await MainActor.run {
-                    self?.refreshIfNeeded()
-                }
+        workspace.objectWillChange
+            .debounce(for: .seconds(1), scheduler: DispatchQueue.main)
+            .sink { [weak self] in
+                self?.refreshIfNeeded()
             }
-        }
-    }
-
-    private func stopAutoRefresh() {
-        autoRefreshTask?.cancel()
-        autoRefreshTask = nil
+            .store(in: &cancellables)
     }
 
     private func refreshIfNeeded() {
         guard !isRefreshing, !isLoading, !isCommitting else { return }
         isAutoRefreshing = true
         refreshAll()
-    }
-
-    private func setAutoRefreshing(_ value: Bool) {
-        isAutoRefreshing = value
     }
 
     public func refreshAll(for path: String? = nil) {

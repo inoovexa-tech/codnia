@@ -46,5 +46,11 @@ public struct Tab: Identifiable, Codable, Equatable {
 
     public static func == (lhs: Tab, rhs: Tab) -> Bool {
         lhs.id == rhs.id
+            && lhs.path == rhs.path
+            && lhs.name == rhs.name
+            && lhs.isModified == rhs.isModified
+            && lhs.language == rhs.language
+            && lhs.type == rhs.type
+            && lhs.terminalId == rhs.terminalId
     }
 }

@@ -1,7 +1,7 @@
 import Foundation
 
 public struct FileEntry: Identifiable, Codable, Equatable {
-    public let id = UUID()
+    public var id: String { path }
     public var name: String
     public var path: String
     public var isDirectory: Bool

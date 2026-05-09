@@ -42,7 +42,7 @@ public final class WorkspaceService: ObservableObject {
             while !Task.isCancelled {
                 await self?.refreshAllChanges()
                 await self?.refreshRunningStates()
-                try? await Task.sleep(nanoseconds: 5_000_000_000)
+                try? await Task.sleep(nanoseconds: 30_000_000_000)
             }
         }
     }

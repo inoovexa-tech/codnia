@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MarkdownPreviewView: View {
     let content: String
+    @State private var renderedContent: AttributedString = AttributedString()
 
     var body: some View {
         ScrollView {
@@ -11,9 +12,11 @@ struct MarkdownPreviewView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .background(Color.bgPrimary)
+        .onAppear { renderedContent = renderContent() }
+        .onChange(of: content) { _ in renderedContent = renderContent() }
     }
 
-    private var renderedContent: AttributedString {
+    private func renderContent() -> AttributedString {
         var result = AttributedString()
         let blocks = parseBlocks(content)
 

@@ -8,6 +8,7 @@ struct GlobalSearchView: View {
     @State private var query: String = ""
     @State private var useRegex: Bool = false
     @State private var caseSensitive: Bool = false
+    @State private var searchTask: Task<Void, Never>?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -25,10 +26,15 @@ struct GlobalSearchView: View {
                         performSearch()
                     }
                     .onChange(of: query) { newValue in
-                        if !newValue.isEmpty {
-                            performSearch()
-                        } else {
+                        searchTask?.cancel()
+                        if newValue.isEmpty {
                             searchVM.results = []
+                        } else {
+                            searchTask = Task {
+                                try? await Task.sleep(nanoseconds: 300_000_000)
+                                guard !Task.isCancelled else { return }
+                                performSearch()
+                            }
                         }
                     }
 

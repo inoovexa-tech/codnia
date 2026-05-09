@@ -107,8 +107,6 @@ public final class EditorViewModel: ObservableObject {
             }
             currentLanguage = tab.language
         }
-
-        objectWillChange.send()
     }
 
     private func setupAutoSave() {
@@ -175,14 +173,12 @@ public final class EditorViewModel: ObservableObject {
         if isImageExtension(ext) {
             if let existing = tabs.first(where: { $0.path == path }) {
                 activeTabId = existing.id
-                objectWillChange.send()
                 saveTabsToWorktree()
                 return
             }
             let tab = Tab(path: path, name: name, language: "Image", type: .image)
             tabs.append(tab)
             activeTabId = tab.id
-            objectWillChange.send()
             saveTabsToWorktree()
             return
         }
@@ -190,14 +186,12 @@ public final class EditorViewModel: ObservableObject {
         if isPDFExtension(ext) {
             if let existing = tabs.first(where: { $0.path == path }) {
                 activeTabId = existing.id
-                objectWillChange.send()
                 saveTabsToWorktree()
                 return
             }
             let tab = Tab(path: path, name: name, language: "PDF", type: .pdf)
             tabs.append(tab)
             activeTabId = tab.id
-            objectWillChange.send()
             saveTabsToWorktree()
             return
         }
@@ -210,7 +204,6 @@ public final class EditorViewModel: ObservableObject {
             editorContent = content
             currentLanguage = language
             fileContents[existing.id] = content
-            objectWillChange.send()
             saveTabsToWorktree()
             return
         }
@@ -222,7 +215,6 @@ public final class EditorViewModel: ObservableObject {
         currentLanguage = language
         fileContents[tab.id] = content
         detectLanguage(from: name)
-        objectWillChange.send()
         saveTabsToWorktree()
     }
 
@@ -258,7 +250,6 @@ public final class EditorViewModel: ObservableObject {
                 currentLanguage = tab.language
                 detectLanguage(from: tab.name)
             }
-            objectWillChange.send()
             saveTabsToWorktree()
         }
     }
