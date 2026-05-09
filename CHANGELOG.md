@@ -1,3 +1,22 @@
+## [0.8.0] — 2026-05-09
+
+### Added
+- AI terminal shortcuts (Cmd+Shift+O for OpenCode, Cmd+Shift+C for Claude Code, Cmd+Shift+X for Codex)
+- Keyboard shortcuts management with rebinding and recording input in settings
+- SwiftTerm-based terminal integration with OpenCode/Claude Code/Codex CLI tabs and auto-command execution
+- Git worktree support with sidebar UI and merge integration
+- Per-file added/removed line counts in source control sidebar
+- Persist worktree expansion state per project, collapse non-active by default
+
+### Fixed
+- Restore settings window opening via NSWindowController
+- Reduce editor invalidation storms and eliminate redundant highlighting and git polling
+- Persist sidebar toggle state and prevent redundant project reload on view appear
+- Hide loading indicator during auto-refresh in sidebar
+
+### Changed
+- Replace accent colors with white for active toolbar icons, add explorer icon
+
 ## [0.7.1] — 2026-05-08
 
 ### Fixed
