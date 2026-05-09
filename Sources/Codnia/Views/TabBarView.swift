@@ -32,6 +32,10 @@ struct TabBarView: View {
                         .keyboardShortcut("n", modifiers: .command)
                     Button("New Terminal") { editorVM.createTerminalTab(type: .terminal) }
                         .keyboardShortcut("t", modifiers: .command)
+                    Divider()
+                    Button("OpenCode") { editorVM.createTerminalTab(type: .opencode) }
+                    Button("Claude Code") { editorVM.createTerminalTab(type: .claude) }
+                    Button("Codex") { editorVM.createTerminalTab(type: .codex) }
                 } label: {
                     Image(systemName: "plus")
                         .font(.system(size: 13))

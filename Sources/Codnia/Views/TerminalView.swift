@@ -174,7 +174,7 @@ struct TerminalHostView: NSViewRepresentable {
 
         if let command = autoCommand {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                terminal.feed(text: command + "\n")
+                terminal.send(txt: command + "\n")
             }
         }
 

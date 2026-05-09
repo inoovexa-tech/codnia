@@ -144,10 +144,6 @@ struct ProjectRowExpanded: View {
             .joined()
     }
 
-    private var isProjectRunning: Bool {
-        terminalVM.tabs.contains { $0.type == .opencode || $0.type == .claude || $0.type == .codex }
-    }
-
     @ViewBuilder
     private var projectIcon: some View {
         if let project = project, let iconPath = project.detectedIconPath,
@@ -182,11 +178,6 @@ struct ProjectRowExpanded: View {
                                     .font(.system(size: 12, weight: .medium))
                                     .foregroundColor(.white)
                                     .lineLimit(1)
-
-                                if isProjectRunning {
-                                    ProgressView()
-                                        .scaleEffect(0.4)
-                                }
                             }
 
                             if let worktree = activeWorktree {
@@ -347,7 +338,7 @@ struct ProjectRowExpanded: View {
 
     private var sortedWorktrees: [Worktree] {
         guard let proj = workspaceVM.projects.first(where: { $0.id == projectId }) else { return [] }
-        proj.worktrees.sorted { wt1, wt2 in
+        return proj.worktrees.sorted { wt1, wt2 in
             if wt1.isMain { return true }
             if wt2.isMain { return false }
             return wt1.name < wt2.name
@@ -356,7 +347,7 @@ struct ProjectRowExpanded: View {
 
     private var canAddWorktree: Bool {
         guard let proj = workspaceVM.projects.first(where: { $0.id == projectId }) else { return false }
-        proj.worktrees.count < 5
+        return proj.worktrees.count < 5
     }
 }
 
@@ -493,10 +484,6 @@ struct ProjectRowCollapsed: View {
             .joined()
     }
 
-    private var isProjectRunning: Bool {
-        terminalVM.tabs.contains { $0.type == .opencode || $0.type == .claude || $0.type == .codex }
-    }
-
     @ViewBuilder
     private var projectIcon: some View {
         if let project = project, let iconPath = project.detectedIconPath,
@@ -519,15 +506,7 @@ struct ProjectRowCollapsed: View {
         Button(action: {
             workspaceVM.setActiveProject(id: projectId)
         }) {
-            ZStack(alignment: .bottomTrailing) {
-                projectIcon
-
-                if isProjectRunning {
-                    ProgressView()
-                        .scaleEffect(0.4)
-                        .offset(x: 2, y: 2)
-                }
-            }
+            projectIcon
         }
         .buttonStyle(BorderlessButtonStyle())
         .frame(width: 36, height: 36)
