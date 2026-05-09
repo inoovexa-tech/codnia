@@ -29,8 +29,40 @@ struct SidebarView: View {
         .background(Color.clear)
     }
 
+    private static var settingsWindowController: NSWindowController?
+
     private func openSettingsWindow() {
-        NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+        if let existingController = Self.settingsWindowController,
+           let window = existingController.window,
+           window.isVisible {
+            window.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+
+        let settingsView = SettingsView()
+            .environmentObject(settings)
+            .frame(minWidth: 700, minHeight: 540)
+
+        let hostingView = NSHostingView(rootView: settingsView)
+        hostingView.frame = NSRect(x: 0, y: 0, width: 700, height: 540)
+
+        let window = NSWindow(
+            contentRect: NSRect(x: 200, y: 200, width: 700, height: 540),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = "Settings"
+        window.contentView = hostingView
+        window.minSize = NSSize(width: 700, height: 540)
+        window.backgroundColor = NSColor(Color.bgPrimary)
+        window.center()
+
+        let controller = NSWindowController(window: window)
+        Self.settingsWindowController = controller
+        controller.showWindow(nil)
+        NSApp.activate(ignoringOtherApps: true)
     }
 }
 
