@@ -5,10 +5,12 @@ struct TabBarView: View {
     @ObservedObject var editorVM: EditorViewModel
     @ObservedObject var terminalVM: TerminalViewModel
 
-    var onToggleRightSidebar: () -> Void
+    var onToggleExplorer: () -> Void
     var onToggleSearch: () -> Void
     var onToggleSourceControl: () -> Void
+    var onToggleRightSidebar: () -> Void
     var isRightSidebarExpanded: Bool
+    var isExplorerActive: Bool
     var isSearchActive: Bool
     var isSourceControlActive: Bool
 
@@ -93,26 +95,33 @@ struct TabBarView: View {
                 }
 
                 HStack(spacing: 4) {
+                    Button(action: onToggleExplorer) {
+                        Image(systemName: "folder")
+                            .font(.system(size: 13))
+                            .foregroundColor(isExplorerActive ? .textPrimary : .textSecondary)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+
                     Button(action: onToggleSearch) {
                         Image(systemName: "magnifyingglass")
                             .font(.system(size: 13))
+                            .foregroundColor(isSearchActive ? .textPrimary : .textSecondary)
                     }
                     .buttonStyle(PlainButtonStyle())
-                    .foregroundColor(isSearchActive ? .accentBlue : .textSecondary)
 
                     Button(action: onToggleSourceControl) {
                         Image(systemName: "arrow.triangle.branch")
                             .font(.system(size: 13))
+                            .foregroundColor(isSourceControlActive ? .textPrimary : .textSecondary)
                     }
                     .buttonStyle(PlainButtonStyle())
-                    .foregroundColor(isSourceControlActive ? .accentGreen : .textSecondary)
 
                     Button(action: onToggleRightSidebar) {
                         Image(systemName: isRightSidebarExpanded ? "sidebar.right" : "sidebar.left")
                             .font(.system(size: 13))
+                            .foregroundColor(isRightSidebarExpanded ? .textPrimary : .textSecondary)
                     }
                     .buttonStyle(PlainButtonStyle())
-                    .foregroundColor(isRightSidebarExpanded ? .accentBlue : .textSecondary)
                 }
                 .padding(.horizontal, 8)
             }
