@@ -212,7 +212,7 @@ struct ProjectRowExpanded: View {
     @State private var showAddWorktree = false
     @State private var showWorktreeContextMenu = false
     @State private var contextMenuWorktree: Worktree?
-    @State private var isWorktreesExpanded = true
+    @State private var isWorktreesExpanded = false
 
     private var project: Project? {
         workspaceVM.projects.first { $0.id == projectId }
@@ -320,6 +320,7 @@ struct ProjectRowExpanded: View {
                 Button(action: {
                     withAnimation(.easeInOut(duration: 0.15)) {
                         isWorktreesExpanded.toggle()
+                        workspaceVM.setWorktreesExpanded(projectId: projectId, expanded: isWorktreesExpanded)
                     }
                 }) {
                     Image(systemName: isWorktreesExpanded ? "chevron.down" : "chevron.right")
@@ -336,6 +337,14 @@ struct ProjectRowExpanded: View {
 
             if isWorktreesExpanded {
                 worktreesList
+            }
+        }
+        .onAppear {
+            isWorktreesExpanded = project?.isWorktreesExpanded ?? false
+        }
+        .onChange(of: project?.isWorktreesExpanded) { newValue in
+            if let newValue {
+                isWorktreesExpanded = newValue
             }
         }
         .sheet(isPresented: $showIconPicker) {

@@ -8,6 +8,7 @@ public struct Project: Identifiable, Codable, Equatable {
     public var worktrees: [Worktree]
     public var activeWorktreeId: String?
     public var customIconPath: String?
+    public var isWorktreesExpanded: Bool
 
     public init(
         id: String = UUID().uuidString,
@@ -16,7 +17,8 @@ public struct Project: Identifiable, Codable, Equatable {
         createdAt: Date = Date(),
         worktrees: [Worktree] = [],
         activeWorktreeId: String? = nil,
-        customIconPath: String? = nil
+        customIconPath: String? = nil,
+        isWorktreesExpanded: Bool = false
     ) {
         self.id = id
         self.name = name
@@ -25,6 +27,7 @@ public struct Project: Identifiable, Codable, Equatable {
         self.worktrees = worktrees
         self.activeWorktreeId = activeWorktreeId
         self.customIconPath = customIconPath
+        self.isWorktreesExpanded = isWorktreesExpanded
     }
 
     public static func == (lhs: Project, rhs: Project) -> Bool {
@@ -76,6 +79,7 @@ public struct Project: Identifiable, Codable, Equatable {
         case worktrees
         case activeWorktreeId
         case customIconPath
+        case worktreesExpanded
         case fileTabs
         case terminalTabs
         case activeTabId
@@ -88,6 +92,7 @@ public struct Project: Identifiable, Codable, Equatable {
         path = try container.decode(String.self, forKey: .path)
         createdAt = try container.decode(Date.self, forKey: .createdAt)
         customIconPath = try container.decodeIfPresent(String.self, forKey: .customIconPath)
+        isWorktreesExpanded = try container.decodeIfPresent(Bool.self, forKey: .worktreesExpanded) ?? false
 
         if let worktrees = try container.decodeIfPresent([Worktree].self, forKey: .worktrees) {
             self.worktrees = worktrees
@@ -120,5 +125,6 @@ public struct Project: Identifiable, Codable, Equatable {
         try container.encode(worktrees, forKey: .worktrees)
         try container.encodeIfPresent(activeWorktreeId, forKey: .activeWorktreeId)
         try container.encodeIfPresent(customIconPath, forKey: .customIconPath)
+        try container.encode(isWorktreesExpanded, forKey: .worktreesExpanded)
     }
 }

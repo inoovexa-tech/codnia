@@ -235,14 +235,23 @@ public final class WorkspaceService: ObservableObject {
         }
     }
 
+    public func setWorktreesExpanded(projectId: String, expanded: Bool) {
+        guard let idx = projects.firstIndex(where: { $0.id == projectId }) else { return }
+        var updated = projects
+        updated[idx].isWorktreesExpanded = expanded
+        projects = updated
+        saveProjects()
+    }
+
     public func setActiveProject(id: String) {
-        if let project = projects.first(where: { $0.id == id }) {
-            activeProject = project
-            saveProjects()
-            refreshFileTree()
-            loadBranch(for: project)
-            syncWorktreesWithGit(for: project)
-        }
+        guard let idx = projects.firstIndex(where: { $0.id == id }) else { return }
+        projects[idx].isWorktreesExpanded = true
+        let project = projects[idx]
+        activeProject = project
+        saveProjects()
+        refreshFileTree()
+        loadBranch(for: project)
+        syncWorktreesWithGit(for: project)
     }
 
     public func syncWorktreesWithGit(for project: Project) {
