@@ -131,6 +131,7 @@ struct SidebarExpandedProjectsList: View {
     var body: some View {
         ForEach(workspaceVM.projects) { project in
             ProjectRowExpanded(projectId: project.id)
+                .id("\(project.id)-wt-\(project.worktrees.count)")
         }
 
         Button(action: { addProject() }) {
@@ -208,6 +209,10 @@ struct ProjectRowExpanded: View {
     @State private var renameName: String = ""
     @State private var renameDirectory = false
     @State private var showIconPicker = false
+    @State private var showAddWorktree = false
+    @State private var showWorktreeContextMenu = false
+    @State private var contextMenuWorktree: Worktree?
+    @State private var isWorktreesExpanded = true
 
     private var project: Project? {
         workspaceVM.projects.first { $0.id == projectId }
@@ -217,6 +222,10 @@ struct ProjectRowExpanded: View {
         workspaceVM.activeProject?.id == projectId
     }
 
+    private var activeWorktree: Worktree? {
+        project?.activeWorktree
+    }
+
     private var initials: String {
         guard let project = project else { return "" }
         return project.name
@@ -224,11 +233,6 @@ struct ProjectRowExpanded: View {
             .prefix(2)
             .compactMap { $0.first?.uppercased() }
             .joined()
-    }
-
-    private var hasActiveTerminal: Bool {
-        guard let project = project else { return false }
-        return !project.terminalTabs.isEmpty
     }
 
     private var isProjectRunning: Bool {
@@ -254,60 +258,85 @@ struct ProjectRowExpanded: View {
     }
 
     var body: some View {
-        Button(action: {
-            workspaceVM.setActiveProject(id: projectId)
-        }) {
-            HStack(spacing: 8) {
-                projectIcon
+        let _ = project?.worktrees.count
+        VStack(spacing: 2) {
+            ZStack(alignment: .trailing) {
+                Button(action: {
+                    workspaceVM.setActiveProject(id: projectId)
+                }) {
+                    HStack(spacing: 8) {
+                        projectIcon
 
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 4) {
-                        Text(project?.name ?? "")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.white)
-                            .lineLimit(1)
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack(spacing: 4) {
+                                Text(project?.name ?? "")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(.white)
+                                    .lineLimit(1)
 
-                        if isProjectRunning {
-                            ProgressView()
-                                .scaleEffect(0.4)
+                                if isProjectRunning {
+                                    ProgressView()
+                                        .scaleEffect(0.4)
+                                }
+                            }
+
+                            if let worktree = activeWorktree {
+                                HStack(spacing: 4) {
+                                    Text(worktree.displayName)
+                                        .font(.system(size: 10))
+                                        .foregroundColor(.textSecondary)
+                                        .lineLimit(1)
+                                        .truncationMode(.tail)
+                                        .frame(maxWidth: 160, alignment: .leading)
+
+                                    Spacer()
+                                }
+                            }
                         }
+
+                        Spacer()
                     }
-
-                    if !branchText.isEmpty {
-                        HStack(spacing: 4) {
-                            Text(branchText)
-                                .font(.system(size: 10))
-                                .foregroundColor(.textSecondary)
-
-                            Spacer()
-
-                            changesBadge
-                                .font(.system(size: 10))
-                        }
-                    }
+                    .padding(.leading, 8)
+                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                 }
+                .buttonStyle(BorderlessButtonStyle())
+                .contextMenu {
+                    Button("Change Icon") { showIconPicker = true }
+                    if project?.hasCustomIcon == true {
+                        Divider()
+                        Button("Remove Icon") {
+                            workspaceVM.updateProjectIcon(id: projectId, iconPath: nil)
+                        }
+                    }
+                    Divider()
+                    Button("Rename") {
+                        renameName = project?.name ?? ""
+                        renameDirectory = false
+                        showRenameModal = true
+                    }
+                    Button("Remove") { workspaceVM.removeProject(id: projectId) }
+                }
+
+                Button(action: {
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        isWorktreesExpanded.toggle()
+                    }
+                }) {
+                    Image(systemName: isWorktreesExpanded ? "chevron.down" : "chevron.right")
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundColor(.textTertiary)
+                        .frame(width: 20, height: 20)
+                }
+                .buttonStyle(PlainButtonStyle())
+                .padding(.trailing, 8)
             }
-            .padding(.horizontal, 8)
-            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+            .frame(maxWidth: .infinity, minHeight: 44)
             .background(isActive ? Color.bgTertiary : Color.clear)
             .cornerRadius(8)
-        }
-        .buttonStyle(BorderlessButtonStyle())
-        .contextMenu {
-            Button("Change Icon") { showIconPicker = true }
-            if project?.hasCustomIcon == true {
-                Divider()
-                Button("Remove Icon") {
-                    workspaceVM.updateProjectIcon(id: projectId, iconPath: nil)
-                }
+
+            if isWorktreesExpanded {
+                worktreesList
             }
-            Divider()
-            Button("Rename") {
-                renameName = project?.name ?? ""
-                renameDirectory = false
-                showRenameModal = true
-            }
-            Button("Remove") { workspaceVM.removeProject(id: projectId) }
         }
         .sheet(isPresented: $showIconPicker) {
             if let project = project {
@@ -340,22 +369,135 @@ struct ProjectRowExpanded: View {
             .padding(24)
             .frame(width: 300, height: 180)
         }
+        .sheet(isPresented: $showAddWorktree) {
+            AddWorktreeView(projectId: projectId)
+                .environmentObject(workspaceVM)
+        }
     }
 
-    private var branchText: String {
-        workspaceVM.branches[projectId] ?? ""
-    }
+    private var worktreesList: some View {
+        let worktrees = sortedWorktrees
+        return VStack(spacing: 1) {
+            ForEach(worktrees) { worktree in
+                let count = workspaceVM.getChangesCount(forWorktreeId: worktree.id)
+                WorktreeRow(
+                    projectId: projectId,
+                    worktree: worktree,
+                    isActive: worktree.id == activeWorktree?.id,
+                    onSelect: {
+                        workspaceVM.setActiveWorktree(projectId: projectId, worktreeId: worktree.id)
+                    },
+                    onRemove: !worktree.isMain ? {
+                        contextMenuWorktree = worktree
+                        showWorktreeContextMenu = true
+                    } : nil,
+                    changes: count
+                )
+            }
 
-    @ViewBuilder
-    private var changesBadge: some View {
-        if let changes = workspaceVM.changesCount[projectId], changes.added > 0 || changes.deleted > 0 {
-            HStack(spacing: 2) {
-                Text("+\(changes.added)")
-                    .foregroundColor(.green)
-                Text("-\(changes.deleted)")
-                    .foregroundColor(.red)
+            if canAddWorktree {
+                Button(action: { showAddWorktree = true }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 10))
+                        Text("Add Worktree")
+                            .font(.system(size: 10))
+                    }
+                    .foregroundColor(.textSecondary)
+                    .frame(maxWidth: .infinity, minHeight: 24)
+                    .background(Color.clear)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(PlainButtonStyle())
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
             }
         }
+        .padding(.horizontal, 8)
+        .confirmationDialog("Remove Worktree", isPresented: $showWorktreeContextMenu, presenting: contextMenuWorktree) { worktree in
+            Button("Remove Worktree", role: .destructive) {
+                workspaceVM.removeWorktree(projectId: projectId, worktreeId: worktree.id, deleteBranch: false)
+            }
+            Button("Remove Worktree and Branch", role: .destructive) {
+                workspaceVM.removeWorktree(projectId: projectId, worktreeId: worktree.id, deleteBranch: true)
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: { worktree in
+            Text("Choose how to remove '\(worktree.displayName)' worktree")
+        }
+    }
+
+    private var sortedWorktrees: [Worktree] {
+        let _ = workspaceVM.worktreeRefreshSignal
+        guard let worktrees = project?.worktrees else { return [] }
+        return worktrees.sorted { wt1, wt2 in
+            if wt1.isMain { return true }
+            if wt2.isMain { return false }
+            return wt1.name < wt2.name
+        }
+    }
+
+    private var canAddWorktree: Bool {
+        let _ = workspaceVM.worktreeRefreshSignal
+        guard let worktrees = project?.worktrees else { return false }
+        return worktrees.count < 5
+    }
+}
+
+struct WorktreeRow: View {
+    let projectId: String
+    let worktree: Worktree
+    let isActive: Bool
+    let onSelect: () -> Void
+    let onRemove: (() -> Void)?
+    let changes: (added: Int, deleted: Int)
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Button(action: onSelect) {
+                HStack(spacing: 4) {
+                    Image(systemName: "folder")
+                        .font(.system(size: 10))
+                        .foregroundColor(isActive ? Color.textSecondary : Color.textTertiary)
+
+                    Text(worktree.displayName)
+                        .font(.system(size: 11))
+                        .foregroundColor(isActive ? .textPrimary : .textSecondary)
+                        .lineLimit(1)
+                        .frame(maxWidth: 100, alignment: .leading)
+
+                    if changes.added > 0 || changes.deleted > 0 {
+                        HStack(spacing: 2) {
+                            Text("+\(changes.added)")
+                                .foregroundColor(.green)
+                            Text("-\(changes.deleted)")
+                                .foregroundColor(.red)
+                        }
+                        .font(.system(size: 10, weight: .medium))
+                    }
+
+                    Spacer()
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(PlainButtonStyle())
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            if let onRemove = onRemove {
+                Button(action: onRemove) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(.accentRed)
+                        .frame(width: 20, height: 20)
+                }
+                .buttonStyle(PlainButtonStyle())
+                .padding(.trailing, 4)
+            }
+        }
+        .padding(.leading, 12)
+        .padding(.vertical, 4)
+        .background(isActive ? Color.textSecondary.opacity(0.2) : Color.clear)
+        .cornerRadius(4)
     }
 }
 

@@ -5,9 +5,8 @@ public struct Project: Identifiable, Codable, Equatable {
     public var name: String
     public var path: String
     public var createdAt: Date
-    public var fileTabs: [Tab]
-    public var terminalTabs: [Tab]
-    public var activeTabId: String?
+    public var worktrees: [Worktree]
+    public var activeWorktreeId: String?
     public var customIconPath: String?
 
     public init(
@@ -15,23 +14,25 @@ public struct Project: Identifiable, Codable, Equatable {
         name: String,
         path: String,
         createdAt: Date = Date(),
-        fileTabs: [Tab] = [],
-        terminalTabs: [Tab] = [],
-        activeTabId: String? = nil,
+        worktrees: [Worktree] = [],
+        activeWorktreeId: String? = nil,
         customIconPath: String? = nil
     ) {
         self.id = id
         self.name = name
         self.path = path
         self.createdAt = createdAt
-        self.fileTabs = fileTabs
-        self.terminalTabs = terminalTabs
-        self.activeTabId = activeTabId
+        self.worktrees = worktrees
+        self.activeWorktreeId = activeWorktreeId
         self.customIconPath = customIconPath
     }
 
     public static func == (lhs: Project, rhs: Project) -> Bool {
         lhs.id == rhs.id
+    }
+
+    var activeWorktree: Worktree? {
+        worktrees.first { $0.id == activeWorktreeId } ?? worktrees.first
     }
 
     var detectedIconPath: String? {
@@ -68,5 +69,56 @@ public struct Project: Identifiable, Codable, Equatable {
 
     var hasCustomIcon: Bool {
         customIconPath != nil || detectedIconPath != nil
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, path, createdAt
+        case worktrees
+        case activeWorktreeId
+        case customIconPath
+        case fileTabs
+        case terminalTabs
+        case activeTabId
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        path = try container.decode(String.self, forKey: .path)
+        createdAt = try container.decode(Date.self, forKey: .createdAt)
+        customIconPath = try container.decodeIfPresent(String.self, forKey: .customIconPath)
+
+        if let worktrees = try container.decodeIfPresent([Worktree].self, forKey: .worktrees) {
+            self.worktrees = worktrees
+            self.activeWorktreeId = try container.decodeIfPresent(String.self, forKey: .activeWorktreeId)
+        } else {
+            let legacyFileTabs: [Tab] = (try? container.decodeIfPresent([Tab].self, forKey: .fileTabs)) ?? []
+            let legacyTerminalTabs: [Tab] = (try? container.decodeIfPresent([Tab].self, forKey: .terminalTabs)) ?? []
+            let legacyActiveTabId: String? = try? container.decodeIfPresent(String.self, forKey: .activeTabId)
+
+            let mainWorktree = Worktree(
+                name: "main",
+                path: path,
+                branch: "main",
+                isMain: true,
+                fileTabs: legacyFileTabs,
+                terminalTabs: legacyTerminalTabs,
+                activeTabId: legacyActiveTabId
+            )
+            self.worktrees = [mainWorktree]
+            self.activeWorktreeId = mainWorktree.id
+        }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(name, forKey: .name)
+        try container.encode(path, forKey: .path)
+        try container.encode(createdAt, forKey: .createdAt)
+        try container.encode(worktrees, forKey: .worktrees)
+        try container.encodeIfPresent(activeWorktreeId, forKey: .activeWorktreeId)
+        try container.encodeIfPresent(customIconPath, forKey: .customIconPath)
     }
 }

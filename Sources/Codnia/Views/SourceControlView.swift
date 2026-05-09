@@ -8,6 +8,7 @@ struct SourceControlView: View {
     @State private var showBranchDialog: Bool = false
     @State private var mergeBranchName: String = ""
     @State private var showMergeDialog: Bool = false
+    @State private var deleteWorktreeAfterMerge = false
     @State private var hoveredFileId: String? = nil
     @State private var selectedForDiscard: Set<String> = []
 
@@ -412,9 +413,10 @@ struct SourceControlView: View {
                 Button {
                     let name = mergeBranchName.trimmingCharacters(in: .whitespacesAndNewlines)
                     guard !name.isEmpty else { return }
-                    gitVM.merge(branch: name)
+                    gitVM.merge(branch: name, deleteWorktreeAfterMerge: deleteWorktreeAfterMerge)
                     mergeBranchName = ""
                     showMergeDialog = false
+                    deleteWorktreeAfterMerge = false
                 } label: {
                     Text("Merge")
                         .font(.system(size: 11, weight: .medium))
@@ -422,9 +424,14 @@ struct SourceControlView: View {
                 .buttonStyle(PlainButtonStyle())
                 .foregroundColor(.accentBlue)
             }
+
+            Toggle("Delete worktree after merge", isOn: $deleteWorktreeAfterMerge)
+                .font(.system(size: 10))
+                .toggleStyle(.switch)
+                .controlSize(.small)
         }
         .padding(12)
-        .frame(width: 240)
+        .frame(width: 260)
         .background(Color.bgSecondary)
     }
 

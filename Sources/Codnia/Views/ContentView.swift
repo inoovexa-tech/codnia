@@ -23,6 +23,7 @@ struct ContentView: View {
                         .environmentObject(appState.workspaceVM)
                         .environmentObject(appState.editorVM)
                         .environmentObject(appState.terminalVM)
+                        .environmentObject(appState.gitVM)
                         .environmentObject(settings)
 
                     EditorAreaView()

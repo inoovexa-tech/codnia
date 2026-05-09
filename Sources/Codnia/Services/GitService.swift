@@ -302,6 +302,86 @@ public final class GitService {
         return result.success
     }
 
+    // MARK: - Worktrees
+
+    public struct WorktreeInfo: Identifiable {
+        public let id: String
+        public let path: String
+        public let branch: String
+        public let isMain: Bool
+
+        public init(path: String, branch: String, isMain: Bool) {
+            self.id = path
+            self.path = path
+            self.branch = branch
+            self.isMain = isMain
+        }
+    }
+
+    public func listWorktrees(path projectPath: String) async -> [WorktreeInfo] {
+        guard let output = await runGitOutput(args: ["worktree", "list", "--porcelain"], in: projectPath) else {
+            return []
+        }
+
+        var worktrees: [WorktreeInfo] = []
+        let lines = output.components(separatedBy: .newlines)
+
+        var currentPath = ""
+        var currentBranch = ""
+        var isMain = false
+
+        for line in lines {
+            if line.hasPrefix("worktree ") {
+                let pathPart = line.dropFirst("worktree ".count)
+                if pathPart == projectPath {
+                    isMain = true
+                } else {
+                    isMain = false
+                }
+                currentPath = String(pathPart)
+            } else if line.hasPrefix("branch ") {
+                currentBranch = String(line.dropFirst("branch ".count))
+            } else if line.isEmpty && !currentPath.isEmpty {
+                if !currentBranch.isEmpty {
+                    worktrees.append(WorktreeInfo(path: currentPath, branch: currentBranch, isMain: isMain))
+                }
+                currentPath = ""
+                currentBranch = ""
+                isMain = false
+            }
+        }
+
+        if !currentPath.isEmpty && !currentBranch.isEmpty {
+            worktrees.append(WorktreeInfo(path: currentPath, branch: currentBranch, isMain: isMain))
+        }
+
+        return worktrees
+    }
+
+    public func addWorktree(projectPath: String, branch: String, worktreePath: String, createBranch: Bool) async -> Bool {
+        var args = ["worktree", "add"]
+
+        if createBranch {
+            args.append("-b")
+            args.append(branch)
+            args.append(worktreePath)
+        } else {
+            args.append(worktreePath)
+            args.append(branch)
+        }
+
+        let result = await runGitWithResult(args: args, in: projectPath)
+        return result.success
+    }
+
+    public func removeWorktree(projectPath: String, worktreePath: String, worktreeBranch: String, deleteBranch: Bool) async -> Bool {
+        let result = await runGitWithResult(args: ["worktree", "remove", worktreePath], in: projectPath)
+        if deleteBranch && result.success {
+            _ = await runGitWithResult(args: ["branch", "-D", worktreeBranch], in: projectPath)
+        }
+        return result.success
+    }
+
     // MARK: - Remote operations
 
     public func pull(path: String) async -> Bool {

@@ -24,10 +24,7 @@ public final class TerminalViewModel: ObservableObject {
 
     @discardableResult
     public func createTerminalTab(type: TabType = .terminal) -> Tab {
-        // Use project path if available, otherwise use home directory
-        // Each new terminal gets its own instance with independent CWD
-        let projectPath = workspace?.activeProject?.path
-        let cwd = projectPath ?? NSHomeDirectory()
+        let cwd = workspace?.activeProject?.activeWorktree?.path ?? NSHomeDirectory()
         let name = tabName(for: type)
         let instance = service.createTerminal(cwd: cwd)
         let tab = Tab(
@@ -74,11 +71,13 @@ public final class TerminalViewModel: ObservableObject {
 
     private func saveTabsToProject() {
         guard let workspace = workspace,
-              let projectId = workspace.activeProject?.id,
-              let index = workspace.projects.firstIndex(where: { $0.id == projectId }) else { return }
+              let project = workspace.activeProject,
+              let worktreeId = project.activeWorktreeId,
+              let projIdx = workspace.projects.firstIndex(where: { $0.id == project.id }),
+              let wtIdx = workspace.projects[projIdx].worktrees.firstIndex(where: { $0.id == worktreeId }) else { return }
 
-        workspace.projects[index].terminalTabs = tabs
-        workspace.projects[index].activeTabId = activeId
+        workspace.projects[projIdx].worktrees[wtIdx].terminalTabs = tabs
+        workspace.projects[projIdx].worktrees[wtIdx].activeTabId = activeId
         workspace.saveProjects()
     }
 

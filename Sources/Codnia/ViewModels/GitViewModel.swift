@@ -28,7 +28,7 @@ public final class GitViewModel: ObservableObject {
         self.workspace = workspace
         self.editorVM = editorVM
 
-        observeProjectChanges()
+        observeWorktreeChanges()
     }
 
     deinit {
@@ -36,15 +36,15 @@ public final class GitViewModel: ObservableObject {
         autoRefreshTask?.cancel()
     }
 
-    private func observeProjectChanges() {
+    private func observeWorktreeChanges() {
         guard let workspace = workspace else { return }
 
         workspace.$activeProject
             .receive(on: RunLoop.main)
             .sink { [weak self] project in
-                guard let self = self, let project = project else { return }
+                guard let self = self, let project = project, let worktree = project.activeWorktree else { return }
                 self.stopAutoRefresh()
-                self.refreshAll(for: project.path)
+                self.refreshAll(for: worktree.path)
                 self.startAutoRefresh()
             }
             .store(in: &cancellables)
@@ -75,18 +75,18 @@ public final class GitViewModel: ObservableObject {
 
     public func refreshAll(for path: String? = nil) {
         refreshTask?.cancel()
-        let projectPath = path ?? workspace?.activeProject?.path
-        guard let projectPath = projectPath else { return }
+        let worktreePath = path ?? workspace?.activeProject?.activeWorktree?.path
+        guard let worktreePath = worktreePath else { return }
 
         refreshTask = Task { [weak self] in
             guard let self = self else { return }
             self.isRefreshing = true
             self.isLoading = true
 
-            async let status = self.git.getStatus(path: projectPath)
-            async let branch = self.git.getBranch(path: projectPath)
-            async let branches = self.git.getBranches(path: projectPath)
-            async let history = self.git.getLog(path: projectPath, count: 20)
+            async let status = self.git.getStatus(path: worktreePath)
+            async let branch = self.git.getBranch(path: worktreePath)
+            async let branches = self.git.getBranches(path: worktreePath)
+            async let history = self.git.getLog(path: worktreePath, count: 20)
 
             let (statusResult, branchResult, branchesResult, historyResult) = await (status, branch, branches, history)
 
@@ -103,13 +103,15 @@ public final class GitViewModel: ObservableObject {
         }
     }
 
-    // MARK: - Stage / Unstage
+    private var worktreePath: String? {
+        workspace?.activeProject?.activeWorktree?.path
+    }
 
     public func stageFile(_ filePath: String) {
-        guard let projectPath = workspace?.activeProject?.path else { return }
+        guard let path = worktreePath else { return }
         Task { [weak self] in
             guard let self = self else { return }
-            let success = await self.git.stageFile(path: projectPath, filePath: filePath)
+            let success = await self.git.stageFile(path: path, filePath: filePath)
             if success {
                 self.refreshAll()
             } else {
@@ -119,10 +121,10 @@ public final class GitViewModel: ObservableObject {
     }
 
     public func stageAll() {
-        guard let projectPath = workspace?.activeProject?.path else { return }
+        guard let path = worktreePath else { return }
         Task { [weak self] in
             guard let self = self else { return }
-            let success = await self.git.stageAll(path: projectPath)
+            let success = await self.git.stageAll(path: path)
             if success {
                 self.refreshAll()
             } else {
@@ -132,10 +134,10 @@ public final class GitViewModel: ObservableObject {
     }
 
     public func unstageFile(_ filePath: String) {
-        guard let projectPath = workspace?.activeProject?.path else { return }
+        guard let path = worktreePath else { return }
         Task { [weak self] in
             guard let self = self else { return }
-            let success = await self.git.unstageFile(path: projectPath, filePath: filePath)
+            let success = await self.git.unstageFile(path: path, filePath: filePath)
             if success {
                 self.refreshAll()
             } else {
@@ -144,13 +146,11 @@ public final class GitViewModel: ObservableObject {
         }
     }
 
-    // MARK: - Discard
-
     public func discardFile(_ filePath: String) {
-        guard let projectPath = workspace?.activeProject?.path else { return }
+        guard let path = worktreePath else { return }
         Task { [weak self] in
             guard let self = self else { return }
-            let success = await self.git.discardFileChanges(path: projectPath, filePath: filePath)
+            let success = await self.git.discardFileChanges(path: path, filePath: filePath)
             if success {
                 self.actionMessage = "Discarded changes in \(filePath)"
                 self.refreshAll()
@@ -160,33 +160,29 @@ public final class GitViewModel: ObservableObject {
         }
     }
 
-    // MARK: - Diff
-
     public func openDiff(for entry: GitStatusEntry) {
-        guard let projectPath = workspace?.activeProject?.path,
+        guard let path = worktreePath,
               let editorVM = editorVM else { return }
 
         Task { [weak self] in
             guard let self = self else { return }
-            
-            // Load both versions of the file
+
             async let originalContent = self.git.getOriginalFileContent(
-                path: projectPath,
+                path: path,
                 filePath: entry.filePath,
                 staged: entry.isStaged
             )
             async let modifiedContent = self.git.getModifiedFileContent(
-                path: projectPath,
+                path: path,
                 filePath: entry.filePath,
                 staged: entry.isStaged
             )
-            
+
             let (original, modified) = await (originalContent, modifiedContent)
-            
+
             let originalLines = original?.components(separatedBy: .newlines) ?? []
             let modifiedLines = modified?.components(separatedBy: .newlines) ?? []
-            
-            // Compute diff using LCS algorithm
+
             let diffLines = DiffProcessor.computeDiff(original: originalLines, modified: modifiedLines)
 
             let tabName = entry.isStaged
@@ -202,17 +198,14 @@ public final class GitViewModel: ObservableObject {
 
             editorVM.tabs.append(tab)
             editorVM.activeTabId = tab.id
-            // Store diff lines in diffData so they're preserved
             editorVM.diffData[tab.id] = diffLines
             editorVM.currentLanguage = "Diff"
             editorVM.objectWillChange.send()
         }
     }
 
-    // MARK: - Commit
-
     public func commit() {
-        guard let projectPath = workspace?.activeProject?.path else { return }
+        guard let path = worktreePath else { return }
         let message = commitMessage.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !message.isEmpty else {
             actionError = "Commit message cannot be empty"
@@ -228,7 +221,7 @@ public final class GitViewModel: ObservableObject {
 
         Task { [weak self] in
             guard let self = self else { return }
-            let success = await self.git.commit(path: projectPath, message: message)
+            let success = await self.git.commit(path: path, message: message)
             self.isCommitting = false
             if success {
                 self.commitMessage = ""
@@ -240,13 +233,11 @@ public final class GitViewModel: ObservableObject {
         }
     }
 
-    // MARK: - Branches
-
     public func createBranch(name: String) {
-        guard let projectPath = workspace?.activeProject?.path else { return }
+        guard let path = worktreePath else { return }
         Task { [weak self] in
             guard let self = self else { return }
-            let success = await self.git.createBranch(path: projectPath, name: name)
+            let success = await self.git.createBranch(path: path, name: name)
             if success {
                 self.actionMessage = "Created branch '\(name)'"
                 self.refreshAll()
@@ -257,10 +248,10 @@ public final class GitViewModel: ObservableObject {
     }
 
     public func checkoutBranch(name: String) {
-        guard let projectPath = workspace?.activeProject?.path else { return }
+        guard let path = worktreePath else { return }
         Task { [weak self] in
             guard let self = self else { return }
-            let success = await self.git.checkoutBranch(path: projectPath, name: name)
+            let success = await self.git.checkoutBranch(path: path, name: name)
             if success {
                 self.actionMessage = "Switched to branch '\(name)'"
                 self.refreshAll()
@@ -270,14 +261,12 @@ public final class GitViewModel: ObservableObject {
         }
     }
 
-    // MARK: - Remote
-
     public func pull() {
-        guard let projectPath = workspace?.activeProject?.path else { return }
+        guard let path = worktreePath else { return }
         isLoading = true
         Task { [weak self] in
             guard let self = self else { return }
-            let success = await self.git.pull(path: projectPath)
+            let success = await self.git.pull(path: path)
             self.isLoading = false
             if success {
                 self.actionMessage = "Pull completed"
@@ -289,11 +278,11 @@ public final class GitViewModel: ObservableObject {
     }
 
     public func push() {
-        guard let projectPath = workspace?.activeProject?.path else { return }
+        guard let path = worktreePath else { return }
         isLoading = true
         Task { [weak self] in
             guard let self = self else { return }
-            let success = await self.git.push(path: projectPath)
+            let success = await self.git.push(path: path)
             self.isLoading = false
             if success {
                 self.actionMessage = "Push completed"
@@ -304,11 +293,11 @@ public final class GitViewModel: ObservableObject {
     }
 
     public func fetch() {
-        guard let projectPath = workspace?.activeProject?.path else { return }
+        guard let path = worktreePath else { return }
         isLoading = true
         Task { [weak self] in
             guard let self = self else { return }
-            let success = await self.git.fetch(path: projectPath)
+            let success = await self.git.fetch(path: path)
             self.isLoading = false
             if success {
                 self.actionMessage = "Fetch completed"
@@ -319,19 +308,34 @@ public final class GitViewModel: ObservableObject {
         }
     }
 
-    public func merge(branch: String) {
-        guard let projectPath = workspace?.activeProject?.path else { return }
+    public func merge(branch: String, deleteWorktreeAfterMerge: Bool = false) {
+        guard let path = worktreePath else { return }
         isLoading = true
         Task { [weak self] in
             guard let self = self else { return }
-            let success = await self.git.merge(path: projectPath, branch: branch)
+            let success = await self.git.merge(path: path, branch: branch)
             self.isLoading = false
             if success {
                 self.actionMessage = "Merged '\(branch)'"
                 self.refreshAll()
+
+                if deleteWorktreeAfterMerge {
+                    self.deleteWorktreeForMergedBranch(branch)
+                }
             } else {
                 self.actionError = "Merge with '\(branch)' failed"
             }
+        }
+    }
+
+    private func deleteWorktreeForMergedBranch(_ branch: String) {
+        guard let workspace = workspace, let project = workspace.activeProject else { return }
+        let cleanBranch = branch.hasPrefix("refs/heads/") ? String(branch.dropFirst(11)) : branch
+        if let worktree = project.worktrees.first(where: {
+            let wtBranch = $0.branch.hasPrefix("refs/heads/") ? String($0.branch.dropFirst(11)) : $0.branch
+            return wtBranch == cleanBranch && !$0.isMain
+        }) {
+            workspace.removeWorktree(projectId: project.id, worktreeId: worktree.id, deleteBranch: false)
         }
     }
 

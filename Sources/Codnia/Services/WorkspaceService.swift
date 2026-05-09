@@ -8,7 +8,8 @@ public final class WorkspaceService: ObservableObject {
     @Published public var fileTree: [FileEntry] = []
     @Published public var branches: [String: String] = [:]
     @Published public var changesCount: [String: (added: Int, deleted: Int)] = [:]
-    @Published public var projectRunningStates: [String: Bool] = [:]
+    @Published     public var projectRunningStates: [String: Bool] = [:]
+    @Published public var worktreeRefreshSignal: Int = 0
 
     private var refreshTask: Task<Void, Never>?
     private var gitTasks: [String: Task<Void, Never>] = [:]
@@ -48,7 +49,8 @@ public final class WorkspaceService: ObservableObject {
     }
 
     private func setupFileObserver(for project: Project) {
-        let fd = open(project.path, O_EVTONLY)
+        guard let worktree = project.activeWorktree else { return }
+        let fd = open(worktree.path, O_EVTONLY)
         guard fd >= 0 else { return }
 
         fileObservers[project.id]?.cancel()
@@ -71,12 +73,12 @@ public final class WorkspaceService: ObservableObject {
     }
 
     private func refreshChanges(for project: Project) {
-        // Cancel stale task for this project before starting a new one
         gitTasks[project.id]?.cancel()
         gitTasks[project.id] = Task { [weak self] in
-            let result = await GitService.shared.getChangesCount(path: project.path)
+            guard let worktree = project.activeWorktree else { return }
+            let result = await GitService.shared.getChangesCount(path: worktree.path)
             guard !Task.isCancelled else { return }
-            self?.changesCount[project.id] = result
+            self?.changesCount[worktree.id] = result
         }
     }
 
@@ -89,9 +91,10 @@ public final class WorkspaceService: ObservableObject {
         await withTaskGroup(of: Void.self) { group in
             for project in projects {
                 group.addTask { [weak self] in
-                    let result = await GitService.shared.getChangesCount(path: project.path)
+                    guard let worktree = project.activeWorktree else { return }
+                    let result = await GitService.shared.getChangesCount(path: worktree.path)
                     await MainActor.run {
-                        self?.changesCount[project.id] = result
+                        self?.changesCount[worktree.id] = result
                     }
                 }
             }
@@ -100,10 +103,12 @@ public final class WorkspaceService: ObservableObject {
 
     private func refreshRunningStates() async {
         for project in projects {
-            let hasAITerminal = project.terminalTabs.contains {
-                $0.type == .opencode || $0.type == .claude || $0.type == .codex
+            if let worktree = project.activeWorktree {
+                let hasAITerminal = worktree.terminalTabs.contains {
+                    $0.type == .opencode || $0.type == .claude || $0.type == .codex
+                }
+                projectRunningStates[worktree.id] = hasAITerminal
             }
-            projectRunningStates[project.id] = hasAITerminal
         }
     }
 
@@ -151,17 +156,37 @@ public final class WorkspaceService: ObservableObject {
 
     public func addProject(path: String) {
         let name = URL(fileURLWithPath: path).lastPathComponent
-        let project = Project(name: name, path: path)
-        if !projects.contains(where: { $0.path == path }) {
-            projects.append(project)
-            activeProject = project
+
+        if let existing = projects.first(where: { $0.path == path }) {
+            activeProject = existing
             saveProjects()
-            RecentProjectsService.shared.add(path)
             refreshFileTree()
-            loadBranch(for: project)
-            setupFileObserver(for: project)
-            refreshChanges(for: project)
+            loadBranch(for: existing)
+            return
         }
+
+        let mainWorktree = Worktree(
+            name: "main",
+            path: path,
+            branch: "main",
+            isMain: true
+        )
+
+        let project = Project(
+            name: name,
+            path: path,
+            worktrees: [mainWorktree],
+            activeWorktreeId: mainWorktree.id
+        )
+
+        projects.append(project)
+        activeProject = project
+        saveProjects()
+        RecentProjectsService.shared.add(path)
+        refreshFileTree()
+        loadBranch(for: project)
+        setupFileObserver(for: project)
+        refreshChanges(for: project)
     }
 
     public func removeProject(id: String) {
@@ -201,19 +226,9 @@ public final class WorkspaceService: ObservableObject {
     public func updateProjectIcon(id: String, iconPath: String?) {
         if let idx = projects.firstIndex(where: { $0.id == id }) {
             let oldProject = projects[idx]
-            let updatedProject = Project(
-                id: oldProject.id,
-                name: oldProject.name,
-                path: oldProject.path,
-                createdAt: oldProject.createdAt,
-                fileTabs: oldProject.fileTabs,
-                terminalTabs: oldProject.terminalTabs,
-                activeTabId: oldProject.activeTabId,
-                customIconPath: iconPath
-            )
-            projects[idx] = updatedProject
+            projects[idx].customIconPath = iconPath
             if activeProject?.id == id {
-                activeProject = updatedProject
+                activeProject = projects[idx]
             }
             objectWillChange.send()
             saveProjects()
@@ -226,6 +241,142 @@ public final class WorkspaceService: ObservableObject {
             saveProjects()
             refreshFileTree()
             loadBranch(for: project)
+            syncWorktreesWithGit(for: project)
+        }
+    }
+
+    public func syncWorktreesWithGit(for project: Project) {
+        guard let projIdx = projects.firstIndex(where: { $0.id == project.id }) else { return }
+
+        Task {
+            let gitWorktrees = await GitService.shared.listWorktrees(path: project.path)
+            await MainActor.run {
+                let existingPaths = Set(self.projects[projIdx].worktrees.map { $0.path })
+
+                for gitWt in gitWorktrees {
+                    if existingPaths.contains(gitWt.path) {
+                        if let idx = self.projects[projIdx].worktrees.firstIndex(where: { $0.path == gitWt.path }),
+                           self.projects[projIdx].worktrees[idx].branch != gitWt.branch {
+                            self.projects[projIdx].worktrees[idx].branch = gitWt.branch
+                        }
+                        continue
+                    }
+                    let newWorktree = Worktree(
+                        name: gitWt.branch,
+                        path: gitWt.path,
+                        branch: gitWt.branch,
+                        isMain: gitWt.isMain
+                    )
+                    self.projects[projIdx].worktrees.append(newWorktree)
+                }
+
+                if self.activeProject?.id == project.id {
+                    self.worktreeRefreshSignal += 1
+                    self.objectWillChange.send()
+                    self.saveProjects()
+                }
+            }
+        }
+    }
+
+    public func setActiveWorktree(projectId: String, worktreeId: String) {
+        guard let projIdx = projects.firstIndex(where: { $0.id == projectId }),
+              let wtIdx = projects[projIdx].worktrees.firstIndex(where: { $0.id == worktreeId }) else { return }
+
+        projects[projIdx].activeWorktreeId = worktreeId
+
+        if activeProject?.id == projectId {
+            activeProject = projects[projIdx]
+        }
+
+        saveProjects()
+        refreshFileTree()
+        loadBranch(for: projects[projIdx])
+        setupFileObserver(for: projects[projIdx])
+        refreshChanges(for: projects[projIdx])
+    }
+
+    public func addWorktree(projectId: String, branch: String, worktreePath: String, createBranch: Bool, deleteBranchOnRemove: Bool) {
+        let projectPath: String
+        if let proj = projects.first(where: { $0.id == projectId }) {
+            projectPath = proj.path
+        } else { return }
+
+        Task {
+            let success = await GitService.shared.addWorktree(
+                projectPath: projectPath,
+                branch: branch,
+                worktreePath: worktreePath,
+                createBranch: createBranch
+            )
+
+            if success {
+                let newWorktree = Worktree(
+                    name: branch,
+                    path: worktreePath,
+                    branch: branch,
+                    isMain: false
+                )
+
+                await MainActor.run {
+                    guard let idx = self.projects.firstIndex(where: { $0.id == projectId }) else { return }
+                    var updated = self.projects
+                    updated[idx].worktrees.append(newWorktree)
+                    self.projects = updated
+                    self.saveProjects()
+                    self.worktreeRefreshSignal += 1
+                }
+            }
+        }
+    }
+
+    public func reloadProjects() {
+        loadProjects()
+        objectWillChange.send()
+    }
+
+    public func removeWorktree(projectId: String, worktreeId: String, deleteBranch: Bool) {
+        guard let projIdx = projects.firstIndex(where: { $0.id == projectId }),
+              let wtIdx = projects[projIdx].worktrees.firstIndex(where: { $0.id == worktreeId }),
+              !projects[projIdx].worktrees[wtIdx].isMain else { return }
+
+        let worktree = projects[projIdx].worktrees[wtIdx]
+        let project = projects[projIdx]
+
+        Task {
+            let success = await GitService.shared.removeWorktree(
+                projectPath: project.path,
+                worktreePath: worktree.path,
+                worktreeBranch: worktree.branch,
+                deleteBranch: deleteBranch
+            )
+
+            guard success else {
+                print("Failed to remove worktree")
+                return
+            }
+
+            await MainActor.run {
+                self.projects[projIdx].worktrees.remove(at: wtIdx)
+                self.changesCount.removeValue(forKey: worktreeId)
+
+                if project.activeWorktreeId == worktreeId {
+                    if let mainWt = self.projects[projIdx].worktrees.first(where: { $0.isMain }) {
+                        self.projects[projIdx].activeWorktreeId = mainWt.id
+                    } else {
+                        self.projects[projIdx].activeWorktreeId = self.projects[projIdx].worktrees.first?.id
+                    }
+                }
+
+                if self.activeProject?.id == projectId {
+                    self.activeProject = self.projects[projIdx]
+                    self.refreshFileTree()
+                    self.loadBranch(for: self.projects[projIdx])
+                }
+
+                self.worktreeRefreshSignal += 1
+                self.saveProjects()
+            }
         }
     }
 
@@ -252,34 +403,46 @@ public final class WorkspaceService: ObservableObject {
     }
 
     public func refreshFileTree() {
-        guard let path = activeProject?.path else {
+        guard let worktree = activeProject?.activeWorktree else {
             fileTree = []
             return
         }
-        fileTree = FileSystemService.shared.listDirectory(path: path)
+        fileTree = FileSystemService.shared.listDirectory(path: worktree.path)
     }
 
     public func toggleSidebar() {
-        // Handled by view layer binding
     }
 
     private func loadBranch(for project: Project) {
+        guard let worktree = project.activeWorktree else { return }
         gitTasks[project.id]?.cancel()
         gitTasks[project.id] = Task { [weak self] in
-            async let branch = GitService.shared.getBranch(path: project.path)
-            async let changes = GitService.shared.getChangesCount(path: project.path)
+            async let branch = GitService.shared.getBranch(path: worktree.path)
+            async let changes = GitService.shared.getChangesCount(path: worktree.path)
             let (b, c) = await (branch, changes)
             guard !Task.isCancelled else { return }
-            self?.branches[project.id] = b
-            self?.changesCount[project.id] = c
+            self?.branches[worktree.id] = b
+            self?.changesCount[worktree.id] = c
         }
     }
 
-    public func getBranch(forProjectId id: String) -> String {
+    public func getBranch(forWorktreeId id: String) -> String {
         branches[id] ?? "main"
     }
 
-    public func getChangesCount(forProjectId id: String) -> (added: Int, deleted: Int) {
+    public func getBranch(forProjectId id: String) -> String {
+        guard let project = projects.first(where: { $0.id == id }),
+              let worktree = project.activeWorktree else { return "main" }
+        return branches[worktree.id] ?? "main"
+    }
+
+    public func getChangesCount(forWorktreeId id: String) -> (added: Int, deleted: Int) {
         changesCount[id] ?? (added: 0, deleted: 0)
+    }
+
+    public func getChangesCount(forProjectId id: String) -> (added: Int, deleted: Int) {
+        guard let project = projects.first(where: { $0.id == id }),
+              let worktree = project.activeWorktree else { return (added: 0, deleted: 0) }
+        return changesCount[worktree.id] ?? (added: 0, deleted: 0)
     }
 }
