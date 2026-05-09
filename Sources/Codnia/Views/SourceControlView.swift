@@ -583,6 +583,16 @@ struct SourceControlView: View {
             .buttonStyle(PlainButtonStyle())
             .help("View diff")
 
+            if let counts = gitVM.fileChangesCounts[entry.filePath], counts.added > 0 || counts.deleted > 0 {
+                HStack(spacing: 2) {
+                    Text("+\(counts.added)")
+                        .foregroundColor(.green)
+                    Text("-\(counts.deleted)")
+                        .foregroundColor(.red)
+                }
+                .font(.system(size: 10, weight: .medium))
+            }
+
             if isStaged {
                 Button { gitVM.unstageFile(entry.filePath) } label: {
                     Image(systemName: "minus.circle")

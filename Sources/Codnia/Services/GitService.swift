@@ -99,6 +99,50 @@ public final class GitService {
         }
     }
 
+    private func parseNumstatPerFile(_ data: Data?) -> [String: (added: Int, deleted: Int)] {
+        guard let data = data,
+              let output = String(data: data, encoding: .utf8) else { return [:] }
+        var result: [String: (added: Int, deleted: Int)] = [:]
+        let lines = output.components(separatedBy: .newlines).filter { !$0.isEmpty }
+        for line in lines {
+            let parts = line.split(separator: "\t", omittingEmptySubsequences: false)
+            if parts.count >= 3 {
+                let addedStr = String(parts[0])
+                let deletedStr = String(parts[1])
+                let filePath = String(parts[2])
+                let added = addedStr != "-" ? (Int(addedStr) ?? 0) : 0
+                let deleted = deletedStr != "-" ? (Int(deletedStr) ?? 0) : 0
+                let existing = result[filePath] ?? (0, 0)
+                result[filePath] = (existing.added + added, existing.deleted + deleted)
+            }
+        }
+        return result
+    }
+
+    public func getFileChangesCounts(path: String) async -> [String: (added: Int, deleted: Int)] {
+        async let diffData = runGit(args: ["diff", "--numstat"], in: path)
+        async let stagedData = runGit(args: ["diff", "--cached", "--numstat"], in: path)
+        async let untrackedData = runGit(args: ["ls-files", "--others", "--exclude-standard"], in: path)
+
+        var result = parseNumstatPerFile(await diffData)
+        let stagedResult = parseNumstatPerFile(await stagedData)
+        for (filePath, counts) in stagedResult {
+            let existing = result[filePath] ?? (0, 0)
+            result[filePath] = (existing.added + counts.added, existing.deleted + counts.deleted)
+        }
+
+        if let data = await untrackedData,
+           let output = String(data: data, encoding: .utf8) {
+            let files = output.components(separatedBy: .newlines).filter { !$0.isEmpty }
+            for file in files {
+                let existing = result[file] ?? (0, 0)
+                result[file] = (existing.added + 1, existing.deleted)
+            }
+        }
+
+        return result
+    }
+
     // MARK: - Public API (existing)
 
     public func getBranch(path: String) async -> String {

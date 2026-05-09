@@ -16,6 +16,7 @@ public final class GitViewModel: ObservableObject {
     @Published public var actionError: String? = nil
     @Published public var commitHistory: [GitService.CommitInfo] = []
     @Published public var showCommitHistory: Bool = false
+    @Published public var fileChangesCounts: [String: (added: Int, deleted: Int)] = [:]
 
     private let git = GitService.shared
     private weak var workspace: WorkspaceService?
@@ -87,8 +88,9 @@ public final class GitViewModel: ObservableObject {
             async let branch = self.git.getBranch(path: worktreePath)
             async let branches = self.git.getBranches(path: worktreePath)
             async let history = self.git.getLog(path: worktreePath, count: 20)
+            async let counts = self.git.getFileChangesCounts(path: worktreePath)
 
-            let (statusResult, branchResult, branchesResult, historyResult) = await (status, branch, branches, history)
+            let (statusResult, branchResult, branchesResult, historyResult, countsResult) = await (status, branch, branches, history, counts)
 
             guard !Task.isCancelled else { return }
 
@@ -98,6 +100,7 @@ public final class GitViewModel: ObservableObject {
             self.currentBranch = branchResult
             self.branches = branchesResult
             self.commitHistory = historyResult
+            self.fileChangesCounts = countsResult
             self.isLoading = false
             self.isRefreshing = false
         }
