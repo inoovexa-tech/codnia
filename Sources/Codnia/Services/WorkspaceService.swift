@@ -8,7 +8,7 @@ public final class WorkspaceService: ObservableObject {
     @Published public var fileTree: [FileEntry] = []
     @Published public var branches: [String: String] = [:]
     @Published public var changesCount: [String: (added: Int, deleted: Int)] = [:]
-    @Published     public var projectRunningStates: [String: Bool] = [:]
+    @Published public var worktreeRunningStates: [String: Bool] = [:]
 
     private var refreshTask: Task<Void, Never>?
     private var gitTasks: [String: Task<Void, Never>] = [:]
@@ -41,7 +41,6 @@ public final class WorkspaceService: ObservableObject {
         refreshTask = Task { [weak self] in
             while !Task.isCancelled {
                 await self?.refreshAllChanges()
-                await self?.refreshRunningStates()
                 try? await Task.sleep(nanoseconds: 30_000_000_000)
             }
         }
@@ -100,15 +99,9 @@ public final class WorkspaceService: ObservableObject {
         }
     }
 
-    private func refreshRunningStates() async {
-        for project in projects {
-            if let worktree = project.activeWorktree {
-                let hasAITerminal = worktree.terminalTabs.contains {
-                    $0.type == .opencode || $0.type == .claude || $0.type == .codex
-                }
-                projectRunningStates[worktree.id] = hasAITerminal
-            }
-        }
+    public func updateRunningState(for worktreeId: String, isRunning: Bool) {
+        worktreeRunningStates[worktreeId] = isRunning
+        objectWillChange.send()
     }
 
     public func loadProjects() {

@@ -10,23 +10,59 @@ public final class TerminalViewModel: ObservableObject {
     private let service = TerminalService()
     private var cancellables = Set<AnyCancellable>()
     var workspace: WorkspaceService?
+    private var terminalWorktreeMap: [String: String] = [:]
+    private var pollingTask: Task<Void, Never>?
 
     public init(workspace: WorkspaceService? = nil) {
         self.workspace = workspace
-        // Bridge service instances to tabs
         service.$instances
             .receive(on: RunLoop.main)
             .sink { [weak self] inst in
                 self?.instances = inst
             }
             .store(in: &cancellables)
+        startPolling()
+    }
+
+    deinit {
+        pollingTask?.cancel()
+    }
+
+    private func startPolling() {
+        pollingTask?.cancel()
+        pollingTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                await self?.checkProcessStatesIfNeeded()
+            }
+        }
+    }
+
+    private func checkProcessStatesIfNeeded() async {
+        for (termId, worktreeId) in terminalWorktreeMap {
+            guard let terminal = TerminalManager.shared.get(for: termId) else { continue }
+
+            if !terminal.process.running {
+                service.setProcessRunning(id: termId, running: false)
+                workspace?.updateRunningState(for: worktreeId, isRunning: false)
+                terminalWorktreeMap.removeValue(forKey: termId)
+            } else {
+                let isActive = TerminalManager.shared.isActivelyProcessing(for: termId)
+                service.setProcessRunning(id: termId, running: isActive)
+                workspace?.updateRunningState(for: worktreeId, isRunning: isActive)
+            }
+        }
     }
 
     @discardableResult
     public func createTerminalTab(type: TabType = .terminal) -> Tab {
         let cwd = workspace?.activeProject?.activeWorktree?.path ?? NSHomeDirectory()
+        let worktreeId = workspace?.activeProject?.activeWorktreeId
         let name = tabName(for: type)
-        let instance = service.createTerminal(cwd: cwd)
+        let instance = service.createTerminal(cwd: cwd, worktreeId: worktreeId)
+        if type.isAI, let wtId = worktreeId {
+            terminalWorktreeMap[instance.id] = wtId
+        }
         let tab = Tab(
             id: UUID().uuidString,
             path: instance.cwd,
@@ -41,12 +77,28 @@ public final class TerminalViewModel: ObservableObject {
         return tab
     }
 
+    public func setWorktreeMapping(tabs: [Tab], worktreeId: String) {
+        for tab in tabs where tab.type.isAI {
+            if let termId = tab.terminalId {
+                terminalWorktreeMap[termId] = worktreeId
+            }
+        }
+    }
+
     public func closeTab(_ tab: Tab) {
         if let termId = tab.terminalId {
+            if let worktreeId = terminalWorktreeMap[termId] {
+                workspace?.updateRunningState(for: worktreeId, isRunning: false)
+                terminalWorktreeMap.removeValue(forKey: termId)
+            }
+            TerminalManager.shared.terminateProcess(for: termId)
             service.kill(id: termId)
             TerminalManager.shared.remove(for: termId)
         }
         tabs.removeAll { $0.id == tab.id }
+        if activeId == tab.id {
+            activeId = tabs.last?.id
+        }
         saveTabsToProject()
     }
 

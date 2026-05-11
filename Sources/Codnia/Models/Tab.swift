@@ -9,6 +9,13 @@ public enum TabType: String, Codable, Equatable {
     case diff
     case image
     case pdf
+
+    public var isAI: Bool {
+        switch self {
+        case .opencode, .claude, .codex: return true
+        default: return false
+        }
+    }
 }
 
 public enum PreviewType: String, Codable, Equatable {

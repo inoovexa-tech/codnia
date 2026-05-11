@@ -82,6 +82,7 @@ public final class EditorViewModel: ObservableObject {
 
         tabs = worktree.fileTabs
         terminal.tabs = worktree.terminalTabs
+        terminal.setWorktreeMapping(tabs: worktree.terminalTabs, worktreeId: worktree.id)
         activeTabId = worktree.activeTabId
 
         for tab in worktree.fileTabs where (tab.type == .file || tab.type == .diff) && !tab.path.isEmpty {

@@ -167,6 +167,11 @@ struct ProjectRowExpanded: View {
         project?.activeWorktree
     }
 
+    private var hasRunningProcess: Bool {
+        guard let project = project else { return false }
+        return project.worktrees.contains { workspaceVM.worktreeRunningStates[$0.id] == true }
+    }
+
     private var initials: String {
         guard let project = project else { return "" }
         return project.name
@@ -205,11 +210,17 @@ struct ProjectRowExpanded: View {
                         projectIcon
 
                         VStack(alignment: .leading, spacing: 2) {
-                            HStack(spacing: 4) {
+                            HStack(spacing: 6) {
                                 Text(project?.name ?? "")
                                     .font(.system(size: 12, weight: .medium))
                                     .foregroundColor(.white)
                                     .lineLimit(1)
+
+                                if hasRunningProcess {
+                                    DashedBorderLoading()
+                                }
+
+                                Spacer()
                             }
 
                             if let worktree = activeWorktree {
@@ -332,7 +343,8 @@ struct ProjectRowExpanded: View {
                         contextMenuWorktree = worktree
                         showWorktreeContextMenu = true
                     } : nil,
-                    changes: count
+                    changes: count,
+                    hasRunningProcess: workspaceVM.worktreeRunningStates[worktree.id] == true
                 )
             }
 
@@ -390,6 +402,7 @@ struct WorktreeRow: View {
     let onSelect: () -> Void
     let onRemove: (() -> Void)?
     let changes: (added: Int, deleted: Int)
+    var hasRunningProcess: Bool = false
 
     var body: some View {
         HStack(spacing: 4) {
@@ -404,6 +417,10 @@ struct WorktreeRow: View {
                         .foregroundColor(isActive ? .textPrimary : .textSecondary)
                         .lineLimit(1)
                         .frame(maxWidth: 100, alignment: .leading)
+
+                    if hasRunningProcess {
+                        DashedBorderLoading()
+                    }
 
                     if changes.added > 0 || changes.deleted > 0 {
                         HStack(spacing: 2) {
@@ -516,6 +533,11 @@ struct ProjectRowCollapsed: View {
             .joined()
     }
 
+    private var hasLoading: Bool {
+        guard let project = project else { return false }
+        return project.worktrees.contains { workspaceVM.worktreeRunningStates[$0.id] == true }
+    }
+
     @ViewBuilder
     private var projectIcon: some View {
         if let project = project, let iconPath = project.detectedIconPath,
@@ -525,12 +547,18 @@ struct ProjectRowCollapsed: View {
                 .frame(width: 36, height: 36)
                 .cornerRadius(8)
         } else {
-            Text(initials)
-                .font(.system(size: 11, weight: .semibold))
-                .frame(width: 36, height: 36)
-                .background(isActive ? Color.accentBlue : Color.bgTertiary)
-                .foregroundColor(.white)
-                .cornerRadius(8)
+            ZStack(alignment: .bottomTrailing) {
+                Text(initials)
+                    .font(.system(size: 11, weight: .semibold))
+                    .frame(width: 36, height: 36)
+                    .background(isActive ? Color.accentBlue : Color.bgTertiary)
+                    .foregroundColor(.white)
+                    .cornerRadius(8)
+
+                if hasLoading {
+                    DashedBorderLoading()
+                }
+            }
         }
     }
 
@@ -543,5 +571,23 @@ struct ProjectRowCollapsed: View {
         .buttonStyle(BorderlessButtonStyle())
         .frame(width: 36, height: 36)
         .help(project?.name ?? "")
+    }
+}
+
+struct DashedBorderLoading: View {
+    @State private var phase: CGFloat = 0
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: 2)
+            .stroke(
+                Color.gray,
+                style: StrokeStyle(lineWidth: 1.5, dash: [2, 3], dashPhase: phase)
+            )
+            .frame(width: 10, height: 10)
+            .onAppear {
+                withAnimation(.linear(duration: 0.6).repeatForever(autoreverses: false)) {
+                    phase -= 5
+                }
+            }
     }
 }

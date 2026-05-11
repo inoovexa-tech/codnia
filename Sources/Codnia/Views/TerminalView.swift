@@ -1,21 +1,39 @@
 import SwiftUI
 import SwiftTerm
 
+class CodniaTerminalView: LocalProcessTerminalView {
+    var onDataReceived: ((Int) -> Void)?
+
+    override func dataReceived(slice: ArraySlice<UInt8>) {
+        super.dataReceived(slice: slice)
+        onDataReceived?(slice.count)
+    }
+}
+
 @MainActor
 class TerminalManager {
     static let shared = TerminalManager()
-    private var terminals: [String: LocalProcessTerminalView] = [:]
+    private var terminals: [String: CodniaTerminalView] = [:]
+    private var bytesSinceLastPoll: [String: Int] = [:]
+    private var lastActiveTimes: [String: Date] = [:]
 
-    func get(for id: String) -> LocalProcessTerminalView? {
+    func get(for id: String) -> CodniaTerminalView? {
         terminals[id]
     }
 
-    func set(_ terminal: LocalProcessTerminalView, for id: String) {
+    func set(_ terminal: CodniaTerminalView, for id: String) {
         terminals[id] = terminal
+        terminal.onDataReceived = { [weak self] byteCount in
+            DispatchQueue.main.async {
+                self?.recordBytes(for: id, bytes: byteCount)
+            }
+        }
     }
 
     func remove(for id: String) {
         terminals.removeValue(forKey: id)?.removeFromSuperview()
+        bytesSinceLastPoll.removeValue(forKey: id)
+        lastActiveTimes.removeValue(forKey: id)
     }
 
     func show(id: String) {
@@ -27,8 +45,36 @@ class TerminalManager {
         }
     }
 
-    func getAllTerminals() -> [LocalProcessTerminalView] {
+    func getAllTerminals() -> [CodniaTerminalView] {
         Array(terminals.values)
+    }
+
+    func terminateProcess(for id: String) {
+        terminals[id]?.terminate()
+    }
+
+    func isProcessRunning(for id: String) -> Bool {
+        terminals[id]?.process.running ?? false
+    }
+
+    private func recordBytes(for id: String, bytes: Int) {
+        bytesSinceLastPoll[id] = (bytesSinceLastPoll[id] ?? 0) + bytes
+    }
+
+    func isActivelyProcessing(for id: String) -> Bool {
+        let bytes = bytesSinceLastPoll[id] ?? 0
+        bytesSinceLastPoll[id] = nil
+
+        if bytes >= 150 {
+            lastActiveTimes[id] = Date()
+            return true
+        }
+
+        if let lastActive = lastActiveTimes[id], Date().timeIntervalSince(lastActive) < 3.0 {
+            return true
+        }
+
+        return false
     }
 }
 
@@ -129,8 +175,7 @@ struct TerminalHostView: NSViewRepresentable {
                     existing.autoresizingMask = [.width, .height]
                 }
             } else {
-                let terminal = createTerminal(cwd: tab.path, fontSize: fontSize, type: tab.type, in: nsView)
-                TerminalManager.shared.set(terminal, for: termId)
+                createTerminal(cwd: tab.path, fontSize: fontSize, type: tab.type, terminalId: termId, in: nsView)
             }
         }
 
@@ -140,8 +185,9 @@ struct TerminalHostView: NSViewRepresentable {
         }
     }
 
-    private func createTerminal(cwd: String, fontSize: Double, type: TabType, in container: NSView) -> LocalProcessTerminalView {
-        let terminal = LocalProcessTerminalView(frame: container.bounds)
+    private func createTerminal(cwd: String, fontSize: Double, type: TabType, terminalId: String, in container: NSView) {
+        let terminal = CodniaTerminalView(frame: container.bounds)
+        TerminalManager.shared.set(terminal, for: terminalId)
         terminal.autoresizingMask = [.width, .height]
         terminal.nativeBackgroundColor = NSColor(Color.bgPrimary)
         terminal.nativeForegroundColor = NSColor(Color.textPrimary)
@@ -155,31 +201,31 @@ struct TerminalHostView: NSViewRepresentable {
         if env["LANG"] == nil { env["LANG"] = "en_US.UTF-8" }
         let envStrings = env.map { "\($0.key)=\($0.value)" }
 
+        let (executable, args): (String, [String])
+        switch type {
+        case .opencode:
+            executable = "/bin/zsh"
+            args = ["-l", "-c", "opencode"]
+        case .claude:
+            executable = "/bin/zsh"
+            args = ["-l", "-c", "claude"]
+        case .codex:
+            executable = "/bin/zsh"
+            args = ["-l", "-c", "codex"]
+        default:
+            executable = "/bin/zsh"
+            args = ["-l"]
+        }
+
         terminal.startProcess(
-            executable: "/bin/zsh",
-            args: ["-l"],
+            executable: executable,
+            args: args,
             environment: envStrings,
             execName: nil,
             currentDirectory: cwd.isEmpty ? nil : cwd
         )
 
-        let autoCommand: String? = {
-            switch type {
-            case .opencode: return "opencode"
-            case .claude: return "claude"
-            case .codex: return "codex"
-            default: return nil
-            }
-        }()
-
-        if let command = autoCommand {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                terminal.send(txt: command + "\n")
-            }
-        }
-
         container.addSubview(terminal)
-        return terminal
     }
 }
 
