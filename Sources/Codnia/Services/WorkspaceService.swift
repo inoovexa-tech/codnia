@@ -290,10 +290,8 @@ public final class WorkspaceService: ObservableObject {
               projects[projIdx].worktrees.contains(where: { $0.id == worktreeId }) else { return }
 
         projects[projIdx].activeWorktreeId = worktreeId
-
-        if activeProject?.id == projectId {
-            activeProject = projects[projIdx]
-        }
+        projects[projIdx].isWorktreesExpanded = true
+        activeProject = projects[projIdx]
 
         saveProjects()
         refreshFileTree()
