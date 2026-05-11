@@ -13,8 +13,16 @@ public final class GitViewModel: ObservableObject {
     @Published public var isRefreshing: Bool = false
     @Published public var isAutoRefreshing: Bool = false
     @Published public var isCommitting: Bool = false
-    @Published public var actionMessage: String? = nil
-    @Published public var actionError: String? = nil
+    @Published public var actionMessage: String? = nil {
+        didSet {
+            if actionMessage != nil { scheduleAutoDismiss() }
+        }
+    }
+    @Published public var actionError: String? = nil {
+        didSet {
+            if actionError != nil { scheduleAutoDismiss() }
+        }
+    }
     @Published public var commitHistory: [GitService.CommitInfo] = []
     @Published public var showCommitHistory: Bool = false
     @Published public var fileChangesCounts: [String: (added: Int, deleted: Int)] = [:]
@@ -24,6 +32,7 @@ public final class GitViewModel: ObservableObject {
     private weak var editorVM: EditorViewModel?
     private var cancellables = Set<AnyCancellable>()
     private var refreshTask: Task<Void, Never>?
+    private var autoDismissTask: Task<Void, Never>?
 
     public init(workspace: WorkspaceService, editorVM: EditorViewModel) {
         self.workspace = workspace
@@ -331,6 +340,17 @@ public final class GitViewModel: ObservableObject {
             return wtBranch == cleanBranch && !$0.isMain
         }) {
             workspace.removeWorktree(projectId: project.id, worktreeId: worktree.id, deleteBranch: false)
+        }
+    }
+
+    private func scheduleAutoDismiss() {
+        autoDismissTask?.cancel()
+        autoDismissTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 5_000_000_000)
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                self?.clearMessages()
+            }
         }
     }
 

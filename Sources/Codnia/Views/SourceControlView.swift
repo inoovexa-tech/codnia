@@ -71,6 +71,7 @@ struct SourceControlView: View {
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
                 .background(Color.green.opacity(0.1))
+                .transition(.opacity.combined(with: .move(edge: .bottom)))
             }
 
             if let error = gitVM.actionError {
@@ -92,8 +93,11 @@ struct SourceControlView: View {
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
                 .background(Color.red.opacity(0.1))
+                .transition(.opacity.combined(with: .move(edge: .bottom)))
             }
         }
+        .animation(.easeInOut(duration: 0.3), value: gitVM.actionMessage)
+        .animation(.easeInOut(duration: 0.3), value: gitVM.actionError)
     }
 
     // MARK: - Empty State
