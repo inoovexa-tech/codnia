@@ -148,13 +148,39 @@ public final class EditorViewModel: ObservableObject {
     }
 
     public func newFile() {
-        let tab = Tab(name: "Untitled", type: .file)
+        newFile(name: "Untitled", content: "")
+    }
+
+    public func newFile(name: String, content: String) {
+        let tab = Tab(name: name, type: .file)
         tabs.append(tab)
         activeTabId = tab.id
-        editorContent = ""
-        currentLanguage = "Plain Text"
-        fileContents[tab.id] = ""
+        editorContent = content
+        currentLanguage = detectedLanguageName(from: name)
+        fileContents[tab.id] = content
         saveTabsToWorktree()
+    }
+
+    private func detectedLanguageName(from filename: String) -> String {
+        let ext = URL(fileURLWithPath: filename).pathExtension.lowercased()
+        switch ext {
+        case "swift": return "Swift"
+        case "ts", "tsx": return "TypeScript"
+        case "js", "jsx": return "JavaScript"
+        case "rs": return "Rust"
+        case "go": return "Go"
+        case "py": return "Python"
+        case "md", "markdown": return "Markdown"
+        case "json": return "JSON"
+        case "html", "htm": return "HTML"
+        case "css", "scss": return "CSS"
+        case "sh": return "Shell"
+        case "c", "h": return "C"
+        case "cpp", "hpp", "cc": return "C++"
+        case "java": return "Java"
+        case "kt": return "Kotlin"
+        default: return "Plain Text"
+        }
     }
 
     public func openFileDialog() {

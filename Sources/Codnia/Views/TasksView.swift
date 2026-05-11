@@ -230,6 +230,10 @@ struct TasksView: View {
                                 .foregroundColor(isCompleting || task.isCompleted ? .textTertiary : .textPrimary)
                                 .strikethrough(isCompleting || task.isCompleted)
                                 .lineLimit(1)
+                                .onDrag {
+                                    let payload = "TaskDrag|\(task.title)|\(task.description)"
+                                    return NSItemProvider(object: payload as NSString)
+                                }
 
                             priorityBadge(task.priority)
 
