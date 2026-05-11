@@ -55,10 +55,10 @@ public final class TerminalViewModel: ObservableObject {
     }
 
     @discardableResult
-    public func createTerminalTab(type: TabType = .terminal) -> Tab {
+    public func createTerminalTab(type: TabType = .terminal, name: String? = nil) -> Tab {
         let cwd = workspace?.activeProject?.activeWorktree?.path ?? NSHomeDirectory()
         let worktreeId = workspace?.activeProject?.activeWorktreeId
-        let name = tabName(for: type)
+        let tabName = name ?? self.tabName(for: type)
         let instance = service.createTerminal(cwd: cwd, worktreeId: worktreeId)
         if type.isAI, let wtId = worktreeId {
             terminalWorktreeMap[instance.id] = wtId
@@ -66,7 +66,7 @@ public final class TerminalViewModel: ObservableObject {
         let tab = Tab(
             id: UUID().uuidString,
             path: instance.cwd,
-            name: name,
+            name: tabName,
             language: "",
             type: type,
             terminalId: instance.id

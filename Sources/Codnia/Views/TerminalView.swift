@@ -57,6 +57,11 @@ class TerminalManager {
         terminals[id]?.process.running ?? false
     }
 
+    func sendText(id: String, text: String) {
+        guard let terminal = terminals[id] else { return }
+        terminal.feed(byteArray: ArraySlice([UInt8](text.utf8)))
+    }
+
     private func recordBytes(for id: String, bytes: Int) {
         bytesSinceLastPoll[id] = (bytesSinceLastPoll[id] ?? 0) + bytes
     }

@@ -91,15 +91,14 @@ struct TabBarView: View {
                         .onDrop(of: ["public.text"], isTargeted: nil) { providers in
                             for provider in providers {
                                 _ = provider.loadObject(ofClass: String.self) { object, _ in
-                                    if let item = object as? String, item.hasPrefix("TaskDrag|") {
-                                        let parts = item.split(separator: "|", maxSplits: 2, omittingEmptySubsequences: false)
-                                        if parts.count >= 2 {
-                                            let title = String(parts[1])
-                                            let description = parts.count >= 3 ? String(parts[2]) : ""
-                                            DispatchQueue.main.async {
-                                                editorVM.newFile(name: title, content: description.isEmpty ? "Task: \(title)" : description)
-                                            }
-                                        }
+                                    guard let item = object, item.hasPrefix("TaskDrag|") else { return }
+                                    let parts = item.split(separator: "|", maxSplits: 2, omittingEmptySubsequences: false)
+                                    guard parts.count >= 2 else { return }
+                                    let title = String(parts[1])
+                                    let description = parts.count >= 3 ? String(parts[2]) : ""
+                                    let displayName = description.isEmpty ? title : "\(title) - \(description)"
+                                    DispatchQueue.main.async {
+                                        editorVM.newFile(name: displayName, content: displayName)
                                     }
                                 }
                             }
