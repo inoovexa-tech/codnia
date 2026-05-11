@@ -77,6 +77,7 @@ struct CodniaApp: App {
         Settings {
             SettingsView()
                 .environmentObject(appDelegate.appState.settings)
+                .environmentObject(appDelegate.appState.pluginService)
                 .frame(minWidth: 700, minHeight: 540)
         }
         .commands {

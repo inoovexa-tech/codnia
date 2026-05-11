@@ -8,11 +8,14 @@ struct TabBarView: View {
     var onToggleExplorer: () -> Void
     var onToggleSearch: () -> Void
     var onToggleSourceControl: () -> Void
+    var onToggleTasks: () -> Void
     var onToggleRightSidebar: () -> Void
     var isRightSidebarExpanded: Bool
     var isExplorerActive: Bool
     var isSearchActive: Bool
     var isSourceControlActive: Bool
+    var isTasksActive: Bool
+    var isTasksEnabled: Bool
 
     @State private var draggedTabId: String?
     @State private var showTabDropdown = false
@@ -118,6 +121,15 @@ struct TabBarView: View {
                             .foregroundColor(isSourceControlActive ? .textPrimary : .textSecondary)
                     }
                     .buttonStyle(PlainButtonStyle())
+
+                    if isTasksEnabled {
+                        Button(action: onToggleTasks) {
+                            Image(systemName: "checklist")
+                                .font(.system(size: 13))
+                                .foregroundColor(isTasksActive ? .textPrimary : .textSecondary)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
 
                     Button(action: onToggleRightSidebar) {
                         Image(systemName: isRightSidebarExpanded ? "sidebar.right" : "sidebar.left")

@@ -6,25 +6,104 @@ public final class PluginService: ObservableObject {
     @Published public var plugins: [Plugin] = []
     @Published public var activePluginIds: Set<String> = []
 
+    private var sidebarPluginRegistry: [String: any SidebarPlugin] = [:]
+    private let defaults = UserDefaults.standard
+    private let activeIdsKey = "codnia.plugins.activeIds"
+
     public init() {
-        discoverPlugins()
+        loadActiveIds()
     }
 
-    public func discoverPlugins() {
-        // Stub: scan ~/Library/Application Support/Codnia/Plugins
-        plugins = []
+    // MARK: - Sidebar Plugin Registry
+
+    public func registerSidebarPlugin(_ plugin: any SidebarPlugin) {
+        sidebarPluginRegistry[plugin.id] = plugin
+        if !plugins.contains(where: { $0.id == plugin.id }) {
+            let isActive = activePluginIds.contains(plugin.id)
+            plugins.append(Plugin(
+                id: plugin.id,
+                name: plugin.name,
+                version: plugin.version,
+                description: plugin.description,
+                author: plugin.author,
+                isActive: isActive
+            ))
+        }
     }
+
+    public func unregisterSidebarPlugin(id: String) {
+        sidebarPluginRegistry.removeValue(forKey: id)
+        plugins.removeAll { $0.id == id }
+        activePluginIds.remove(id)
+        saveActiveIds()
+    }
+
+    public func plugin(withId id: String) -> (any SidebarPlugin)? {
+        sidebarPluginRegistry[id]
+    }
+
+    public var activeSidebarPlugins: [any SidebarPlugin] {
+        activePluginIds.compactMap { sidebarPluginRegistry[$0] }
+    }
+
+    public var allSidebarPlugins: [any SidebarPlugin] {
+        Array(sidebarPluginRegistry.values)
+    }
+
+    public var allCommands: [PluginCommand] {
+        activeSidebarPlugins.flatMap { $0.commands }
+    }
+
+    // MARK: - Activation
 
     public func activate(pluginId: String) {
         activePluginIds.insert(pluginId)
+        if let idx = plugins.firstIndex(where: { $0.id == pluginId }) {
+            plugins[idx].isActive = true
+        }
+        saveActiveIds()
+        objectWillChange.send()
     }
 
     public func deactivate(pluginId: String) {
         activePluginIds.remove(pluginId)
+        if let idx = plugins.firstIndex(where: { $0.id == pluginId }) {
+            plugins[idx].isActive = false
+        }
+        saveActiveIds()
+        objectWillChange.send()
+    }
+
+    public func isActive(pluginId: String) -> Bool {
+        activePluginIds.contains(pluginId)
+    }
+
+    public func togglePlugin(pluginId: String) {
+        if isActive(pluginId: pluginId) {
+            deactivate(pluginId: pluginId)
+        } else {
+            activate(pluginId: pluginId)
+        }
     }
 
     public func executeCommand(pluginId: String, command: String, args: [String: Any]) -> PluginResponse {
         return PluginResponse(success: false, data: nil, error: "Not implemented")
+    }
+
+    // MARK: - Persistence
+
+    private func loadActiveIds() {
+        if let data = defaults.array(forKey: activeIdsKey) as? [String] {
+            activePluginIds = Set(data)
+        }
+    }
+
+    private func saveActiveIds() {
+        defaults.set(Array(activePluginIds), forKey: activeIdsKey)
+    }
+
+    public func discoverPlugins() {
+        // Stub: scan ~/Library/Application Support/Codnia/Plugins
     }
 }
 

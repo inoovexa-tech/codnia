@@ -22,3 +22,6 @@ DerivedData/
 
 # Tasks
 TASKS.md
+
+# Local test data
+.codnia/

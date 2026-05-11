@@ -3,6 +3,7 @@ import AppKit
 
 struct SidebarView: View {
     @Binding var expanded: Bool
+    @EnvironmentObject var appState: AppState
     @EnvironmentObject var workspaceVM: WorkspaceService
     @EnvironmentObject var editorVM: EditorViewModel
     @EnvironmentObject var terminalVM: TerminalViewModel
@@ -42,6 +43,7 @@ struct SidebarView: View {
 
         let settingsView = SettingsView()
             .environmentObject(settings)
+            .environmentObject(appState.pluginService)
             .frame(minWidth: 700, minHeight: 540)
 
         let hostingView = NSHostingView(rootView: settingsView)

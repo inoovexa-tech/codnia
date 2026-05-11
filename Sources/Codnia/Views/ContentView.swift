@@ -6,14 +6,11 @@ struct ContentView: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            // Conteúdo principal (começa abaixo da tab bar)
             VStack(spacing: 0) {
-                // Espaçador para a área da tab bar (36pt)
                 Color.clear
                     .frame(height: 36)
                     .allowsHitTesting(false)
 
-                // Main area
                 HStack(spacing: 0) {
                     SidebarView(expanded: $settings.leftSidebarExpanded)
                         .frame(width: settings.leftSidebarExpanded ? settings.leftSidebarWidth : 52)
@@ -52,14 +49,13 @@ struct ContentView: View {
                         .environmentObject(appState.editorVM)
                         .environmentObject(appState.searchVM)
                         .environmentObject(appState.gitVM)
+                        .environmentObject(appState.tasksVM)
+                        .environmentObject(appState.pluginService)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-                // StatusBarView removed as per user request
             }
 
-            // Tab bar sobreposta no topo absoluto da janela
             TabBarView(
                 editorVM: appState.editorVM,
                 terminalVM: appState.terminalVM,
@@ -89,11 +85,22 @@ struct ContentView: View {
                         appState.rightSidebarExpanded = true
                     }
                 },
+                onToggleTasks: {
+                    let tasksId = "tasks"
+                    if appState.rightSidebarExpanded && appState.rightSidebarTab == .plugin(tasksId) {
+                        appState.rightSidebarExpanded = false
+                    } else {
+                        appState.rightSidebarTab = .plugin(tasksId)
+                        appState.rightSidebarExpanded = true
+                    }
+                },
                 onToggleRightSidebar: { appState.rightSidebarExpanded.toggle() },
                 isRightSidebarExpanded: appState.rightSidebarExpanded,
                 isExplorerActive: appState.rightSidebarExpanded && appState.rightSidebarTab == .explorer,
                 isSearchActive: appState.rightSidebarExpanded && appState.rightSidebarTab == .search,
-                isSourceControlActive: appState.rightSidebarExpanded && appState.rightSidebarTab == .sourceControl
+                isSourceControlActive: appState.rightSidebarExpanded && appState.rightSidebarTab == .sourceControl,
+                isTasksActive: appState.rightSidebarExpanded && appState.rightSidebarTab == .plugin("tasks"),
+                isTasksEnabled: appState.pluginService.isActive(pluginId: "tasks")
             )
             .frame(height: 36)
         }
