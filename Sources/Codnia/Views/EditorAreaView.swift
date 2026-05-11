@@ -175,6 +175,23 @@ struct EditorAreaView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.bgPrimary)
+        .onDrop(of: [.text], isTargeted: nil) { providers in
+            for provider in providers {
+                _ = provider.loadObject(ofClass: NSString.self) { object, _ in
+                    guard let text = object as? String else { return }
+                    DispatchQueue.main.async {
+                        if let tab = self.editorVM.currentTab {
+                            if let termId = tab.terminalId, self.terminalVM.tabs.contains(where: { $0.id == tab.id }) {
+                                TerminalManager.shared.paste(id: termId, text: text)
+                            } else {
+                                self.editorVM.newFile(name: text, content: text)
+                            }
+                        }
+                    }
+                }
+            }
+            return true
+        }
     }
 
     private var markdownToggleButton: some View {

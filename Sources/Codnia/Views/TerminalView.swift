@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftTerm
+import Carbon
 
 class CodniaTerminalView: LocalProcessTerminalView {
     var onDataReceived: ((Int) -> Void)?
@@ -60,6 +61,44 @@ class TerminalManager {
     func sendText(id: String, text: String) {
         guard let terminal = terminals[id] else { return }
         terminal.feed(byteArray: ArraySlice([UInt8](text.utf8)))
+    }
+
+    func focus(id: String) {
+        guard let terminal = terminals[id] else { return }
+        DispatchQueue.main.async {
+            if let window = NSApplication.shared.keyWindow {
+                _ = window.makeFirstResponder(terminal)
+            }
+        }
+    }
+
+    func paste(id: String, text: String) {
+        guard let terminal = terminals[id] else { return }
+        let pasteboard = NSPasteboard.general
+        let oldContents = pasteboard.string(forType: .string)
+        pasteboard.clearContents()
+        pasteboard.setString(text, forType: .string)
+        terminal.selectAll(nil)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            if let window = NSApplication.shared.keyWindow {
+                _ = window.makeFirstResponder(terminal)
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                let source = CGEventSource(stateID: .combinedSessionState)
+                let keyDown = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: true)
+                keyDown?.flags = .maskCommand
+                keyDown?.post(tap: .cgSessionEventTap)
+                let keyUp = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: false)
+                keyUp?.flags = .maskCommand
+                keyUp?.post(tap: .cgSessionEventTap)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    if let old = oldContents {
+                        pasteboard.clearContents()
+                        pasteboard.setString(old, forType: .string)
+                    }
+                }
+            }
+        }
     }
 
     private func recordBytes(for id: String, bytes: Int) {

@@ -88,21 +88,22 @@ struct TabBarView: View {
                         }
                         .frame(maxWidth: .infinity)
                         .clipped()
-                        .onDrop(of: ["public.text"], isTargeted: nil) { providers in
+                        .onDrop(of: [.text], isTargeted: nil) { providers in
+                            var result = false
                             for provider in providers {
-                                _ = provider.loadObject(ofClass: String.self) { object, _ in
-                                    guard let item = object, item.hasPrefix("TaskDrag|") else { return }
-                                    let parts = item.split(separator: "|", maxSplits: 2, omittingEmptySubsequences: false)
-                                    guard parts.count >= 2 else { return }
-                                    let title = String(parts[1])
-                                    let description = parts.count >= 3 ? String(parts[2]) : ""
-                                    let displayName = description.isEmpty ? title : "\(title) - \(description)"
-                                    DispatchQueue.main.async {
-                                        editorVM.newFile(name: displayName, content: displayName)
+                                let sem = DispatchSemaphore(value: 0)
+                                provider.loadObject(ofClass: NSString.self) { object, _ in
+                                    if let text = object as? String {
+                                        DispatchQueue.main.async {
+                                            editorVM.newFile(name: text, content: text)
+                                        }
+                                        result = true
                                     }
+                                    sem.signal()
                                 }
+                                sem.wait()
                             }
-                            return true
+                            return result
                         }
 
                         if hasOverflow {

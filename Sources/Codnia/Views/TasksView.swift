@@ -13,6 +13,7 @@ struct TasksView: View {
     @State private var showCompleted: Bool = false
     @State private var showingRenameTag = false
     @State private var renameTagText = ""
+    @State private var draggedTaskId: String? = nil
     @State private var renameTagTarget = ""
     @State private var renameTagTask: TaskItem?
 
@@ -231,8 +232,8 @@ struct TasksView: View {
                                 .strikethrough(isCompleting || task.isCompleted)
                                 .lineLimit(1)
                                 .onDrag {
-                                    let payload = "TaskDrag|\(task.title)|\(task.description)"
-                                    return NSItemProvider(object: payload as NSString)
+                                    draggedTaskId = task.id
+                                    return NSItemProvider(object: "\(task.title) - \(task.description)" as NSString)
                                 }
 
                             priorityBadge(task.priority)
@@ -351,11 +352,17 @@ struct TasksView: View {
 
     private func expandedTaskSection(_ task: TaskItem) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            TextField("Add description...", text: $editDescription)
+            TextField("Add description...", text: Binding(
+                get: { task.description },
+                set: { newVal in
+                    var updated = task
+                    updated.description = newVal
+                    tasksVM.updateTask(updated)
+                }
+            ))
                 .textFieldStyle(PlainTextFieldStyle())
                 .font(.system(size: 11))
                 .foregroundColor(.textSecondary)
-                .onSubmit { saveDescription(task) }
 
             Divider()
                 .background(Color.borderLight)
