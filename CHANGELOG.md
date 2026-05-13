@@ -1,3 +1,17 @@
+## [0.9.0] — 2026-05-11
+
+### Added
+- Plugin-based task system with sidebar integration
+- Drag-and-drop task to tab bar
+- AI terminal activity detection with sidebar loading indicator
+- Auto-dismiss git sidebar notifications after 5 seconds
+
+### Fixed
+- Improve task drag-drop to tab bar and terminal
+- Remove Task: prefix from dropped task content
+- Switch active project when clicking worktree from another project
+- Set fixed height with scroll for git changes in sidebar
+
 ## [0.8.0] — 2026-05-09
 
 ### Added
