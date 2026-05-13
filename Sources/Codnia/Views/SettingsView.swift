@@ -101,6 +101,19 @@ struct GeneralSettingsSection: View {
             SettingsSectionHeader("Behavior")
             SettingsToggleRow(label: "Auto Save", description: "Automatically save files", isOn: $settings.autoSave)
                 .onChange(of: settings.autoSave) { _ in settings.save() }
+
+            SettingsRow(label: "Default Tab on Project Open", description: "Tab type to open when opening a project with no tabs") {
+                Picker("", selection: $settings.defaultTabOnProjectOpen) {
+                    Text("Terminal").tag("terminal")
+                    Text("OpenCode Agent").tag("opencode")
+                    Text("Claude Agent").tag("claude")
+                    Text("Codex Agent").tag("codex")
+                    Text("None").tag("none")
+                }
+                .pickerStyle(MenuPickerStyle())
+                .frame(width: 200)
+                .onChange(of: settings.defaultTabOnProjectOpen) { _ in settings.save() }
+            }
         }
     }
 }
@@ -171,6 +184,7 @@ struct TerminalSettingsSection: View {
                     .cornerRadius(4)
                     .onChange(of: settings.terminalScrollback) { _ in settings.save() }
             }
+
         }
     }
 }

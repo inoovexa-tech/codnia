@@ -68,6 +68,16 @@ struct ContentView: View {
         }
         .background(Color.bgPrimary)
         .edgesIgnoringSafeArea(.top)
+        .overlay(
+            Group {
+                if appState.showGlobalSearchModal {
+                    GlobalSearchModalView(isPresented: $appState.showGlobalSearchModal)
+                        .environmentObject(appState.searchVM)
+                        .environmentObject(appState.workspaceVM)
+                        .environmentObject(appState.editorVM)
+                }
+            }
+        )
         .onAppear {
             if appState.workspaceVM.projects.isEmpty {
                 appState.workspaceVM.loadProjects()

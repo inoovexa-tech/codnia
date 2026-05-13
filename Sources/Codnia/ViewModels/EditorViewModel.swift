@@ -29,6 +29,25 @@ public final class EditorViewModel: ObservableObject {
         Set(tabs.filter(\.isModified).map(\.path).filter { !$0.isEmpty })
     }
 
+    private struct PendingOpenFile {
+        let path: String
+        let projectId: String
+        let worktreeId: String
+    }
+    private var pendingOpenFile: PendingOpenFile?
+
+    public func openFileInWorktree(path: String, projectId: String, worktreeId: String) {
+        if workspace.activeProject?.id == projectId,
+           workspace.activeProject?.activeWorktree?.id == worktreeId {
+            openFile(path)
+            return
+        }
+
+        saveTabsToWorktree()
+        pendingOpenFile = PendingOpenFile(path: path, projectId: projectId, worktreeId: worktreeId)
+        workspace.setActiveWorktree(projectId: projectId, worktreeId: worktreeId)
+    }
+
     public var showMarkdownPreview: Bool {
         get { activeTabId.flatMap { markdownPreviewTabs.contains($0) } ?? false }
         set {
@@ -71,6 +90,10 @@ public final class EditorViewModel: ObservableObject {
                 if let activeProject = project, let worktree = activeProject.activeWorktree {
                     previousWorktreeId = worktree.id
                     self.loadTabs(from: worktree)
+                    if let pending = self.pendingOpenFile {
+                        self.pendingOpenFile = nil
+                        self.openFile(pending.path)
+                    }
                 } else {
                     self.tabs = []
                     self.terminal.tabs = []
@@ -88,6 +111,12 @@ public final class EditorViewModel: ObservableObject {
         terminal.tabs = worktree.terminalTabs
         terminal.setWorktreeMapping(tabs: worktree.terminalTabs, worktreeId: worktree.id)
         activeTabId = worktree.activeTabId
+
+        if tabs.isEmpty && terminal.tabs.isEmpty,
+           let tabType = TabType(rawValue: settings.defaultTabOnProjectOpen) {
+            createTerminalTab(type: tabType)
+            saveTabsToWorktree()
+        }
 
         for tab in worktree.fileTabs where (tab.type == .file || tab.type == .diff) && !tab.path.isEmpty {
             if fileContents[tab.id] == nil {

@@ -119,15 +119,7 @@ struct CodniaApp: App {
                 }
                 .keyboardShortcut("`", modifiers: .command)
                 Button("Global Search") {
-                    let state = appDelegate.appState
-                    if state.rightSidebarExpanded && state.rightSidebarTab == .search {
-                        state.rightSidebarExpanded = false
-                        state.editorVM.showGlobalSearch = false
-                    } else {
-                        state.rightSidebarTab = .search
-                        state.rightSidebarExpanded = true
-                        state.editorVM.showGlobalSearch = true
-                    }
+                    appDelegate.appState.showGlobalSearchModal.toggle()
                 }
                 .keyboardShortcut("f", modifiers: [.command, .shift])
                 Button("Find in File") {

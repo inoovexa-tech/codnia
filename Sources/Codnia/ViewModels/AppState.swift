@@ -13,6 +13,7 @@ public final class AppState: ObservableObject {
     public let tasksVM: TasksViewModel
     @Published var rightSidebarExpanded: Bool = false
     @Published var rightSidebarTab: RightSidebarTab = .explorer
+    @Published var showGlobalSearchModal: Bool = false
 
     public init() {
         let ws = WorkspaceService()
