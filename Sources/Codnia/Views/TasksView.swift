@@ -493,6 +493,7 @@ struct TasksView: View {
                 .textFieldStyle(PlainTextFieldStyle())
                 .font(.system(size: 12))
                 .foregroundColor(.textPrimary)
+                .tint(.accentBlue)
                 .focused($newTaskFocused)
                 .onSubmit(commitNewTask)
         }
