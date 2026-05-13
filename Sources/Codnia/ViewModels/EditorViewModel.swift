@@ -25,6 +25,10 @@ public final class EditorViewModel: ObservableObject {
         currentTab?.language == "Markdown"
     }
 
+    public var modifiedFilePaths: Set<String> {
+        Set(tabs.filter(\.isModified).map(\.path).filter { !$0.isEmpty })
+    }
+
     public var showMarkdownPreview: Bool {
         get { activeTabId.flatMap { markdownPreviewTabs.contains($0) } ?? false }
         set {

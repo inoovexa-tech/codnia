@@ -10,6 +10,9 @@ struct ActivityBarView: View {
     @EnvironmentObject var tasksVM: TasksViewModel
     @EnvironmentObject var pluginService: PluginService
 
+    @State private var selectedPath: String? = nil
+    @State private var headerAction: FileTreeHeaderAction? = nil
+
     var body: some View {
         VStack(spacing: 0) {
             header
@@ -21,6 +24,20 @@ struct ActivityBarView: View {
                 .foregroundColor(.borderDefault),
             alignment: .leading
         )
+        .onChange(of: editorVM.activeTabId) { _ in
+            syncSelectionWithEditor()
+        }
+    }
+
+    private func syncSelectionWithEditor() {
+        guard let tab = editorVM.currentTab else {
+            if tab != .search && tab != .sourceControl {
+                selectedPath = nil
+            }
+            return
+        }
+        guard tab.type == .file || tab.type == .image || tab.type == .pdf else { return }
+        selectedPath = tab.path
     }
 
     // MARK: - Header
@@ -55,15 +72,37 @@ struct ActivityBarView: View {
 
             Spacer()
 
-            HStack(spacing: 2) {
-                if tab == .explorer {
+            if tab == .explorer {
+                HStack(spacing: 2) {
+                    Button(action: { headerAction = .newFile }) {
+                        Image(systemName: "doc.badge.plus")
+                            .font(.system(size: 12))
+                    }
+                    .buttonStyle(PlainActivityButton())
+                    .help("New File")
+
+                    Button(action: { headerAction = .newFolder }) {
+                        Image(systemName: "folder.badge.plus")
+                            .font(.system(size: 12))
+                    }
+                    .buttonStyle(PlainActivityButton())
+                    .help("New Folder")
+
+                    Button(action: { headerAction = .collapseAll }) {
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.system(size: 11))
+                    }
+                    .buttonStyle(PlainActivityButton())
+                    .help("Collapse All")
+
                     Button(action: {
                         workspaceVM.refreshFileTree()
                     }) {
                         Image(systemName: "arrow.clockwise")
-                            .font(.system(size: 13))
+                            .font(.system(size: 12))
                     }
                     .buttonStyle(PlainActivityButton())
+                    .help("Refresh")
                 }
             }
         }
@@ -73,7 +112,7 @@ struct ActivityBarView: View {
         .overlay(
             Rectangle()
                 .frame(height: 1)
-                .foregroundColor(Color(bgHex: "#1c1c1c")),
+                .foregroundColor(Color(hex: "#1c1c1c")),
             alignment: .bottom
         )
     }
@@ -87,7 +126,7 @@ struct ActivityBarView: View {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 4)
-        .background(isActive ? Color(bgHex: "#1c1c1c") : Color.clear)
+        .background(isActive ? Color(hex: "#1c1c1c") : Color.clear)
         .foregroundColor(isActive ? .textPrimary : .textTertiary)
         .cornerRadius(5)
     }
@@ -105,7 +144,12 @@ struct ActivityBarView: View {
                 },
                 onRefresh: {
                     workspaceVM.refreshFileTree()
-                }
+                },
+                selectedPath: $selectedPath,
+                activeFilePath: editorVM.currentTab?.path,
+                rootPath: workspaceVM.activeProject?.activeWorktree?.path ?? "",
+                modifiedPaths: editorVM.modifiedFilePaths,
+                headerAction: $headerAction
             )
             .background(Color.bgPrimary)
             .frame(maxHeight: .infinity)
@@ -151,14 +195,8 @@ struct PlainActivityButton: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .foregroundColor(.textTertiary)
-            .frame(width: 28, height: 28)
-            .background(configuration.isPressed ? Color(bgHex: "#1c1c1c") : Color.clear)
+            .frame(width: 26, height: 26)
+            .background(configuration.isPressed ? Color(hex: "#1c1c1c") : Color.clear)
             .cornerRadius(4)
-    }
-}
-
-private extension Color {
-    init(bgHex: String) {
-        self = Color(hex: bgHex)
     }
 }
