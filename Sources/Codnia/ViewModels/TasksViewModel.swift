@@ -98,6 +98,20 @@ public final class TasksViewModel: ObservableObject {
         saveToDisk()
     }
 
+    public func moveTask(from source: Int, to destination: Int, using visible: [TaskItem]) {
+        guard source < visible.count, destination < visible.count, source != destination else { return }
+        let movingId = visible[source].id
+        let targetId = visible[destination].id
+        guard let actualSource = tasks.firstIndex(where: { $0.id == movingId }),
+              let actualDestination = tasks.firstIndex(where: { $0.id == targetId })
+        else { return }
+
+        let task = tasks.remove(at: actualSource)
+        let adjustedDest = actualSource < actualDestination ? actualDestination - 1 : actualDestination
+        tasks.insert(task, at: adjustedDest)
+        saveToDisk()
+    }
+
     public func duplicateTask(id: String) {
         guard let original = tasks.first(where: { $0.id == id }) else { return }
         let copy = TaskItem(

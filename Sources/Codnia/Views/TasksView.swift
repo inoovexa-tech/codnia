@@ -187,8 +187,8 @@ struct TasksView: View {
             } else {
                 ScrollView {
                     LazyVStack(spacing: 0) {
-                        ForEach(items) { task in
-                            taskRow(task)
+                        ForEach(Array(items.enumerated()), id: \.element.id) { index, task in
+                            taskRow(task, index: index, allTasks: items)
                                 .transition(.opacity.combined(with: .move(edge: .top)))
                             Divider()
                                 .background(Color.borderDefault)
@@ -200,15 +200,40 @@ struct TasksView: View {
         }
     }
 
+    // MARK: - Drag Handle
+
+    private var dragHandle: some View {
+        VStack(spacing: 1) {
+            ForEach(0..<3, id: \.self) { _ in
+                HStack(spacing: 1) {
+                    Circle().frame(width: 3, height: 3)
+                    Circle().frame(width: 3, height: 3)
+                }
+            }
+        }
+        .foregroundColor(.textTertiary)
+        .contentShape(Rectangle())
+        .frame(minWidth: 16, minHeight: 20)
+        .onHover { hovering in
+            if hovering {
+                NSCursor.openHand.push()
+            } else {
+                NSCursor.pop()
+            }
+        }
+    }
+
     // MARK: - Task Row
 
-    private func taskRow(_ task: TaskItem) -> some View {
+    private func taskRow(_ task: TaskItem, index: Int, allTasks: [TaskItem]) -> some View {
         let isCompleting = completingTaskIds.contains(task.id)
         let isEditing = editingTaskId == task.id
         let isExpanded = expandedTaskId == task.id
 
         return VStack(spacing: 0) {
-            HStack(spacing: 8) {
+            HStack(spacing: 4) {
+                dragHandle
+
                 Button(action: { handleToggle(task) }) {
                     Image(systemName: isCompleting ? "checkmark.circle.fill" : task.isCompleted ? "checkmark.circle.fill" : "circle")
                         .font(.system(size: 16))
@@ -231,10 +256,6 @@ struct TasksView: View {
                                 .foregroundColor(isCompleting || task.isCompleted ? .textTertiary : .textPrimary)
                                 .strikethrough(isCompleting || task.isCompleted)
                                 .lineLimit(isExpanded ? nil : 1)
-                                .onDrag {
-                                    draggedTaskId = task.id
-                                    return NSItemProvider(object: "\(task.title) - \(task.description)" as NSString)
-                                }
 
                             priorityBadge(task.priority)
 
@@ -302,7 +323,7 @@ struct TasksView: View {
                     .opacity(isCompleting ? 0 : 1)
                 }
             }
-            .padding(.horizontal, 10)
+            .padding(.horizontal, 6)
             .padding(.vertical, 5)
             .contentShape(Rectangle())
             .contextMenu {
@@ -346,6 +367,19 @@ struct TasksView: View {
         }
         .background(Color.bgPrimary)
         .opacity(isCompleting ? 0.4 : 1)
+        .onDrag {
+            draggedTaskId = task.id
+            return NSItemProvider(object: task.id as NSString)
+        }
+        .onDrop(of: [.text], delegate: TaskDropDelegate(
+            task: task,
+            index: index,
+            allTasks: allTasks,
+            draggedTaskId: $draggedTaskId,
+            moveAction: { source, dest in
+                tasksVM.moveTask(from: source, to: dest, using: allTasks)
+            }
+        ))
     }
 
     // MARK: - Expanded Task Section
@@ -572,5 +606,29 @@ struct TasksView: View {
         }
         tasksVM.saveToDisk()
         tasksVM.selectedTags.remove(tag)
+    }
+}
+
+// MARK: - Task Drop Delegate
+
+struct TaskDropDelegate: DropDelegate {
+    let task: TaskItem
+    let index: Int
+    let allTasks: [TaskItem]
+    @Binding var draggedTaskId: String?
+    let moveAction: (Int, Int) -> Void
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        DropProposal(operation: .move)
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        defer { draggedTaskId = nil }
+        guard let draggedId = draggedTaskId,
+              let sourceIndex = allTasks.firstIndex(where: { $0.id == draggedId }),
+              sourceIndex != index
+        else { return false }
+        moveAction(sourceIndex, index)
+        return true
     }
 }
