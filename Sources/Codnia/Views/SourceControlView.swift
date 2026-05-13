@@ -11,6 +11,7 @@ struct SourceControlView: View {
     @State private var deleteWorktreeAfterMerge = false
     @State private var hoveredFileId: String? = nil
     @State private var selectedForDiscard: Set<String> = []
+    @State private var copiedCommitId: String? = nil
 
     var body: some View {
         VStack(spacing: 0) {
@@ -176,13 +177,25 @@ struct SourceControlView: View {
                     .lineLimit(2)
 
                 HStack(spacing: 4) {
-                    Text(commit.shortHash)
-                        .font(.system(size: 9, weight: .medium, design: .monospaced))
-                        .foregroundColor(.accentBlue)
-                        .padding(.horizontal, 4)
-                        .padding(.vertical, 1)
-                        .background(Color.accentBlue.opacity(0.15))
-                        .cornerRadius(3)
+                    if copiedCommitId == commit.id {
+                        Text("Copied")
+                            .font(.system(size: 9, weight: .medium, design: .monospaced))
+                            .foregroundColor(.green)
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 1)
+                            .background(Color.green.opacity(0.15))
+                            .cornerRadius(3)
+                            .transition(.opacity.combined(with: .scale(scale: 0.8)))
+                    } else {
+                        Text(commit.shortHash)
+                            .font(.system(size: 9, weight: .medium, design: .monospaced))
+                            .foregroundColor(.accentBlue)
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 1)
+                            .background(Color.accentBlue.opacity(0.15))
+                            .cornerRadius(3)
+                            .transition(.opacity.combined(with: .scale(scale: 0.8)))
+                    }
 
                     Text(commit.author)
                         .font(.system(size: 10))
@@ -202,6 +215,32 @@ struct SourceControlView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
+        .onTapGesture {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(commit.shortHash, forType: .string)
+            withAnimation(.easeInOut(duration: 0.2)) {
+                copiedCommitId = commit.id
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    copiedCommitId = nil
+                }
+            }
+        }
+        .contextMenu {
+            Button("Copy Hash") {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(commit.hash, forType: .string)
+            }
+            Button("Copy Short Hash") {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(commit.shortHash, forType: .string)
+            }
+            Button("Copy Message") {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(commit.message, forType: .string)
+            }
+        }
     }
 
     // MARK: - Branch Header
