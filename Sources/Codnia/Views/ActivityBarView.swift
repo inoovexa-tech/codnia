@@ -15,6 +15,7 @@ struct ActivityBarView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            topTabBar
             header
             content
         }
@@ -40,95 +41,137 @@ struct ActivityBarView: View {
         selectedPath = tab.path
     }
 
+    // MARK: - Top Tab Bar
+
+    private var topTabBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 0) {
+                ForEach(Array(tabItems.enumerated()), id: \.element.id) { index, item in
+                    if index > 0 {
+                        Rectangle()
+                            .frame(width: 1)
+                            .foregroundColor(.borderDefault)
+                    }
+
+                    Button(action: { tab = item.tab }) {
+                        Image(systemName: item.icon)
+                            .font(.system(size: 13))
+                            .foregroundColor(tab == item.tab ? .textPrimary : .textTertiary)
+                            .frame(width: 36, height: 36)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .help(item.title)
+                }
+            }
+            .padding(.horizontal, 4)
+        }
+        .frame(height: 36)
+        .background(Color.bgSecondary)
+        .overlay(
+            Rectangle().frame(height: 1).foregroundColor(.borderDefault),
+            alignment: .bottom
+        )
+    }
+
+    private struct TabItem: Identifiable {
+        let id: String
+        let icon: String
+        let title: String
+        let tab: RightSidebarTab
+    }
+
+    private var tabItems: [TabItem] {
+        var items: [TabItem] = [
+            TabItem(id: "explorer", icon: "folder", title: "Explorer", tab: .explorer),
+            TabItem(id: "search", icon: "magnifyingglass", title: "Search", tab: .search),
+            TabItem(id: "sourceControl", icon: "arrow.triangle.branch", title: "Source Control", tab: .sourceControl),
+        ]
+        for plugin in pluginService.activeSidebarPlugins {
+            items.append(TabItem(id: plugin.id, icon: plugin.iconName, title: plugin.name, tab: .plugin(plugin.id)))
+        }
+        return items
+    }
+
     // MARK: - Header
 
     private var header: some View {
-        HStack(spacing: 2) {
-            Button(action: { tab = .explorer }) {
-                tabButtonLabel(icon: "folder", label: "Explorer", isActive: tab == .explorer)
-            }
-            .buttonStyle(PlainButtonStyle())
-
-            Button(action: { tab = .search }) {
-                tabButtonLabel(icon: "magnifyingglass", label: "Search", isActive: tab == .search)
-            }
-            .buttonStyle(PlainButtonStyle())
-
-            Button(action: { tab = .sourceControl }) {
-                tabButtonLabel(icon: "arrow.triangle.branch", label: "Git", isActive: tab == .sourceControl)
-            }
-            .buttonStyle(PlainButtonStyle())
-
-            ForEach(Array(pluginService.activeSidebarPlugins), id: \.id) { plugin in
-                Button(action: { tab = .plugin(plugin.id) }) {
-                    tabButtonLabel(
-                        icon: plugin.iconName,
-                        label: plugin.name,
-                        isActive: tab == .plugin(plugin.id)
-                    )
-                }
-                .buttonStyle(PlainButtonStyle())
+        HStack(spacing: 0) {
+            HStack(spacing: 6) {
+                Image(systemName: currentTabIcon)
+                    .font(.system(size: 13))
+                    .foregroundColor(.textPrimary)
+                Text(currentTabTitle)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.textPrimary)
             }
 
             Spacer()
 
             if tab == .explorer {
-                HStack(spacing: 2) {
-                    Button(action: { headerAction = .newFile }) {
-                        Image(systemName: "doc.badge.plus")
-                            .font(.system(size: 12))
-                    }
-                    .buttonStyle(PlainActivityButton())
-                    .help("New File")
-
-                    Button(action: { headerAction = .newFolder }) {
-                        Image(systemName: "folder.badge.plus")
-                            .font(.system(size: 12))
-                    }
-                    .buttonStyle(PlainActivityButton())
-                    .help("New Folder")
-
-                    Button(action: { headerAction = .collapseAll }) {
-                        Image(systemName: "chevron.up.chevron.down")
-                            .font(.system(size: 11))
-                    }
-                    .buttonStyle(PlainActivityButton())
-                    .help("Collapse All")
-
-                    Button(action: {
-                        workspaceVM.refreshFileTree()
-                    }) {
-                        Image(systemName: "arrow.clockwise")
-                            .font(.system(size: 12))
-                    }
-                    .buttonStyle(PlainActivityButton())
-                    .help("Refresh")
-                }
+                explorerActions
             }
         }
-        .frame(height: 42)
-        .padding(.horizontal, 8)
-        .background(Color.bgSecondary)
+        .frame(height: 36)
+        .padding(.horizontal, 12)
+        .background(Color.bgPrimary)
         .overlay(
-            Rectangle()
-                .frame(height: 1)
-                .foregroundColor(Color(hex: "#1c1c1c")),
+            Rectangle().frame(height: 1).foregroundColor(.borderDefault),
             alignment: .bottom
         )
     }
 
-    private func tabButtonLabel(icon: String, label: String, isActive: Bool) -> some View {
-        HStack(spacing: 4) {
-            Image(systemName: icon)
-                .font(.system(size: 13))
-            Text(label)
-                .font(.system(size: 12, weight: .medium))
+    private var currentTabIcon: String {
+        switch tab {
+        case .explorer: return "folder"
+        case .search: return "magnifyingglass"
+        case .sourceControl: return "arrow.triangle.branch"
+        case .plugin(let id):
+            return pluginService.plugin(withId: id)?.iconName ?? "puzzlepiece"
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 4)
-        .background(isActive ? Color(hex: "#1c1c1c") : Color.clear)
-        .foregroundColor(isActive ? .textPrimary : .textTertiary)
-        .cornerRadius(5)
+    }
+
+    private var currentTabTitle: String {
+        switch tab {
+        case .explorer: return "Explorer"
+        case .search: return "Search"
+        case .sourceControl: return "Source Control"
+        case .plugin(let id):
+            return pluginService.plugin(withId: id)?.name ?? "Plugin"
+        }
+    }
+
+    private var explorerActions: some View {
+        HStack(spacing: 2) {
+            Button(action: { headerAction = .newFile }) {
+                Image(systemName: "doc.badge.plus")
+                    .font(.system(size: 12))
+            }
+            .buttonStyle(PlainActivityButton())
+            .help("New File")
+
+            Button(action: { headerAction = .newFolder }) {
+                Image(systemName: "folder.badge.plus")
+                    .font(.system(size: 12))
+            }
+            .buttonStyle(PlainActivityButton())
+            .help("New Folder")
+
+            Button(action: { headerAction = .collapseAll }) {
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.system(size: 11))
+            }
+            .buttonStyle(PlainActivityButton())
+            .help("Collapse All")
+
+            Button(action: {
+                workspaceVM.refreshFileTree()
+            }) {
+                Image(systemName: "arrow.clockwise")
+                    .font(.system(size: 12))
+            }
+            .buttonStyle(PlainActivityButton())
+            .help("Refresh")
+        }
     }
 
     // MARK: - Content

@@ -7,17 +7,8 @@ struct TabBarView: View {
     @ObservedObject var workspaceVM: WorkspaceService
     @ObservedObject var settings: SettingsService
 
-    var onToggleExplorer: () -> Void
-    var onToggleSearch: () -> Void
-    var onToggleSourceControl: () -> Void
-    var onToggleTasks: () -> Void
     var onToggleRightSidebar: () -> Void
     var isRightSidebarExpanded: Bool
-    var isExplorerActive: Bool
-    var isSearchActive: Bool
-    var isSourceControlActive: Bool
-    var isTasksActive: Bool
-    var isTasksEnabled: Bool
 
     @State private var draggedTabId: String?
     @State private var showTabDropdown = false
@@ -175,45 +166,13 @@ struct TabBarView: View {
                 }
             }
 
-            HStack(spacing: 4) {
-                Button(action: onToggleExplorer) {
-                    Image(systemName: "folder")
-                        .font(.system(size: 13))
-                        .foregroundColor(isExplorerActive ? .textPrimary : .textSecondary)
-                }
-                .buttonStyle(PlainButtonStyle())
-
-                Button(action: onToggleSearch) {
-                    Image(systemName: "magnifyingglass")
-                        .font(.system(size: 13))
-                        .foregroundColor(isSearchActive ? .textPrimary : .textSecondary)
-                }
-                .buttonStyle(PlainButtonStyle())
-
-                Button(action: onToggleSourceControl) {
-                    Image(systemName: "arrow.triangle.branch")
-                        .font(.system(size: 13))
-                        .foregroundColor(isSourceControlActive ? .textPrimary : .textSecondary)
-                }
-                .buttonStyle(PlainButtonStyle())
-
-                if isTasksEnabled {
-                    Button(action: onToggleTasks) {
-                        Image(systemName: "checklist")
-                            .font(.system(size: 13))
-                            .foregroundColor(isTasksActive ? .textPrimary : .textSecondary)
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                }
-
-                Button(action: onToggleRightSidebar) {
-                    Image(systemName: isRightSidebarExpanded ? "sidebar.right" : "sidebar.left")
-                        .font(.system(size: 13))
-                        .foregroundColor(isRightSidebarExpanded ? .textPrimary : .textSecondary)
-                }
-                .buttonStyle(PlainButtonStyle())
+            Button(action: onToggleRightSidebar) {
+                Image(systemName: isRightSidebarExpanded ? "sidebar.right" : "sidebar.left")
+                    .font(.system(size: 13))
+                    .padding(.horizontal, 8)
+                    .foregroundColor(isRightSidebarExpanded ? .textPrimary : .textSecondary)
             }
-            .padding(.horizontal, 8)
+            .buttonStyle(PlainButtonStyle())
         }
         .frame(height: 36)
         .background(Color.bgPrimary)
