@@ -230,7 +230,7 @@ struct TasksView: View {
                                 .font(.system(size: 12, weight: .medium))
                                 .foregroundColor(isCompleting || task.isCompleted ? .textTertiary : .textPrimary)
                                 .strikethrough(isCompleting || task.isCompleted)
-                                .lineLimit(1)
+                                .lineLimit(isExpanded ? nil : 1)
                                 .onDrag {
                                     draggedTaskId = task.id
                                     return NSItemProvider(object: "\(task.title) - \(task.description)" as NSString)
