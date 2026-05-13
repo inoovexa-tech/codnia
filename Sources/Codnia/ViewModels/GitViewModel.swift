@@ -61,7 +61,7 @@ public final class GitViewModel: ObservableObject {
             .store(in: &cancellables)
 
         workspace.objectWillChange
-            .debounce(for: .seconds(1), scheduler: DispatchQueue.main)
+            .debounce(for: .seconds(5), scheduler: DispatchQueue.main)
             .sink { [weak self] in
                 self?.refreshIfNeeded()
             }
