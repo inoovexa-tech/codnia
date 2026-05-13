@@ -133,6 +133,9 @@ struct TreeNode: View {
                     loaded = true
                 }
             }
+            .onDrag {
+                NSItemProvider(object: entry.path as NSString)
+            }
             .onTapGesture {
                 if entry.isDirectory {
                     toggleExpand()
