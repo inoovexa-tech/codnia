@@ -171,7 +171,7 @@ struct ProjectRowExpanded: View {
 
     private var hasRunningProcess: Bool {
         guard let project = project else { return false }
-        return project.worktrees.contains { workspaceVM.worktreeRunningStates[$0.id] == true }
+        return project.worktrees.contains { (workspaceVM.worktreeRunningStates[$0.id] ?? 0) > 0 }
     }
 
     private var initials: String {
@@ -346,7 +346,7 @@ struct ProjectRowExpanded: View {
                         showWorktreeContextMenu = true
                     } : nil,
                     changes: count,
-                    hasRunningProcess: workspaceVM.worktreeRunningStates[worktree.id] == true
+                    hasRunningProcess: (workspaceVM.worktreeRunningStates[worktree.id] ?? 0) > 0
                 )
             }
 
@@ -537,7 +537,7 @@ struct ProjectRowCollapsed: View {
 
     private var hasLoading: Bool {
         guard let project = project else { return false }
-        return project.worktrees.contains { workspaceVM.worktreeRunningStates[$0.id] == true }
+        return project.worktrees.contains { (workspaceVM.worktreeRunningStates[$0.id] ?? 0) > 0 }
     }
 
     @ViewBuilder

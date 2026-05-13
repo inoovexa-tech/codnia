@@ -8,7 +8,7 @@ public final class WorkspaceService: ObservableObject {
     @Published public var fileTree: [FileEntry] = []
     @Published public var branches: [String: String] = [:]
     @Published public var changesCount: [String: (added: Int, deleted: Int)] = [:]
-    @Published public var worktreeRunningStates: [String: Bool] = [:]
+    @Published public var worktreeRunningStates: [String: Int] = [:]
 
     private var refreshTask: Task<Void, Never>?
     private var gitTasks: [String: Task<Void, Never>] = [:]
@@ -100,7 +100,17 @@ public final class WorkspaceService: ObservableObject {
     }
 
     public func updateRunningState(for worktreeId: String, isRunning: Bool) {
-        worktreeRunningStates[worktreeId] = isRunning
+        if isRunning {
+            worktreeRunningStates[worktreeId, default: 0] += 1
+        } else {
+            if let count = worktreeRunningStates[worktreeId], count > 0 {
+                if count <= 1 {
+                    worktreeRunningStates.removeValue(forKey: worktreeId)
+                } else {
+                    worktreeRunningStates[worktreeId] = count - 1
+                }
+            }
+        }
         objectWillChange.send()
     }
 

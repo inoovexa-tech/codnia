@@ -11,6 +11,7 @@ public final class TerminalViewModel: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     var workspace: WorkspaceService?
     private var terminalWorktreeMap: [String: String] = [:]
+    private var terminalProcessingStates: [String: Bool] = [:]
     private var pollingTask: Task<Void, Never>?
 
     public init(workspace: WorkspaceService? = nil) {
@@ -44,12 +45,20 @@ public final class TerminalViewModel: ObservableObject {
 
             if !terminal.process.running {
                 service.setProcessRunning(id: termId, running: false)
-                workspace?.updateRunningState(for: worktreeId, isRunning: false)
+                if terminalProcessingStates[termId] == true {
+                    workspace?.updateRunningState(for: worktreeId, isRunning: false)
+                }
+                terminalProcessingStates.removeValue(forKey: termId)
                 terminalWorktreeMap.removeValue(forKey: termId)
             } else {
                 let isActive = TerminalManager.shared.isActivelyProcessing(for: termId)
-                service.setProcessRunning(id: termId, running: isActive)
-                workspace?.updateRunningState(for: worktreeId, isRunning: isActive)
+                let wasActive = terminalProcessingStates[termId] ?? false
+
+                if isActive != wasActive {
+                    service.setProcessRunning(id: termId, running: isActive)
+                    workspace?.updateRunningState(for: worktreeId, isRunning: isActive)
+                    terminalProcessingStates[termId] = isActive
+                }
             }
         }
     }
@@ -60,7 +69,7 @@ public final class TerminalViewModel: ObservableObject {
         let worktreeId = workspace?.activeProject?.activeWorktreeId
         let tabName = name ?? self.tabName(for: type)
         let instance = service.createTerminal(cwd: cwd, worktreeId: worktreeId)
-        if type.isAI, let wtId = worktreeId {
+        if let wtId = worktreeId {
             terminalWorktreeMap[instance.id] = wtId
         }
         let tab = Tab(
@@ -78,7 +87,7 @@ public final class TerminalViewModel: ObservableObject {
     }
 
     public func setWorktreeMapping(tabs: [Tab], worktreeId: String) {
-        for tab in tabs where tab.type.isAI {
+        for tab in tabs {
             if let termId = tab.terminalId {
                 terminalWorktreeMap[termId] = worktreeId
             }
@@ -88,7 +97,10 @@ public final class TerminalViewModel: ObservableObject {
     public func closeTab(_ tab: Tab) {
         if let termId = tab.terminalId {
             if let worktreeId = terminalWorktreeMap[termId] {
-                workspace?.updateRunningState(for: worktreeId, isRunning: false)
+                if terminalProcessingStates[termId] == true {
+                    workspace?.updateRunningState(for: worktreeId, isRunning: false)
+                }
+                terminalProcessingStates.removeValue(forKey: termId)
                 terminalWorktreeMap.removeValue(forKey: termId)
             }
             TerminalManager.shared.terminateProcess(for: termId)
