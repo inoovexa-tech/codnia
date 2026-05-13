@@ -246,7 +246,7 @@ public final class WorkspaceService: ObservableObject {
 
     public func setActiveProject(id: String) {
         guard let idx = projects.firstIndex(where: { $0.id == id }) else { return }
-        projects[idx].isWorktreesExpanded = true
+        projects[idx].isWorktreesExpanded.toggle()
         let project = projects[idx]
         activeProject = project
         saveProjects()

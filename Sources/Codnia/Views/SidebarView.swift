@@ -206,6 +206,9 @@ struct ProjectRowExpanded: View {
         VStack(spacing: 2) {
             ZStack(alignment: .trailing) {
                 Button(action: {
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        isWorktreesExpanded.toggle()
+                    }
                     workspaceVM.setActiveProject(id: projectId)
                 }) {
                     HStack(spacing: 8) {
