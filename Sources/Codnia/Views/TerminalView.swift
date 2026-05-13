@@ -183,7 +183,7 @@ class TerminalContainerManager {
     private var container: TerminalContainerView?
 
     func getContainer() -> TerminalContainerView {
-        if let existing = container, existing.window != nil {
+        if let existing = container {
             return existing
         }
         let newContainer = TerminalContainerView()

@@ -161,13 +161,13 @@ struct EditorAreaView: View {
                 .allowsHitTesting(!isTerminalVisible)
             }
 
-            // Terminals - persistent container keeps sessions alive across tab/project switches
-            TerminalView(
-                tabs: $terminalVM.tabs,
-                activeTabId: $editorVM.activeTabId
-            )
-            .opacity(terminalVisibility)
-            .allowsHitTesting(isTerminalVisible)
+            // Terminals - only rendered when a terminal tab is active; sessions stay alive via TerminalManager singleton
+            if isTerminalVisible {
+                TerminalView(
+                    tabs: $terminalVM.tabs,
+                    activeTabId: $editorVM.activeTabId
+                )
+            }
 
             if editorVM.currentTab == nil {
                 EmptyStateView()
@@ -220,11 +220,6 @@ struct EditorAreaView: View {
             }
         }
         .help(editorVM.showMarkdownPreview ? "Show code editor" : "Show markdown preview")
-    }
-
-    private var terminalVisibility: Double {
-        guard let activeTab = editorVM.currentTab else { return 0 }
-        return terminalVM.tabs.contains { $0.id == activeTab.id } ? 1 : 0
     }
 
     private func performInFileSearch() {
