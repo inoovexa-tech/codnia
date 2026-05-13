@@ -4,6 +4,8 @@ import AppKit
 struct TabBarView: View {
     @ObservedObject var editorVM: EditorViewModel
     @ObservedObject var terminalVM: TerminalViewModel
+    @ObservedObject var workspaceVM: WorkspaceService
+    @ObservedObject var settings: SettingsService
 
     var onToggleExplorer: () -> Void
     var onToggleSearch: () -> Void
@@ -25,139 +27,193 @@ struct TabBarView: View {
         editorVM.tabs + terminalVM.tabs
     }
 
+    private var allWorktreesExpanded: Bool {
+        !workspaceVM.projects.isEmpty && workspaceVM.projects.allSatisfy(\.isWorktreesExpanded)
+    }
+
+    @ViewBuilder
+    private var navButtons: some View {
+        HStack(spacing: 4) {
+            Button(action: { workspaceVM.previousProject() }) {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 13))
+                    .frame(width: 28, height: 36)
+            }
+            .buttonStyle(PlainButtonStyle())
+            .foregroundColor(.textSecondary)
+            .disabled(workspaceVM.projects.count <= 1)
+
+            Button(action: { workspaceVM.nextProject() }) {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13))
+                    .frame(width: 28, height: 36)
+            }
+            .buttonStyle(PlainButtonStyle())
+            .foregroundColor(.textSecondary)
+            .disabled(workspaceVM.projects.count <= 1)
+        }
+    }
+
     var body: some View {
-        ZStack {
+        HStack(spacing: 0) {
             HStack(spacing: 0) {
                 WindowDragView()
                     .frame(width: 90)
 
-                Menu {
-                    menuItem("New File", shortcutKey: "newFile") { editorVM.newFile() }
-                    menuItem("New Terminal", shortcutKey: "newTerminal") { editorVM.createTerminalTab(type: .terminal) }
-                    Divider()
-                    menuItem("OpenCode", shortcutKey: "openOpenCode") { editorVM.createTerminalTab(type: .opencode) }
-                    menuItem("Claude Code", shortcutKey: "openClaude") { editorVM.createTerminalTab(type: .claude) }
-                    menuItem("Codex", shortcutKey: "openCodex") { editorVM.createTerminalTab(type: .codex) }
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.system(size: 13))
-                        .frame(width: 28, height: 36)
-                }
-                .menuStyle(BorderlessButtonMenuStyle())
-                .buttonStyle(PlainButtonStyle())
-                .foregroundColor(.textSecondary)
-
-                GeometryReader { geometry in
-                    let availableWidth = geometry.size.width
-                    let tabWidth: CGFloat = 150
-                    let maxVisibleTabs = max(1, Int(availableWidth / tabWidth))
-                    let hasOverflow = allTabs.count > maxVisibleTabs
-
-                    HStack(spacing: 0) {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 0) {
-                                ForEach(Array(editorVM.tabs.enumerated()), id: \.element.id) { index, tab in
-                                    TabButton(
-                                        tab: tab,
-                                        index: index,
-                                        isActive: tab.id == editorVM.activeTabId,
-                                        allTabs: editorVM.tabs,
-                                        onSelect: { editorVM.activateTab(tab.id) },
-                                        onClose: { editorVM.closeTab(tab.id) },
-                                        moveAction: { editorVM.moveTab(from: $0, to: $1) },
-                                        draggedTabId: $draggedTabId,
-                                        onMoveLeft: index > 0 ? { editorVM.moveTab(from: index, to: index - 1) } : nil,
-                                        onMoveRight: index < editorVM.tabs.count - 1 ? { editorVM.moveTab(from: index, to: index + 1) } : nil
-                                    )
+                if !workspaceVM.projects.isEmpty {
+                    if settings.leftSidebarExpanded {
+                        HStack(spacing: 0) {
+                            Spacer(minLength: 0)
+                            HStack(spacing: 4) {
+                                Button(action: toggleAllWorktrees) {
+                                    Image(systemName: "chevron.up.chevron.down")
+                                        .font(.system(size: 10))
+                                        .frame(width: 28, height: 36)
                                 }
-                                ForEach(Array(terminalVM.tabs.enumerated()), id: \.element.id) { index, tab in
-                                    TabButton(
-                                        tab: tab,
-                                        index: index,
-                                        isActive: tab.id == editorVM.activeTabId,
-                                        allTabs: terminalVM.tabs,
-                                        onSelect: { editorVM.activateTab(tab.id) },
-                                        onClose: { editorVM.closeTab(tab.id) },
-                                        moveAction: { terminalVM.moveTab(from: $0, to: $1) },
-                                        draggedTabId: $draggedTabId,
-                                        onMoveLeft: index > 0 ? { terminalVM.moveTab(from: index, to: index - 1) } : nil,
-                                        onMoveRight: index < terminalVM.tabs.count - 1 ? { terminalVM.moveTab(from: index, to: index + 1) } : nil
-                                    )
-                                }
+                                .buttonStyle(PlainButtonStyle())
+                                .foregroundColor(.textSecondary)
+
+                                navButtons
                             }
+                            .padding(.trailing, 6)
                         }
-                        .frame(maxWidth: .infinity)
-                        .clipped()
-                        .onDrop(of: [.text], isTargeted: nil) { providers in
-                            var result = false
-                            for provider in providers {
-                                let sem = DispatchSemaphore(value: 0)
-                                provider.loadObject(ofClass: NSString.self) { object, _ in
-                                    if let text = object as? String {
-                                        DispatchQueue.main.async {
-                                            editorVM.newFile(name: text, content: text)
-                                        }
-                                        result = true
-                                    }
-                                    sem.signal()
-                                }
-                                sem.wait()
-                            }
-                            return result
-                        }
-
-                        if hasOverflow {
-                            TabOverflowMenu(
-                                allTabs: allTabs,
-                                activeTabId: editorVM.activeTabId,
-                                onSelect: { editorVM.activateTab($0) },
-                                onClose: { editorVM.closeTab($0) }
-                            )
-                        }
+                    } else {
+                        navButtons
+                            .padding(.leading, 4)
                     }
                 }
-
-                HStack(spacing: 4) {
-                    Button(action: onToggleExplorer) {
-                        Image(systemName: "folder")
-                            .font(.system(size: 13))
-                            .foregroundColor(isExplorerActive ? .textPrimary : .textSecondary)
-                    }
-                    .buttonStyle(PlainButtonStyle())
-
-                    Button(action: onToggleSearch) {
-                        Image(systemName: "magnifyingglass")
-                            .font(.system(size: 13))
-                            .foregroundColor(isSearchActive ? .textPrimary : .textSecondary)
-                    }
-                    .buttonStyle(PlainButtonStyle())
-
-                    Button(action: onToggleSourceControl) {
-                        Image(systemName: "arrow.triangle.branch")
-                            .font(.system(size: 13))
-                            .foregroundColor(isSourceControlActive ? .textPrimary : .textSecondary)
-                    }
-                    .buttonStyle(PlainButtonStyle())
-
-                    if isTasksEnabled {
-                        Button(action: onToggleTasks) {
-                            Image(systemName: "checklist")
-                                .font(.system(size: 13))
-                                .foregroundColor(isTasksActive ? .textPrimary : .textSecondary)
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                    }
-
-                    Button(action: onToggleRightSidebar) {
-                        Image(systemName: isRightSidebarExpanded ? "sidebar.right" : "sidebar.left")
-                            .font(.system(size: 13))
-                            .foregroundColor(isRightSidebarExpanded ? .textPrimary : .textSecondary)
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                }
-                .padding(.horizontal, 8)
             }
-            .frame(height: 36)
+            .frame(width: settings.leftSidebarExpanded ? max(settings.leftSidebarWidth - 1, 0) : nil, alignment: .leading)
+
+            Rectangle()
+                .frame(width: 1)
+                .foregroundColor(.borderDefault)
+
+            Menu {
+                menuItem("New File", shortcutKey: "newFile") { editorVM.newFile() }
+                menuItem("New Terminal", shortcutKey: "newTerminal") { editorVM.createTerminalTab(type: .terminal) }
+                Divider()
+                menuItem("OpenCode", shortcutKey: "openOpenCode") { editorVM.createTerminalTab(type: .opencode) }
+                menuItem("Claude Code", shortcutKey: "openClaude") { editorVM.createTerminalTab(type: .claude) }
+                menuItem("Codex", shortcutKey: "openCodex") { editorVM.createTerminalTab(type: .codex) }
+            } label: {
+                Image(systemName: "plus")
+                    .font(.system(size: 13))
+                    .frame(width: 28, height: 36)
+            }
+            .menuStyle(BorderlessButtonMenuStyle())
+            .buttonStyle(PlainButtonStyle())
+            .foregroundColor(.textSecondary)
+
+            GeometryReader { geometry in
+                let availableWidth = geometry.size.width
+                let tabWidth: CGFloat = 150
+                let maxVisibleTabs = max(1, Int(availableWidth / tabWidth))
+                let hasOverflow = allTabs.count > maxVisibleTabs
+
+                HStack(spacing: 0) {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 0) {
+                            ForEach(Array(editorVM.tabs.enumerated()), id: \.element.id) { index, tab in
+                                TabButton(
+                                    tab: tab,
+                                    index: index,
+                                    isActive: tab.id == editorVM.activeTabId,
+                                    allTabs: editorVM.tabs,
+                                    onSelect: { editorVM.activateTab(tab.id) },
+                                    onClose: { editorVM.closeTab(tab.id) },
+                                    moveAction: { editorVM.moveTab(from: $0, to: $1) },
+                                    draggedTabId: $draggedTabId,
+                                    onMoveLeft: index > 0 ? { editorVM.moveTab(from: index, to: index - 1) } : nil,
+                                    onMoveRight: index < editorVM.tabs.count - 1 ? { editorVM.moveTab(from: index, to: index + 1) } : nil
+                                )
+                            }
+                            ForEach(Array(terminalVM.tabs.enumerated()), id: \.element.id) { index, tab in
+                                TabButton(
+                                    tab: tab,
+                                    index: index,
+                                    isActive: tab.id == editorVM.activeTabId,
+                                    allTabs: terminalVM.tabs,
+                                    onSelect: { editorVM.activateTab(tab.id) },
+                                    onClose: { editorVM.closeTab(tab.id) },
+                                    moveAction: { terminalVM.moveTab(from: $0, to: $1) },
+                                    draggedTabId: $draggedTabId,
+                                    onMoveLeft: index > 0 ? { terminalVM.moveTab(from: index, to: index - 1) } : nil,
+                                    onMoveRight: index < terminalVM.tabs.count - 1 ? { terminalVM.moveTab(from: index, to: index + 1) } : nil
+                                )
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .clipped()
+                    .onDrop(of: [.text], isTargeted: nil) { providers in
+                        var result = false
+                        for provider in providers {
+                            let sem = DispatchSemaphore(value: 0)
+                            provider.loadObject(ofClass: NSString.self) { object, _ in
+                                if let text = object as? String {
+                                    DispatchQueue.main.async {
+                                        editorVM.newFile(name: text, content: text)
+                                    }
+                                    result = true
+                                }
+                                sem.signal()
+                            }
+                            sem.wait()
+                        }
+                        return result
+                    }
+
+                    if hasOverflow {
+                        TabOverflowMenu(
+                            allTabs: allTabs,
+                            activeTabId: editorVM.activeTabId,
+                            onSelect: { editorVM.activateTab($0) },
+                            onClose: { editorVM.closeTab($0) }
+                        )
+                    }
+                }
+            }
+
+            HStack(spacing: 4) {
+                Button(action: onToggleExplorer) {
+                    Image(systemName: "folder")
+                        .font(.system(size: 13))
+                        .foregroundColor(isExplorerActive ? .textPrimary : .textSecondary)
+                }
+                .buttonStyle(PlainButtonStyle())
+
+                Button(action: onToggleSearch) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 13))
+                        .foregroundColor(isSearchActive ? .textPrimary : .textSecondary)
+                }
+                .buttonStyle(PlainButtonStyle())
+
+                Button(action: onToggleSourceControl) {
+                    Image(systemName: "arrow.triangle.branch")
+                        .font(.system(size: 13))
+                        .foregroundColor(isSourceControlActive ? .textPrimary : .textSecondary)
+                }
+                .buttonStyle(PlainButtonStyle())
+
+                if isTasksEnabled {
+                    Button(action: onToggleTasks) {
+                        Image(systemName: "checklist")
+                            .font(.system(size: 13))
+                            .foregroundColor(isTasksActive ? .textPrimary : .textSecondary)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+
+                Button(action: onToggleRightSidebar) {
+                    Image(systemName: isRightSidebarExpanded ? "sidebar.right" : "sidebar.left")
+                        .font(.system(size: 13))
+                        .foregroundColor(isRightSidebarExpanded ? .textPrimary : .textSecondary)
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+            .padding(.horizontal, 8)
         }
         .frame(height: 36)
         .background(Color.bgPrimary)
@@ -165,6 +221,13 @@ struct TabBarView: View {
             Rectangle().frame(height: 1).foregroundColor(.borderDefault),
             alignment: .bottom
         )
+    }
+
+    private func toggleAllWorktrees() {
+        let newValue = !allWorktreesExpanded
+        for project in workspaceVM.projects {
+            workspaceVM.setWorktreesExpanded(projectId: project.id, expanded: newValue)
+        }
     }
 
     @ViewBuilder

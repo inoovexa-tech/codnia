@@ -59,6 +59,8 @@ struct ContentView: View {
             TabBarView(
                 editorVM: appState.editorVM,
                 terminalVM: appState.terminalVM,
+                workspaceVM: appState.workspaceVM,
+                settings: appState.settings,
                 onToggleExplorer: {
                     if appState.rightSidebarExpanded && appState.rightSidebarTab == .explorer {
                         appState.rightSidebarExpanded = false
