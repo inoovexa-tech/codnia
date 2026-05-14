@@ -14,6 +14,7 @@ public struct GitStatusEntry: Identifiable, Equatable, Sendable {
     }
 }
 
+@MainActor
 public final class GitService {
     public static let shared = GitService()
     private init() {}
@@ -120,18 +121,18 @@ public final class GitService {
     }
 
     public func getFileChangesCounts(path: String) async -> [String: (added: Int, deleted: Int)] {
-        async let diffData = runGit(args: ["diff", "--numstat"], in: path)
-        async let stagedData = runGit(args: ["diff", "--cached", "--numstat"], in: path)
-        async let untrackedData = runGit(args: ["ls-files", "--others", "--exclude-standard"], in: path)
+        let diffData = await runGit(args: ["diff", "--numstat"], in: path)
+        let stagedData = await runGit(args: ["diff", "--cached", "--numstat"], in: path)
+        let untrackedData = await runGit(args: ["ls-files", "--others", "--exclude-standard"], in: path)
 
-        var result = parseNumstatPerFile(await diffData)
-        let stagedResult = parseNumstatPerFile(await stagedData)
+        var result = parseNumstatPerFile(diffData)
+        let stagedResult = parseNumstatPerFile(stagedData)
         for (filePath, counts) in stagedResult {
             let existing = result[filePath] ?? (0, 0)
             result[filePath] = (existing.added + counts.added, existing.deleted + counts.deleted)
         }
 
-        if let data = await untrackedData,
+        if let data = untrackedData,
            let output = String(data: data, encoding: .utf8) {
             let files = output.components(separatedBy: .newlines).filter { !$0.isEmpty }
             for file in files {
@@ -155,17 +156,17 @@ public final class GitService {
     }
 
     public func getChangesCount(path: String) async -> (added: Int, deleted: Int) {
-        async let diffData = runGit(args: ["diff", "--numstat"], in: path)
-        async let stagedData = runGit(args: ["diff", "--cached", "--numstat"], in: path)
-        async let untrackedData = runGit(args: ["ls-files", "--others", "--exclude-standard"], in: path)
+        let diffData = await runGit(args: ["diff", "--numstat"], in: path)
+        let stagedData = await runGit(args: ["diff", "--cached", "--numstat"], in: path)
+        let untrackedData = await runGit(args: ["ls-files", "--others", "--exclude-standard"], in: path)
 
         var added = 0
         var deleted = 0
 
-        parseNumstat(await diffData, into: &added, deleted: &deleted)
-        parseNumstat(await stagedData, into: &added, deleted: &deleted)
+        parseNumstat(diffData, into: &added, deleted: &deleted)
+        parseNumstat(stagedData, into: &added, deleted: &deleted)
 
-        if let data = await untrackedData,
+        if let data = untrackedData,
            let output = String(data: data, encoding: .utf8) {
             added += output.components(separatedBy: .newlines).filter { !$0.isEmpty }.count
         }
@@ -429,7 +430,7 @@ public final class GitService {
 
     // MARK: - Log
 
-    public struct CommitInfo: Identifiable {
+    public struct CommitInfo: Identifiable, Sendable {
         public let id: String
         public let hash: String
         public let shortHash: String

@@ -55,16 +55,16 @@ public final class SearchService: ObservableObject {
 
             if mode == .content || mode == .all {
                 if isRegex {
-                    allResults += await self.searchAllContentRegex(projects: projects, query: query, maxResults: contentLimit, caseSensitive: caseSensitive)
+                    allResults += self.searchAllContentRegex(projects: projects, query: query, maxResults: contentLimit, caseSensitive: caseSensitive)
                 } else {
-                    allResults += await self.searchAllContentSimple(projects: projects, query: query, maxResults: contentLimit)
+                    allResults += self.searchAllContentSimple(projects: projects, query: query, maxResults: contentLimit)
                 }
             }
 
             if mode == .filename || mode == .all {
                 let filenameLimit = mode == .all ? maxResults - allResults.count : maxResults
                 if filenameLimit > 0 {
-                    allResults += await self.searchAllFileNames(projects: projects, query: query, maxResults: filenameLimit, caseSensitive: caseSensitive)
+                    allResults += self.searchAllFileNames(projects: projects, query: query, maxResults: filenameLimit, caseSensitive: caseSensitive)
                 }
             }
 

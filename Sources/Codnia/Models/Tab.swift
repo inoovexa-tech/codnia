@@ -1,6 +1,6 @@
 import Foundation
 
-public enum TabType: String, Codable, Equatable {
+public enum TabType: String, Codable, Equatable, Sendable {
     case file
     case terminal
     case opencode
@@ -19,13 +19,13 @@ public enum TabType: String, Codable, Equatable {
     }
 }
 
-public enum PreviewType: String, Codable, Equatable {
+public enum PreviewType: String, Codable, Equatable, Sendable {
     case markdown
     case html
     case unknown
 }
 
-public struct Tab: Identifiable, Codable, Equatable {
+public struct Tab: Identifiable, Codable, Equatable, Sendable {
     public let id: String
     public var path: String
     public var name: String

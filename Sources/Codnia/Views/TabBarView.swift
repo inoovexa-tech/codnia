@@ -162,21 +162,21 @@ struct TabBarView: View {
                         .frame(maxWidth: .infinity)
                         .clipped()
                         .onDrop(of: [.text], isTargeted: nil) { providers in
-                            var result = false
+                            var foundItems: [String] = []
                             for provider in providers {
                                 let sem = DispatchSemaphore(value: 0)
                                 provider.loadObject(ofClass: NSString.self) { object, _ in
                                     if let text = object as? String {
-                                        DispatchQueue.main.async {
-                                            editorVM.newFile(name: text, content: text)
-                                        }
-                                        result = true
+                                        foundItems.append(text)
                                     }
                                     sem.signal()
                                 }
                                 sem.wait()
                             }
-                            return result
+                            for text in foundItems {
+                                editorVM.newFile(name: text, content: text)
+                            }
+                            return !foundItems.isEmpty
                         }
 
                         if hasOverflow {
@@ -190,7 +190,7 @@ struct TabBarView: View {
                     }
                 }
 
-HStack(spacing: 4) {
+                HStack(spacing: 4) {
                     if editorVM.currentTab != nil {
                         Button(action: {
                             splitVM.splitActivePane(.horizontal, editorVM: editorVM, terminalVM: terminalVM)
@@ -213,33 +213,13 @@ HStack(spacing: 4) {
                         .help("Split top/bottom")
                     }
 
-                    Button(action: onToggleExplorer) {
-                        Image(systemName: "folder")
-                            .font(.system(size: 13))
-                            .foregroundColor(isExplorerActive ? .textPrimary : .textSecondary)
-                    }
-                    .buttonStyle(PlainButtonStyle())
-
-                    Button(action: onToggleSearch) {
-                        Image(systemName: "magnifyingglass")
-                            .font(.system(size: 13))
-                            .foregroundColor(isSearchActive ? .textPrimary : .textSecondary)
-                    }
-                    .buttonStyle(PlainButtonStyle())
-
-                    Button(action: onToggleSourceControl) {
-                        Image(systemName: "arrow.triangle.branch")
-                            .font(.system(size: 13))
-                            .foregroundColor(isSourceControlActive ? .textPrimary : .textSecondary)
-                    }
-                    .buttonStyle(PlainButtonStyle())
-
                     Button(action: onToggleRightSidebar) {
                         Image(systemName: isRightSidebarExpanded ? "sidebar.right" : "sidebar.left")
                             .font(.system(size: 13))
                             .foregroundColor(isRightSidebarExpanded ? .textPrimary : .textSecondary)
                     }
                     .buttonStyle(PlainButtonStyle())
+                    .padding(.trailing, 8)
                 }
                 .buttonStyle(PlainButtonStyle())
             }

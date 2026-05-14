@@ -128,7 +128,7 @@ struct AddWorktreeView: View {
     private func refreshBranches() {
         if let worktree = project?.activeWorktree {
             Task {
-                await gitVM.refreshAll(for: worktree.path)
+                gitVM.refreshAll(for: worktree.path)
                 await MainActor.run {
                     let existingBranches = Set(project?.worktrees.map { $0.branch } ?? [])
                     availableBranches = gitVM.branches.filter { !existingBranches.contains($0) }

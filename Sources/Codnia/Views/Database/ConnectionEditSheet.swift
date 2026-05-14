@@ -188,7 +188,6 @@ struct ConnectionEditSheet: View {
         Task {
             let pw = resolvedPassword(for: config.id)
             await databaseService.connect(config, password: pw)
-            let state = databaseService.state(for: config.id)
 
             for _ in 0..<20 {
                 let s = databaseService.state(for: config.id)
