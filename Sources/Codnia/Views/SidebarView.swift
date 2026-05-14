@@ -190,7 +190,11 @@ struct ProjectRowExpanded: View {
             Image(nsImage: nsImage)
                 .resizable()
                 .frame(width: 28, height: 28)
-                .cornerRadius(6)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(isActive ? Color.accentBlue.opacity(0.25) : Color.clear)
+                )
         } else {
             Text(initials)
                 .font(.system(size: 11, weight: .semibold))
@@ -280,7 +284,15 @@ struct ProjectRowExpanded: View {
                 .padding(.trailing, 8)
             }
             .frame(maxWidth: .infinity, minHeight: 44)
-            .background(isActive ? Color.bgTertiary : Color.clear)
+            .background(isActive ? Color.bgActive : Color.clear)
+            .overlay(alignment: .leading) {
+                if isActive {
+                    Rectangle()
+                        .fill(Color.accentBlue)
+                        .frame(width: 3)
+                        .padding(.vertical, 8)
+                }
+            }
             .cornerRadius(8)
 
             if isWorktreesExpanded {
@@ -550,7 +562,11 @@ struct ProjectRowCollapsed: View {
             Image(nsImage: nsImage)
                 .resizable()
                 .frame(width: 36, height: 36)
-                .cornerRadius(8)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(isActive ? Color.accentBlue.opacity(0.25) : Color.clear)
+                )
         } else {
             ZStack(alignment: .bottomTrailing) {
                 Text(initials)
@@ -575,6 +591,14 @@ struct ProjectRowCollapsed: View {
         }
         .buttonStyle(BorderlessButtonStyle())
         .frame(width: 36, height: 36)
+        .overlay(alignment: .leading) {
+            if isActive {
+                Rectangle()
+                    .fill(Color.accentBlue)
+                    .frame(width: 3)
+                    .frame(height: 20)
+            }
+        }
         .help(project?.name ?? "")
     }
 }
