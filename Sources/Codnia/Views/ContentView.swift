@@ -65,6 +65,13 @@ struct ContentView: View {
                 splitVM: appState.splitVM,
                 workspaceVM: appState.workspaceVM,
                 settings: appState.settings,
+                onToggleRightSidebar: { appState.rightSidebarExpanded.toggle() },
+                isRightSidebarExpanded: appState.rightSidebarExpanded,
+                isDatabaseEnabled: appState.databaseService.hasConnections,
+                onNewSQLQuery: {
+                    let connId = appState.databaseService.connections.first?.id
+                    appState.editorVM.newQueryTab(connectionId: connId)
+                },
                 onToggleExplorer: {
                     if appState.rightSidebarExpanded && appState.rightSidebarTab == .explorer {
                         appState.rightSidebarExpanded = false
@@ -90,13 +97,6 @@ struct ContentView: View {
                         appState.rightSidebarTab = .sourceControl
                         appState.rightSidebarExpanded = true
                     }
-                },
-                onToggleRightSidebar: { appState.rightSidebarExpanded.toggle() },
-                isRightSidebarExpanded: appState.rightSidebarExpanded,
-                isDatabaseEnabled: appState.databaseService.hasConnections,
-                onNewSQLQuery: {
-                    let connId = appState.databaseService.connections.first?.id
-                    appState.editorVM.newQueryTab(connectionId: connId)
                 }
             )
             .frame(height: 36)

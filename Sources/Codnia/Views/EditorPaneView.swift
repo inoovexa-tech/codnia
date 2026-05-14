@@ -76,6 +76,9 @@ struct EditorPaneView: View {
 
             case .pdf:
                 PDFPreviewView(path: tab.path)
+
+            case .queryResult:
+                QueryResultTabView(tabId: tab.id)
             }
         } else {
             emptyTabView

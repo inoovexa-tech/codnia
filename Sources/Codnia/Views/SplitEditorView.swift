@@ -196,7 +196,7 @@ struct SplitEditorView: View {
     }
 }
 
-// MARK: - Split Container (custom layout with visible divider)
+// MARK: - Split Container
 
 struct SplitContainerView: View {
     let container: SplitContainer
@@ -205,115 +205,76 @@ struct SplitContainerView: View {
     @EnvironmentObject var terminalVM: TerminalViewModel
     @EnvironmentObject var settings: SettingsService
 
-    @State private var dragOffset: CGFloat = 0
     @State private var isDragging = false
+    @State private var dragOffset: CGFloat = 0
 
     var body: some View {
         GeometryReader { geo in
-            ZStack(alignment: .topLeading) {
-                if container.direction == .horizontal {
-                    horizontalContent(geo: geo)
-                } else {
-                    verticalContent(geo: geo)
+            let isHorizontal = container.direction == .horizontal
+            let totalSize = isHorizontal ? geo.size.width : geo.size.height
+            let availSize = max(0.0, totalSize - splitDividerThickness)
+
+            let computedFirstSize: CGFloat = {
+                if isDragging {
+                    let raw = availSize * container.proportion + dragOffset
+                    return max(80, min(availSize - 80, raw))
                 }
+                return max(80, availSize * container.proportion)
+            }()
 
-                SplitDividerNSView(
-                    direction: container.direction,
-                    dividerPosition: dividerPosition(geo: geo),
-                    thickness: splitDividerThickness,
-                    isHorizontal: container.direction == .horizontal,
-                    onDragChanged: { delta in
-                        isDragging = true
-                        dragOffset = delta
-                    },
-                    onDragEnded: { delta in
-                        let total = axisSize(geo: geo)
-                        let avail = total - splitDividerThickness
-                        if avail > 0 {
-                            let newProp = max(0.15, min(0.85, container.proportion + delta / avail))
+            let secondSize = max(80, totalSize - computedFirstSize - splitDividerThickness)
+
+            if isHorizontal {
+                HStack(spacing: 0) {
+                    renderNode(container.first)
+                        .frame(width: computedFirstSize)
+
+                    DividerView(
+                        direction: container.direction,
+                        onDragChanged: { delta in
+                            isDragging = true
+                            dragOffset += delta
+                        },
+                        onDragEnded: { finalDelta in
+                            let newProp = max(0.15, min(0.85, container.proportion + finalDelta / availSize))
                             splitVM.setContainerProportion(container.id, newProp)
-                        }
-                        isDragging = false
-                        dragOffset = 0
-                    },
-                    onHoverEnter: {
-                        container.direction == .horizontal
-                            ? NSCursor.resizeLeftRight.push()
-                            : NSCursor.resizeUpDown.push()
-                    },
-                    onHoverExit: {
-                        NSCursor.pop()
-                    }
-                )
-                .frame(
-                    width: container.direction == .horizontal ? splitDividerThickness + 4 : nil,
-                    height: container.direction == .vertical ? splitDividerThickness + 4 : nil
-                )
-                .offset(
-                    x: container.direction == .horizontal ? dividerPosition(geo: geo) - 2 : 0,
-                    y: container.direction == .vertical ? dividerPosition(geo: geo) - 2 : 0
-                )
+                            isDragging = false
+                            dragOffset = 0
+                        },
+                        isDragging: isDragging
+                    )
+                    .frame(width: splitDividerThickness, height: geo.size.height)
+
+                    renderNode(container.second)
+                        .frame(width: secondSize)
+                }
+            } else {
+                VStack(spacing: 0) {
+                    renderNode(container.first)
+                        .frame(height: computedFirstSize)
+
+                    DividerView(
+                        direction: container.direction,
+                        onDragChanged: { delta in
+                            isDragging = true
+                            dragOffset += delta
+                        },
+                        onDragEnded: { finalDelta in
+                            let newProp = max(0.15, min(0.85, container.proportion + finalDelta / availSize))
+                            splitVM.setContainerProportion(container.id, newProp)
+                            isDragging = false
+                            dragOffset = 0
+                        },
+                        isDragging: isDragging
+                    )
+                    .frame(width: geo.size.width, height: splitDividerThickness)
+
+                    renderNode(container.second)
+                        .frame(height: secondSize)
+                }
             }
-            .clipped()
-            .frame(width: geo.size.width, height: geo.size.height)
         }
-    }
-
-    private func horizontalContent(geo: GeometryProxy) -> some View {
-        let firstW = max(80, paneWidth(geo: geo))
-        let secondW = max(80, otherWidth(geo: geo))
-
-        return HStack(spacing: 0) {
-            renderNode(container.first)
-                .frame(width: firstW)
-            Color.clear
-                .frame(width: splitDividerThickness)
-            renderNode(container.second)
-                .frame(width: max(80, secondW))
-        }
-    }
-
-    private func verticalContent(geo: GeometryProxy) -> some View {
-        let firstH = max(80, paneWidth(geo: geo))
-        let secondH = max(80, otherWidth(geo: geo))
-
-        return VStack(spacing: 0) {
-            renderNode(container.first)
-                .frame(height: firstH)
-            Color.clear
-                .frame(height: splitDividerThickness)
-            renderNode(container.second)
-                .frame(height: max(80, secondH))
-        }
-    }
-
-    // MARK: Geometry helpers
-
-    private func axisSize(geo: GeometryProxy) -> CGFloat {
-        container.direction == .horizontal ? geo.size.width : geo.size.height
-    }
-
-    private func availSize(geo: GeometryProxy) -> CGFloat {
-        max(0, axisSize(geo: geo) - splitDividerThickness)
-    }
-
-    private func effectiveProportion(geo: GeometryProxy) -> CGFloat {
-        let avail = availSize(geo: geo)
-        guard avail > 0 else { return container.proportion }
-        let raw = container.proportion + (isDragging ? dragOffset / avail : 0)
-        return max(0.15, min(0.85, raw))
-    }
-
-    private func paneWidth(geo: GeometryProxy) -> CGFloat {
-        availSize(geo: geo) * effectiveProportion(geo: geo)
-    }
-
-    private func otherWidth(geo: GeometryProxy) -> CGFloat {
-        axisSize(geo: geo) - paneWidth(geo: geo) - splitDividerThickness
-    }
-
-    private func dividerPosition(geo: GeometryProxy) -> CGFloat {
-        paneWidth(geo: geo) + (isDragging ? dragOffset * 0 : 0)
+        .clipped()
     }
 
     @ViewBuilder
@@ -327,119 +288,123 @@ struct SplitContainerView: View {
     }
 }
 
-// MARK: - Split Divider (NSViewRepresentable for reliable mouse tracking)
+// MARK: - Divider View
 
-struct SplitDividerNSView: NSViewRepresentable {
+struct DividerView: NSViewRepresentable {
     let direction: SplitDirection
-    let dividerPosition: CGFloat
-    let thickness: CGFloat
-    let isHorizontal: Bool
     let onDragChanged: (CGFloat) -> Void
     let onDragEnded: (CGFloat) -> Void
-    let onHoverEnter: () -> Void
-    let onHoverExit: () -> Void
+    let isDragging: Bool
 
-    func makeNSView(context: Context) -> SplitDividerContainerView {
-        let v = SplitDividerContainerView()
-        v.isHorizontal = isHorizontal
-        v.direction = direction
-        v.onDragChanged = onDragChanged
-        v.onDragEnded = onDragEnded
-        v.onHoverEnter = onHoverEnter
-        v.onHoverExit = onHoverExit
-        v.wantsLayer = true
-        return v
+    func makeNSView(context: Context) -> DividerNSView {
+        let view = DividerNSView()
+        view.direction = direction
+        view.onDragChanged = onDragChanged
+        view.onDragEnded = onDragEnded
+        return view
     }
 
-    func updateNSView(_ nsView: SplitDividerContainerView, context: Context) {
-        nsView.isHorizontal = isHorizontal
+    func updateNSView(_ nsView: DividerNSView, context: Context) {
         nsView.direction = direction
         nsView.onDragChanged = onDragChanged
         nsView.onDragEnded = onDragEnded
-        nsView.onHoverEnter = onHoverEnter
-        nsView.onHoverExit = onHoverExit
         nsView.needsDisplay = true
     }
 }
 
-class SplitDividerContainerView: NSView {
-    var isHorizontal: Bool = true
+class DividerNSView: NSView {
     var direction: SplitDirection = .horizontal
     var onDragChanged: ((CGFloat) -> Void)?
     var onDragEnded: ((CGFloat) -> Void)?
-    var onHoverEnter: (() -> Void)?
-    var onHoverExit: (() -> Void)?
 
-    private var trackingArea: NSTrackingArea?
-    private var isHovering = false
-    private var dragStartPoint: CGPoint = .zero
+    private var initialMouseLocation: NSPoint = .zero
+    private var currentOffset: CGFloat = 0
+    private var isDragging = false
 
-    override func viewDidMoveToWindow() {
-        super.viewDidMoveToWindow()
-        updateTrackingArea()
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        wantsLayer = true
+        layer?.backgroundColor = NSColor.clear.cgColor
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
     }
 
     override func updateTrackingAreas() {
         super.updateTrackingAreas()
-        updateTrackingArea()
-    }
-
-    private func updateTrackingArea() {
-        if let old = trackingArea {
-            removeTrackingArea(old)
-        }
-        trackingArea = NSTrackingArea(
-            rect: bounds,
-            options: [.mouseEnteredAndExited, .mouseMoved, .activeInActiveApp],
-            owner: self,
-            userInfo: nil
-        )
-        addTrackingArea(trackingArea!)
+        trackingAreas.forEach { removeTrackingArea($0) }
+        let options: NSTrackingArea.Options = [.mouseEnteredAndExited, .activeAlways, .inVisibleRect]
+        let area = NSTrackingArea(rect: bounds, options: options, owner: self, userInfo: nil)
+        addTrackingArea(area)
     }
 
     override func mouseEntered(with event: NSEvent) {
-        isHovering = true
-        onHoverEnter?()
+        if !isDragging {
+            updateCursor()
+        }
     }
 
     override func mouseExited(with event: NSEvent) {
-        isHovering = false
-        onHoverExit?()
+        if !isDragging {
+            NSCursor.pop()
+        }
+    }
+
+    private func updateCursor() {
+        if direction == .horizontal {
+            NSCursor.resizeLeftRight.set()
+        } else {
+            NSCursor.resizeUpDown.set()
+        }
+    }
+
+    override func resetCursorRects() {
+        addCursorRect(bounds, cursor: direction == .horizontal ? .resizeLeftRight : .resizeUpDown)
     }
 
     override func mouseDown(with event: NSEvent) {
-        dragStartPoint = convert(event.locationInWindow, from: nil)
+        initialMouseLocation = event.locationInWindow
+        currentOffset = 0
+        isDragging = true
+        updateCursor()
     }
 
     override func mouseDragged(with event: NSEvent) {
-        let current = convert(event.locationInWindow, from: nil)
-        let delta = isHorizontal
-            ? current.x - dragStartPoint.x
-            : current.y - dragStartPoint.y
+        guard isDragging else { return }
+        let currentLocation = event.locationInWindow
+        var delta: CGFloat = 0
+
+        if direction == .horizontal {
+            delta = currentLocation.x - initialMouseLocation.x
+            initialMouseLocation.x = currentLocation.x
+        } else {
+            delta = initialMouseLocation.y - currentLocation.y
+            initialMouseLocation.y = currentLocation.y
+        }
+
+        currentOffset += delta
         onDragChanged?(delta)
+        updateCursor()
     }
 
     override func mouseUp(with event: NSEvent) {
-        let current = convert(event.locationInWindow, from: nil)
-        let delta = isHorizontal
-            ? current.x - dragStartPoint.x
-            : current.y - dragStartPoint.y
-        onDragEnded?(delta)
+        onDragEnded?(currentOffset)
+        currentOffset = 0
+        isDragging = false
     }
 
     override func draw(_ dirtyRect: NSRect) {
         super.draw(dirtyRect)
         guard let ctx = NSGraphicsContext.current?.cgContext else { return }
 
-        // Clear background
         ctx.setFillColor(NSColor.clear.cgColor)
         ctx.fill(bounds)
 
-        // Draw the visible line
         ctx.setStrokeColor(NSColor(Color.borderLight).cgColor)
         ctx.setLineWidth(1)
 
-        if isHorizontal {
+        if direction == .horizontal {
             let x = bounds.midX
             ctx.move(to: CGPoint(x: x, y: bounds.minY))
             ctx.addLine(to: CGPoint(x: x, y: bounds.maxY))
