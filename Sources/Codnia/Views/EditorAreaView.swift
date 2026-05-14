@@ -18,11 +18,17 @@ struct EditorAreaView: View {
 
     var body: some View {
         ZStack {
+            // Terminals - always rendered at back layer; sessions stay alive via TerminalManager singleton
+            TerminalView(
+                tabs: $terminalVM.tabs,
+                activeTabId: $editorVM.activeTabId
+            )
+            .allowsHitTesting(isTerminalVisible)
+
             // Diff viewer for diff tabs
             if let activeTab = editorVM.currentTab, activeTab.type == .diff {
                 if let diffLines = editorVM.diffData[activeTab.id] {
                     DiffView(diffLines: diffLines, fileName: activeTab.name)
-                        .allowsHitTesting(!isTerminalVisible)
                 } else {
                     EmptyDiffView()
                 }
@@ -31,26 +37,22 @@ struct EditorAreaView: View {
             // Image preview
             if let activeTab = editorVM.currentTab, activeTab.type == .image {
                 ImagePreviewView(path: activeTab.path)
-                    .allowsHitTesting(!isTerminalVisible)
             }
 
             // PDF preview
             if let activeTab = editorVM.currentTab, activeTab.type == .pdf {
                 PDFPreviewView(path: activeTab.path)
-                    .allowsHitTesting(!isTerminalVisible)
             }
 
             // Query result tab
             if let activeTab = editorVM.currentTab, activeTab.type == .queryResult {
                 QueryResultTabView(tabId: activeTab.id)
-                    .allowsHitTesting(!isTerminalVisible)
             }
 
             // File editor
             if let activeTab = editorVM.currentTab, activeTab.type == .file {
                 if editorVM.isCurrentTabMarkdown && editorVM.showMarkdownPreview {
                     MarkdownPreviewView(content: editorVM.editorContent)
-                        .allowsHitTesting(!isTerminalVisible)
                 } else {
                     let hasInFileSearch = editorVM.showInFileSearch || !inFileSearchResults.isEmpty
                     let activeSearchResults = hasInFileSearch ? inFileSearchResults : editorVM.searchHighlightRanges
@@ -65,7 +67,6 @@ struct EditorAreaView: View {
                         currentSearchIndex: activeSearchIndex
                     )
                     .environmentObject(settings)
-                    .allowsHitTesting(!isTerminalVisible)
                 }
             }
 
@@ -168,14 +169,7 @@ struct EditorAreaView: View {
                     }
                     Spacer()
                 }
-                .allowsHitTesting(!isTerminalVisible)
             }
-
-            // Terminals - always rendered but visibility managed internally
-            TerminalView(
-                tabs: $terminalVM.tabs,
-                activeTabId: $editorVM.activeTabId
-            )
 
             if editorVM.currentTab == nil {
                 EmptyStateView()
