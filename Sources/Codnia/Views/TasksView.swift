@@ -14,6 +14,11 @@ struct TasksView: View {
     @State private var showingRenameTag = false
     @State private var renameTagText = ""
     @State private var draggedTaskId: String? = nil
+    @State private var dropTargetIndex: Int? = nil
+    @State private var dropIsUpperHalf: Bool = false
+    @State private var dropIsOverScrollView: Bool = false
+    @State private var isInternalDrag: Bool = false
+    @State private var isDraggingToEmptyArea: Bool = false
     @State private var renameTagTarget = ""
     @State private var renameTagTask: TaskItem?
 
@@ -187,20 +192,42 @@ struct TasksView: View {
             } else {
                 ScrollView {
                     LazyVStack(spacing: 0) {
+                        if dropTargetIndex == 0 && dropIsUpperHalf {
+                            insertionIndicator()
+                        }
                         ForEach(Array(items.enumerated()), id: \.element.id) { index, task in
-                            taskRow(task, index: index, allTasks: items)
+                            taskRow(task, index: index, allTasks: items, dropTargetIndex: $dropTargetIndex, dropIsUpperHalf: $dropIsUpperHalf, dropIsOverScrollView: $dropIsOverScrollView)
                                 .transition(.opacity.combined(with: .move(edge: .top)))
+                            if dropTargetIndex == index && !dropIsUpperHalf {
+                                insertionIndicator()
+                            }
                             Divider()
                                 .background(Color.borderDefault)
+                        }
+                        if isDraggingToEmptyArea {
+                            insertionIndicator()
                         }
                     }
                 }
                 .background(Color.bgPrimary)
+                .onDrop(of: [.text], isTargeted: $dropIsOverScrollView) { providers in
+                    if dropTargetIndex == nil {
+                        isDraggingToEmptyArea = true
+                    }
+                    return handleTaskDrop(providers: providers, items: items)
+                }
             }
         }
     }
 
     // MARK: - Drag Handle
+
+    private func insertionIndicator() -> some View {
+        Rectangle()
+            .fill(Color.accentBlue)
+            .frame(height: 2)
+            .padding(.horizontal, 4)
+    }
 
     private func dragHandle(_ task: TaskItem) -> some View {
         VStack(spacing: 1) {
@@ -223,15 +250,14 @@ struct TasksView: View {
         }
         .onDrag {
             draggedTaskId = task.id
-            let desc = task.description.trimmingCharacters(in: .whitespaces)
-            let payload = desc.isEmpty ? task.title : "\(task.title) - \(desc)"
-            return NSItemProvider(object: payload as NSString)
+            isInternalDrag = true
+            return NSItemProvider(object: task.id as NSString)
         }
     }
 
     // MARK: - Task Row
 
-    private func taskRow(_ task: TaskItem, index: Int, allTasks: [TaskItem]) -> some View {
+    private func taskRow(_ task: TaskItem, index: Int, allTasks: [TaskItem], dropTargetIndex: Binding<Int?>, dropIsUpperHalf: Binding<Bool>, dropIsOverScrollView: Binding<Bool>) -> some View {
         let isCompleting = completingTaskIds.contains(task.id)
         let isEditing = editingTaskId == task.id
         let isExpanded = expandedTaskId == task.id
@@ -263,7 +289,6 @@ struct TasksView: View {
                                 .strikethrough(isCompleting || task.isCompleted)
                                 .lineLimit(isExpanded ? nil : 1)
                                 .onDrag {
-                                    draggedTaskId = task.id
                                     let desc = task.description.trimmingCharacters(in: .whitespaces)
                                     let payload = desc.isEmpty ? task.title : "\(task.title) - \(desc)"
                                     return NSItemProvider(object: payload as NSString)
@@ -384,6 +409,9 @@ struct TasksView: View {
             index: index,
             allTasks: allTasks,
             draggedTaskId: $draggedTaskId,
+            dropTargetIndex: $dropTargetIndex,
+            dropIsUpperHalf: $dropIsUpperHalf,
+            dropIsOverScrollView: $dropIsOverScrollView,
             moveAction: { source, dest in
                 tasksVM.moveTask(from: source, to: dest, using: allTasks)
             }
@@ -618,6 +646,34 @@ struct TasksView: View {
         tasksVM.saveToDisk()
         tasksVM.selectedTags.remove(tag)
     }
+
+    private func handleTaskDrop(providers: [NSItemProvider], items: [TaskItem]) -> Bool {
+        guard providers.first != nil else { return false }
+
+        if isInternalDrag {
+            if let draggedId = draggedTaskId,
+               let sourceIdx = items.firstIndex(where: { $0.id == draggedId }) {
+                let finalDest: Int
+                if isDraggingToEmptyArea {
+                    finalDest = items.count
+                } else if let destIdx = dropTargetIndex {
+                    finalDest = dropIsUpperHalf ? destIdx : destIdx + 1
+                } else {
+                    finalDest = items.count
+                }
+                if sourceIdx != finalDest {
+                    tasksVM.moveTask(from: sourceIdx, to: finalDest, using: items)
+                }
+            }
+            draggedTaskId = nil
+            dropTargetIndex = nil
+            isInternalDrag = false
+            isDraggingToEmptyArea = false
+            return true
+        }
+
+        return false
+    }
 }
 
 // MARK: - Task Drop Delegate
@@ -627,19 +683,54 @@ struct TaskDropDelegate: DropDelegate {
     let index: Int
     let allTasks: [TaskItem]
     @Binding var draggedTaskId: String?
+    @Binding var dropTargetIndex: Int?
+    @Binding var dropIsUpperHalf: Bool
+    @Binding var dropIsOverScrollView: Bool
     let moveAction: (Int, Int) -> Void
 
     func dropUpdated(info: DropInfo) -> DropProposal? {
-        DropProposal(operation: .move)
+        if dropIsOverScrollView {
+            dropTargetIndex = nil
+            return DropProposal(operation: .move)
+        }
+        guard let draggedId = draggedTaskId, draggedId != task.id else {
+            dropTargetIndex = nil
+            return DropProposal(operation: .move)
+        }
+        dropTargetIndex = index
+        let location = info.location
+        let height = 44.0
+        dropIsUpperHalf = location.y < height / 2
+        return DropProposal(operation: .move)
     }
 
     func performDrop(info: DropInfo) -> Bool {
-        defer { draggedTaskId = nil }
+        if dropIsOverScrollView {
+            dropTargetIndex = nil
+            return false
+        }
+        defer {
+            draggedTaskId = nil
+            dropTargetIndex = nil
+        }
         guard let draggedId = draggedTaskId,
-              let sourceIndex = allTasks.firstIndex(where: { $0.id == draggedId }),
-              sourceIndex != index
+              let sourceIndex = allTasks.firstIndex(where: { $0.id == draggedId })
         else { return false }
-        moveAction(sourceIndex, index)
+
+        var destination: Int
+        if let target = dropTargetIndex {
+            destination = dropIsUpperHalf ? target : (sourceIndex < target ? target : target + 1)
+        } else {
+            destination = allTasks.count
+        }
+
+        guard sourceIndex != destination else { return false }
+        moveAction(sourceIndex, destination)
         return true
+    }
+
+    func dragEnded() {
+        draggedTaskId = nil
+        dropTargetIndex = nil
     }
 }
