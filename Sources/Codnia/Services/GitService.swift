@@ -437,6 +437,12 @@ public final class GitService {
 
     public func merge(path: String, branch: String) async -> Bool {
         let result = await runGitWithResult(args: ["merge", branch], in: path)
+        if !result.success {
+            let conflictIndicators = ["CONFLICT", "merge failed", "conflict"]
+            if conflictIndicators.contains(where: { result.output.localizedCaseInsensitiveContains($0) }) {
+                return false
+            }
+        }
         return result.success
     }
 
