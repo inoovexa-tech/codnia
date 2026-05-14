@@ -18,6 +18,10 @@ let package = Package(
                 .product(name: "SwiftTerm", package: "SwiftTerm"),
                 .product(name: "PostgresNIO", package: "postgres-nio"),
             ],
+            exclude: [
+                "Info.plist",
+                "icon.png"
+            ],
             resources: [
                 .process("icon.icns"),
             ],

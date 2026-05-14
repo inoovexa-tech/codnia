@@ -1,6 +1,6 @@
 import Foundation
 
-public struct Worktree: Identifiable, Codable, Equatable {
+public struct Worktree: Identifiable, Codable, Equatable, Sendable {
     public let id: String
     public var name: String
     public var path: String

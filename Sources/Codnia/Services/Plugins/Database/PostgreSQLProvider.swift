@@ -40,16 +40,16 @@ final class PostgreSQLProvider: DatabaseProvider, @unchecked Sendable {
             id: 1,
             logger: logger
         )
-        lock.lock()
+        lock.withLock {
         connections[handle] = conn
-        lock.unlock()
-        return handle
     }
+    return handle
+}
 
-    func close(handle: String) async throws {
-        lock.lock()
-        let conn = connections.removeValue(forKey: handle)
-        lock.unlock()
+func close(handle: String) async throws {
+    let conn = lock.withLock {
+        connections.removeValue(forKey: handle)
+    }
         try await conn?.close()
     }
 

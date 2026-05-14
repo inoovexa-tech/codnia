@@ -1,6 +1,6 @@
 import Foundation
 
-public struct GitStatusEntry: Identifiable, Equatable {
+public struct GitStatusEntry: Identifiable, Equatable, Sendable {
     public let id: String
     public let filePath: String
     public let status: String
@@ -181,7 +181,7 @@ public final class GitService {
         }
         var entries: [GitStatusEntry] = []
         for line in output.components(separatedBy: .newlines) where !line.isEmpty {
-            var statusPart = line.prefix(2)
+            let statusPart = line.prefix(2)
             var filePart = line.dropFirst(3)
 
             if filePart.hasPrefix("\"") && filePart.hasSuffix("\"") {

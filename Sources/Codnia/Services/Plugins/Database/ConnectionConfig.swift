@@ -35,7 +35,7 @@ public struct ConnectionConfig: Identifiable, Codable, Equatable, Sendable {
     }
 }
 
-public enum SessionState: Equatable {
+public enum SessionState: Equatable, Sendable {
     case disconnected
     case connecting
     case connected(handleID: String)
