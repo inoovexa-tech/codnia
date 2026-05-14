@@ -487,16 +487,18 @@ struct TasksView: View {
     // MARK: - Add Task Input
 
     private var addTaskInput: some View {
-        HStack(spacing: 8) {
+        HStack(alignment: .top, spacing: 8) {
             Image(systemName: "plus.circle")
                 .font(.system(size: 15))
                 .foregroundColor(.accentBlue)
-            TextField("Add Task...", text: $newTaskTitle)
+                .padding(.top, 2)
+            TextField("Add Task...", text: $newTaskTitle, axis: .vertical)
                 .textFieldStyle(PlainTextFieldStyle())
                 .font(.system(size: 12))
                 .foregroundColor(.textPrimary)
                 .tint(.accentBlue)
                 .focused($newTaskFocused)
+                .lineLimit(1...5)
                 .onSubmit(commitNewTask)
         }
         .padding(.horizontal, 10)
