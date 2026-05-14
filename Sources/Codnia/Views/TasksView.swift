@@ -369,7 +369,9 @@ struct TasksView: View {
         .opacity(isCompleting ? 0.4 : 1)
         .onDrag {
             draggedTaskId = task.id
-            return NSItemProvider(object: task.id as NSString)
+            let desc = task.description.trimmingCharacters(in: .whitespaces)
+            let payload = desc.isEmpty ? task.title : "\(task.title) - \(desc)"
+            return NSItemProvider(object: payload as NSString)
         }
         .onDrop(of: [.text], delegate: TaskDropDelegate(
             task: task,
