@@ -4,6 +4,8 @@ import AppKit
 struct TabBarView: View {
     @ObservedObject var editorVM: EditorViewModel
     @ObservedObject var terminalVM: TerminalViewModel
+    @ObservedObject var workspaceVM: WorkspaceService
+    @ObservedObject var settings: SettingsService
 
     var onToggleExplorer: () -> Void
     var onToggleSearch: () -> Void
@@ -27,11 +29,68 @@ struct TabBarView: View {
         editorVM.tabs + terminalVM.tabs
     }
 
+    private var allWorktreesExpanded: Bool {
+        !workspaceVM.projects.isEmpty && workspaceVM.projects.allSatisfy(\.isWorktreesExpanded)
+    }
+
+    @ViewBuilder
+    private var navButtons: some View {
+        HStack(spacing: 4) {
+            Button(action: { workspaceVM.previousProject() }) {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 13))
+                    .frame(width: 28, height: 36)
+            }
+            .buttonStyle(PlainButtonStyle())
+            .foregroundColor(.textSecondary)
+            .disabled(workspaceVM.projects.count <= 1)
+
+            Button(action: { workspaceVM.nextProject() }) {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13))
+                    .frame(width: 28, height: 36)
+            }
+            .buttonStyle(PlainButtonStyle())
+            .foregroundColor(.textSecondary)
+            .disabled(workspaceVM.projects.count <= 1)
+        }
+    }
+
     var body: some View {
         ZStack {
             HStack(spacing: 0) {
-                WindowDragView()
-                    .frame(width: 90)
+                HStack(spacing: 0) {
+                    WindowDragView()
+                        .frame(width: 90)
+
+                    if !workspaceVM.projects.isEmpty {
+                        if settings.leftSidebarExpanded {
+                            HStack(spacing: 0) {
+                                Spacer(minLength: 0)
+                                HStack(spacing: 4) {
+                                    Button(action: toggleAllWorktrees) {
+                                        Image(systemName: "chevron.up.chevron.down")
+                                            .font(.system(size: 10))
+                                            .frame(width: 28, height: 36)
+                                    }
+                                    .buttonStyle(PlainButtonStyle())
+                                    .foregroundColor(.textSecondary)
+
+                                    navButtons
+                                }
+                                .padding(.trailing, 6)
+                            }
+                        } else {
+                            navButtons
+                                .padding(.leading, 4)
+                        }
+                    }
+                }
+                .frame(width: settings.leftSidebarExpanded ? max(settings.leftSidebarWidth - 1, 0) : nil, alignment: .leading)
+
+                Rectangle()
+                    .frame(width: 1)
+                    .foregroundColor(.borderDefault)
 
                 Menu {
                     menuItem("New File", shortcutKey: "newFile") { editorVM.newFile() }
@@ -171,6 +230,13 @@ struct TabBarView: View {
             Rectangle().frame(height: 1).foregroundColor(.borderDefault),
             alignment: .bottom
         )
+    }
+
+    private func toggleAllWorktrees() {
+        let newValue = !allWorktreesExpanded
+        for project in workspaceVM.projects {
+            workspaceVM.setWorktreesExpanded(projectId: project.id, expanded: newValue)
+        }
     }
 
     @ViewBuilder
