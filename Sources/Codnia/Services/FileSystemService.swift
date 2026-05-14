@@ -40,6 +40,10 @@ public final class FileSystemService {
         try FileManager.default.removeItem(atPath: path)
     }
 
+    public func fileExists(atPath path: String) -> Bool {
+        FileManager.default.fileExists(atPath: path)
+    }
+
     public func rename(oldPath: String, newPath: String) throws {
         try FileManager.default.moveItem(atPath: oldPath, toPath: newPath)
     }

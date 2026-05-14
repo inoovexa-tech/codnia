@@ -54,6 +54,7 @@ struct ContentView: View {
                         .environmentObject(appState.tasksVM)
                         .environmentObject(appState.pluginService)
                         .environmentObject(appState.databaseService)
+                        .environmentObject(appState.notesVM)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)

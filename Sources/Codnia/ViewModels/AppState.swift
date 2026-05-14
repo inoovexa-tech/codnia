@@ -13,6 +13,7 @@ public final class AppState: ObservableObject {
     public let pluginService: PluginService
     public let tasksVM: TasksViewModel
     public let databaseService: DatabaseConnectionService
+    public let notesVM: NotesViewModel
     @Published var rightSidebarExpanded: Bool = false
     @Published var rightSidebarTab: RightSidebarTab = .explorer
     @Published var showGlobalSearchModal: Bool = false
@@ -28,6 +29,7 @@ public final class AppState: ObservableObject {
         let sp = SplitViewModel()
         let tv = TasksViewModel(workspace: ws)
         let db = DatabaseConnectionService()
+        let nv = NotesViewModel()
         self.workspaceVM = ws
         self.settings = s
         self.searchVM = sr
@@ -38,6 +40,7 @@ public final class AppState: ObservableObject {
         self.splitVM = sp
         self.tasksVM = tv
         self.databaseService = db
+        self.notesVM = nv
 
         let tasksPlugin = TasksPlugin()
         tasksPlugin.onNewTask = { [weak tv] in
@@ -51,5 +54,14 @@ public final class AppState: ObservableObject {
             ed.newQueryTab(connectionId: db?.connections.first?.id)
         }
         ps.registerSidebarPlugin(dbPlugin)
+
+        let notesPlugin = NotesPlugin()
+        notesPlugin.onNewNote = { [weak nv] in
+            nv?.showNewNoteSheet = true
+        }
+        notesPlugin.onRefresh = { [weak nv] in
+            nv?.refreshNotes()
+        }
+        ps.registerSidebarPlugin(notesPlugin)
     }
 }
