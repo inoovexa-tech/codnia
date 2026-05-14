@@ -202,7 +202,7 @@ struct TasksView: View {
 
     // MARK: - Drag Handle
 
-    private var dragHandle: some View {
+    private func dragHandle(_ task: TaskItem) -> some View {
         VStack(spacing: 1) {
             ForEach(0..<3, id: \.self) { _ in
                 HStack(spacing: 1) {
@@ -221,6 +221,12 @@ struct TasksView: View {
                 NSCursor.pop()
             }
         }
+        .onDrag {
+            draggedTaskId = task.id
+            let desc = task.description.trimmingCharacters(in: .whitespaces)
+            let payload = desc.isEmpty ? task.title : "\(task.title) - \(desc)"
+            return NSItemProvider(object: payload as NSString)
+        }
     }
 
     // MARK: - Task Row
@@ -232,7 +238,7 @@ struct TasksView: View {
 
         return VStack(spacing: 0) {
             HStack(spacing: 4) {
-                dragHandle
+                dragHandle(task)
 
                 Button(action: { handleToggle(task) }) {
                     Image(systemName: isCompleting ? "checkmark.circle.fill" : task.isCompleted ? "checkmark.circle.fill" : "circle")
@@ -256,6 +262,12 @@ struct TasksView: View {
                                 .foregroundColor(isCompleting || task.isCompleted ? .textTertiary : .textPrimary)
                                 .strikethrough(isCompleting || task.isCompleted)
                                 .lineLimit(isExpanded ? nil : 1)
+                                .onDrag {
+                                    draggedTaskId = task.id
+                                    let desc = task.description.trimmingCharacters(in: .whitespaces)
+                                    let payload = desc.isEmpty ? task.title : "\(task.title) - \(desc)"
+                                    return NSItemProvider(object: payload as NSString)
+                                }
 
                             priorityBadge(task.priority)
 
@@ -367,12 +379,6 @@ struct TasksView: View {
         }
         .background(Color.bgPrimary)
         .opacity(isCompleting ? 0.4 : 1)
-        .onDrag {
-            draggedTaskId = task.id
-            let desc = task.description.trimmingCharacters(in: .whitespaces)
-            let payload = desc.isEmpty ? task.title : "\(task.title) - \(desc)"
-            return NSItemProvider(object: payload as NSString)
-        }
         .onDrop(of: [.text], delegate: TaskDropDelegate(
             task: task,
             index: index,
