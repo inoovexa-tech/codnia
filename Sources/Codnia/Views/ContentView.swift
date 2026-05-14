@@ -63,48 +63,8 @@ struct ContentView: View {
                 terminalVM: appState.terminalVM,
                 workspaceVM: appState.workspaceVM,
                 settings: appState.settings,
-                onToggleExplorer: {
-                    if appState.rightSidebarExpanded && appState.rightSidebarTab == .explorer {
-                        appState.rightSidebarExpanded = false
-                    } else {
-                        appState.rightSidebarTab = .explorer
-                        appState.rightSidebarExpanded = true
-                    }
-                },
-                onToggleSearch: {
-                    if appState.rightSidebarExpanded && appState.rightSidebarTab == .search {
-                        appState.rightSidebarExpanded = false
-                        appState.editorVM.showGlobalSearch = false
-                    } else {
-                        appState.rightSidebarTab = .search
-                        appState.rightSidebarExpanded = true
-                        appState.editorVM.showGlobalSearch = true
-                    }
-                },
-                onToggleSourceControl: {
-                    if appState.rightSidebarExpanded && appState.rightSidebarTab == .sourceControl {
-                        appState.rightSidebarExpanded = false
-                    } else {
-                        appState.rightSidebarTab = .sourceControl
-                        appState.rightSidebarExpanded = true
-                    }
-                },
-                onToggleTasks: {
-                    let tasksId = "tasks"
-                    if appState.rightSidebarExpanded && appState.rightSidebarTab == .plugin(tasksId) {
-                        appState.rightSidebarExpanded = false
-                    } else {
-                        appState.rightSidebarTab = .plugin(tasksId)
-                        appState.rightSidebarExpanded = true
-                    }
-                },
                 onToggleRightSidebar: { appState.rightSidebarExpanded.toggle() },
                 isRightSidebarExpanded: appState.rightSidebarExpanded,
-                isExplorerActive: appState.rightSidebarExpanded && appState.rightSidebarTab == .explorer,
-                isSearchActive: appState.rightSidebarExpanded && appState.rightSidebarTab == .search,
-                isSourceControlActive: appState.rightSidebarExpanded && appState.rightSidebarTab == .sourceControl,
-                isTasksActive: appState.rightSidebarExpanded && appState.rightSidebarTab == .plugin("tasks"),
-                isTasksEnabled: appState.pluginService.isActive(pluginId: "tasks"),
                 isDatabaseEnabled: appState.databaseService.hasConnections,
                 onNewSQLQuery: {
                     let connId = appState.databaseService.connections.first?.id
