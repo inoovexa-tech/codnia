@@ -21,20 +21,46 @@ public final class SplitViewModel: ObservableObject {
         let containerId = UUID()
         let newLeaf = SplitLeaf(id: UUID(), tabId: tabId, terminalId: leaf.terminalId, sessionId: existingSessionId)
 
-        let split = SplitPane.split(SplitContainer(
-            id: containerId,
-            direction: direction,
-            first: .leaf(SplitLeaf(id: leaf.id, tabId: leaf.tabId, terminalId: leaf.terminalId, sessionId: existingSessionId)),
-            second: .leaf(newLeaf),
-            proportion: 0.65
-        ))
+        let split: SplitPane
+        let newActiveId: UUID
+        switch direction {
+        case .horizontal:
+            split = .split(SplitContainer(
+                id: containerId,
+                direction: direction,
+                first: .leaf(SplitLeaf(id: leaf.id, tabId: leaf.tabId, terminalId: leaf.terminalId, sessionId: existingSessionId)),
+                second: .leaf(newLeaf),
+                proportion: 0.5
+            ))
+            newActiveId = newLeaf.id
+        case .vertical:
+            split = .split(SplitContainer(
+                id: containerId,
+                direction: direction,
+                first: .leaf(newLeaf),
+                second: .leaf(SplitLeaf(id: leaf.id, tabId: leaf.tabId, terminalId: leaf.terminalId, sessionId: existingSessionId)),
+                proportion: 0.5
+            ))
+            newActiveId = newLeaf.id
+        }
 
         root = root.replacingLeaf(id: paneId, with: split)
-        setContainerProportion(containerId, 0.65)
-        activePaneId = leaf.id
+        setContainerProportion(containerId, 0.5)
+        activePaneId = newActiveId
 
-        if isTerminalType, let sessionId = existingSessionId {
+if isTerminalType, let sessionId = existingSessionId {
+            print("[SPLIT] Registering original leaf \(leaf.id) to session \(sessionId)")
+            TerminalSessionManager.shared.registerView(leaf.id, to: sessionId)
+            print("[SPLIT] Registering new leaf \(newLeaf.id) to session \(sessionId)")
             TerminalSessionManager.shared.registerView(newLeaf.id, to: sessionId)
+            if let session = TerminalSessionManager.shared.getSession(by: sessionId) {
+                print("[SPLIT] Session \(sessionId) has terminal: \(session.terminal != nil)")
+                print("[SPLIT] Session viewIds: \(session.viewIds)")
+            } else {
+                print("[SPLIT] Session \(sessionId) not found!")
+            }
+        } else {
+            print("[SPLIT] Not terminal type or no sessionId. isTerminalType: \(isTerminalType), existingSessionId: \(existingSessionId ?? "nil")")
         }
     }
 

@@ -400,7 +400,19 @@ public final class GitService {
 
     public func removeWorktree(projectPath: String, worktreePath: String, worktreeBranch: String, deleteBranch: Bool) async -> Bool {
         let result = await runGitWithResult(args: ["worktree", "remove", worktreePath], in: projectPath)
-        if deleteBranch && result.success {
+
+        if !result.success {
+            let fileManager = FileManager.default
+            if !fileManager.fileExists(atPath: worktreePath) {
+                if deleteBranch {
+                    _ = await runGitWithResult(args: ["branch", "-D", worktreeBranch], in: projectPath)
+                }
+                return true
+            }
+            return false
+        }
+
+        if deleteBranch {
             _ = await runGitWithResult(args: ["branch", "-D", worktreeBranch], in: projectPath)
         }
         return result.success
