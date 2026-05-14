@@ -41,14 +41,11 @@ public final class EditorViewModel: ObservableObject {
     private var pendingOpenFile: PendingOpenFile?
 
     public func openFileInWorktree(path: String, projectId: String, worktreeId: String, searchQuery: String = "") {
-        searchHighlightQuery = searchQuery
-        searchHighlightRanges = []
-        searchHighlightIndex = 0
-
         if workspace.activeProject?.id == projectId,
            workspace.activeProject?.activeWorktree?.id == worktreeId {
             openFile(path)
             if !searchQuery.isEmpty {
+                searchHighlightQuery = searchQuery
                 computeSearchHighlightRanges(query: searchQuery)
             }
             return
@@ -122,8 +119,9 @@ public final class EditorViewModel: ObservableObject {
                     if let pending = self.pendingOpenFile {
                         self.pendingOpenFile = nil
                         self.openFile(pending.path)
-                        if !self.searchHighlightQuery.isEmpty {
-                            self.computeSearchHighlightRanges(query: self.searchHighlightQuery)
+                        if !pending.searchQuery.isEmpty {
+                            self.searchHighlightQuery = pending.searchQuery
+                            self.computeSearchHighlightRanges(query: pending.searchQuery)
                         }
                     }
                 } else {
@@ -259,6 +257,9 @@ public final class EditorViewModel: ObservableObject {
     }
 
     public func openFile(_ path: String) {
+        searchHighlightQuery = ""
+        searchHighlightRanges = []
+        searchHighlightIndex = 0
         let name = URL(fileURLWithPath: path).lastPathComponent
         let ext = URL(fileURLWithPath: path).pathExtension.lowercased()
 
@@ -316,6 +317,9 @@ public final class EditorViewModel: ObservableObject {
     }
 
     public func activateTab(_ id: String) {
+        searchHighlightQuery = ""
+        searchHighlightRanges = []
+        searchHighlightIndex = 0
         if let currentTabId = activeTabId,
            let currentTabIdx = tabs.firstIndex(where: { $0.id == currentTabId }),
            tabs[currentTabIdx].type == .file || tabs[currentTabIdx].type == .diff {
