@@ -8,25 +8,26 @@ public final class PluginService: ObservableObject {
 
     private var sidebarPluginRegistry: [String: any SidebarPlugin] = [:]
     private let defaults = UserDefaults.standard
-    private let activeIdsKey = "codnia.plugins.activeIds"
+    private let activeIdsKey = "codnia.plugins.activeIds.v2"
+    private let legacyKey = "codnia.plugins.activeIds"
 
     public init() {
-        loadActiveIds()
+        migrateAndLoadActiveIds()
     }
 
     // MARK: - Sidebar Plugin Registry
 
     public func registerSidebarPlugin(_ plugin: any SidebarPlugin) {
         sidebarPluginRegistry[plugin.id] = plugin
+        let wasActivated = activePluginIds.contains(plugin.id)
         if !plugins.contains(where: { $0.id == plugin.id }) {
-            let isActive = activePluginIds.contains(plugin.id)
             plugins.append(Plugin(
                 id: plugin.id,
                 name: plugin.name,
                 version: plugin.version,
                 description: plugin.description,
                 author: plugin.author,
-                isActive: isActive
+                isActive: wasActivated
             ))
         }
     }
@@ -58,20 +59,28 @@ public final class PluginService: ObservableObject {
 
     public func activate(pluginId: String) {
         activePluginIds.insert(pluginId)
-        if let idx = plugins.firstIndex(where: { $0.id == pluginId }) {
-            plugins[idx].isActive = true
+        plugins = plugins.map { plugin in
+            if plugin.id == pluginId {
+                var updated = plugin
+                updated.isActive = true
+                return updated
+            }
+            return plugin
         }
         saveActiveIds()
-        objectWillChange.send()
     }
 
     public func deactivate(pluginId: String) {
         activePluginIds.remove(pluginId)
-        if let idx = plugins.firstIndex(where: { $0.id == pluginId }) {
-            plugins[idx].isActive = false
+        plugins = plugins.map { plugin in
+            if plugin.id == pluginId {
+                var updated = plugin
+                updated.isActive = false
+                return updated
+            }
+            return plugin
         }
         saveActiveIds()
-        objectWillChange.send()
     }
 
     public func isActive(pluginId: String) -> Bool {
@@ -92,9 +101,16 @@ public final class PluginService: ObservableObject {
 
     // MARK: - Persistence
 
-    private func loadActiveIds() {
+    private func migrateAndLoadActiveIds() {
+        if defaults.object(forKey: legacyKey) != nil {
+            defaults.removeObject(forKey: legacyKey)
+        }
+
         if let data = defaults.array(forKey: activeIdsKey) as? [String] {
             activePluginIds = Set(data)
+        } else {
+            activePluginIds = Set(["tasks", "database", "notes"])
+            saveActiveIds()
         }
     }
 
@@ -116,7 +132,7 @@ public struct Plugin: Identifiable, Codable, Equatable {
     public var isActive: Bool
 
     public static func == (lhs: Plugin, rhs: Plugin) -> Bool {
-        lhs.id == rhs.id
+        lhs.id == rhs.id && lhs.name == rhs.name && lhs.isActive == rhs.isActive
     }
 }
 

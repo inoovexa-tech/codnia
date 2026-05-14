@@ -415,6 +415,10 @@ public final class WorkspaceService: ObservableObject {
         fileTree = FileSystemService.shared.listDirectory(path: worktree.path)
     }
 
+    public var currentWorkspacePath: String {
+        activeProject?.activeWorktree?.path ?? ""
+    }
+
     public func toggleSidebar() {
     }
 

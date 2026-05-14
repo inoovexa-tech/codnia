@@ -9,6 +9,7 @@ struct ActivityBarView: View {
     @EnvironmentObject var gitVM: GitViewModel
     @EnvironmentObject var tasksVM: TasksViewModel
     @EnvironmentObject var pluginService: PluginService
+    @EnvironmentObject var notesVM: NotesViewModel
 
     @State private var selectedPath: String? = nil
     @State private var headerAction: FileTreeHeaderAction? = nil
@@ -216,6 +217,8 @@ struct ActivityBarView: View {
                     .environmentObject(tasksVM)
                     .environmentObject(workspaceVM)
                     .environmentObject(pluginService)
+                    .environmentObject(editorVM)
+                    .environmentObject(notesVM)
                     .background(Color.bgPrimary)
                     .frame(maxHeight: .infinity)
             } else {
