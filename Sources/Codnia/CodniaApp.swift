@@ -93,6 +93,9 @@ struct CodniaApp: App {
                 Button("Codex") { appDelegate.appState.editorVM.createTerminalTab(type: .codex) }
                     .keyboardShortcut("x", modifiers: [.command, .shift])
                 Divider()
+                Button("New SQL Query") { appDelegate.appState.editorVM.newQueryTab(connectionId: nil) }
+                    .keyboardShortcut("q", modifiers: [.command, .shift])
+                Divider()
                 Button("Open File...") { appDelegate.appState.editorVM.openFileDialog() }
                     .keyboardShortcut("o", modifiers: .command)
                 Divider()

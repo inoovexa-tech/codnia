@@ -21,6 +21,8 @@ public final class EditorViewModel: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     private var fileContents: [String: String] = [:]
     @Published public var diffData: [String: [DiffLine]] = [:]
+    @Published public var queryResults: [String: QueryPageResult] = [:]
+    @Published public var querySql: [String: String] = [:]
     private var autoSaveTimer: AnyCancellable?
     private var markdownPreviewTabs: Set<String> = []
 
@@ -159,6 +161,12 @@ public final class EditorViewModel: ObservableObject {
             }
         }
 
+        for tab in worktree.fileTabs where tab.type == .queryResult {
+            if querySql[tab.id] == nil {
+                querySql[tab.id] = tab.querySql ?? ""
+            }
+        }
+
         if let activeId = activeTabId,
            let tab = tabs.first(where: { $0.id == activeId }),
            tab.type == .file || tab.type == .diff {
@@ -189,11 +197,15 @@ public final class EditorViewModel: ObservableObject {
             .store(in: &cancellables)
     }
 
-    private func saveTabsToWorktree() {
+    func saveTabsToWorktree() {
         guard let project = workspace.activeProject,
               let worktreeId = project.activeWorktreeId,
               let projIdx = workspace.projects.firstIndex(where: { $0.id == project.id }),
               let wtIdx = workspace.projects[projIdx].worktrees.firstIndex(where: { $0.id == worktreeId }) else { return }
+
+        for i in tabs.indices where tabs[i].type == .queryResult {
+            tabs[i].querySql = querySql[tabs[i].id]
+        }
 
         workspace.projects[projIdx].worktrees[wtIdx].fileTabs = tabs
         workspace.projects[projIdx].worktrees[wtIdx].terminalTabs = terminal.tabs
@@ -316,6 +328,22 @@ public final class EditorViewModel: ObservableObject {
         openFile(entry.path)
     }
 
+    // MARK: - Query Result Tabs
+
+    public func newQueryTab(connectionId: String?) {
+        let tab = Tab(name: "SQL Query", type: .queryResult, queryConnectionId: connectionId)
+        tabs.append(tab)
+        activeTabId = tab.id
+        querySql[tab.id] = ""
+        saveTabsToWorktree()
+    }
+
+    public func setQueryResult(_ result: QueryPageResult, forTab tabId: String) {
+        var updated = queryResults
+        updated[tabId] = result
+        queryResults = updated
+    }
+
     public func activateTab(_ id: String) {
         searchHighlightQuery = ""
         searchHighlightRanges = []
@@ -335,6 +363,9 @@ public final class EditorViewModel: ObservableObject {
                     editorContent = ""
                 }
                 currentLanguage = "Diff"
+            } else if tab.type == .queryResult {
+                editorContent = ""
+                currentLanguage = "SQL"
             } else {
                 if let savedContent = fileContents[tab.id] {
                     editorContent = savedContent
@@ -355,6 +386,8 @@ public final class EditorViewModel: ObservableObject {
             tabs.removeAll { $0.id == id }
             fileContents.removeValue(forKey: id)
             diffData.removeValue(forKey: id)
+            queryResults.removeValue(forKey: id)
+            querySql.removeValue(forKey: id)
 
             if activeTabId == id {
                 activeTabId = tabs.last?.id ?? terminal.tabs.last?.id
