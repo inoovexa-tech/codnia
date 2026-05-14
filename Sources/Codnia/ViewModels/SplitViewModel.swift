@@ -12,12 +12,19 @@ public final class SplitViewModel: ObservableObject {
                           editorVM: EditorViewModel, terminalVM: TerminalViewModel) {
         guard let leaf = root.findLeaf(id: paneId), let tabId = leaf.tabId else { return }
 
+        let someTabs = editorVM.tabs + terminalVM.tabs
+        guard let tab = someTabs.first(where: { $0.id == tabId }) else { return }
+
+        let isTerminalType = tab.type == .terminal || tab.type == .opencode || tab.type == .claude || tab.type == .codex
+        let existingSessionId = leaf.sessionId
+
         let containerId = UUID()
-        let newLeaf = SplitLeaf(id: UUID(), tabId: tabId)
+        let newLeaf = SplitLeaf(id: UUID(), tabId: tabId, terminalId: leaf.terminalId, sessionId: existingSessionId)
+
         let split = SplitPane.split(SplitContainer(
             id: containerId,
             direction: direction,
-            first: .leaf(SplitLeaf(id: leaf.id, tabId: leaf.tabId)),
+            first: .leaf(SplitLeaf(id: leaf.id, tabId: leaf.tabId, terminalId: leaf.terminalId, sessionId: existingSessionId)),
             second: .leaf(newLeaf),
             proportion: 0.65
         ))
@@ -25,6 +32,10 @@ public final class SplitViewModel: ObservableObject {
         root = root.replacingLeaf(id: paneId, with: split)
         setContainerProportion(containerId, 0.65)
         activePaneId = leaf.id
+
+        if isTerminalType, let sessionId = existingSessionId {
+            TerminalSessionManager.shared.registerView(newLeaf.id, to: sessionId)
+        }
     }
 
     public func splitActivePane(_ direction: SplitDirection,
@@ -39,13 +50,13 @@ public final class SplitViewModel: ObservableObject {
 
         let saveTabId = closingLeaf.tabId
         let someTabs = editorVM.tabs + terminalVM.tabs
-        let closingTab: Tab? = saveTabId.flatMap { id in someTabs.first(where: { $0.id == id }) }
+        let closingTab: Tab? = saveTabId.flatMap { id in someTabs.first { $0.id == id } }
         let isTerminalType = closingTab.map {
             $0.type == .terminal || $0.type == .opencode || $0.type == .claude || $0.type == .codex
         } ?? false
 
         if isTerminalType {
-            terminalVM.killTerminalInstance(key: paneId.uuidString)
+            TerminalSessionManager.shared.unregisterView(paneId)
         }
 
         if let newRoot = root.removingLeaf(id: paneId) {
@@ -80,6 +91,15 @@ public final class SplitViewModel: ObservableObject {
                 editorVM.activeTabId = tid
             }
         }
+
+        redrawAllTerminals()
+    }
+
+    private func redrawAllTerminals() {
+        for (_, session) in TerminalSessionManager.shared.getAll() {
+            session.terminal?.needsDisplay = true
+            session.terminal?.displayIfNeeded()
+        }
     }
 
     public func setContainerProportion(_ id: UUID, _ proportion: CGFloat) {
@@ -88,12 +108,32 @@ public final class SplitViewModel: ObservableObject {
         }
     }
 
-    public func setActivePaneTab(_ tabId: String?) {
+    public func setActivePaneTab(_ tabId: String?, terminalVM: TerminalViewModel? = nil) {
         let paneId = activePaneId ?? root.allLeafIds.first
         guard let id = paneId else { return }
         activePaneId = id
         root.mutateLeaf(id: id) { leaf in
             leaf.tabId = tabId
+            if let tid = tabId, let vm = terminalVM {
+                leaf.terminalId = vm.tabs.first { $0.id == tid }?.terminalId
+            }
+            // For terminal tabs, set sessionId from tab.terminalId (which IS the session id)
+            if let tid = tabId, let vm = terminalVM, let tab = vm.tabs.first(where: { $0.id == tid }),
+               let terminalId = tab.terminalId {
+                let isTerminal = tab.type == .terminal || tab.type == .opencode || tab.type == .claude || tab.type == .codex
+                if isTerminal {
+                    leaf.sessionId = terminalId
+                    TerminalSessionManager.shared.registerView(leaf.id, to: terminalId)
+                }
+            }
+        }
+    }
+
+    public func setActivePaneSession(_ sessionId: String?, viewId: UUID? = nil) {
+        let paneId = viewId ?? activePaneId ?? root.allLeafIds.first
+        guard let id = paneId else { return }
+        root.mutateLeaf(id: id) { leaf in
+            leaf.sessionId = sessionId
         }
     }
 }

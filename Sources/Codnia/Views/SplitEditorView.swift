@@ -38,7 +38,7 @@ struct SplitEditorView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.bgPrimary)
         .onChange(of: editorVM.activeTabId) { newTabId in
-            splitVM.setActivePaneTab(newTabId)
+            splitVM.setActivePaneTab(newTabId, terminalVM: terminalVM)
         }
         .onAppear {
             let ids = splitVM.root.allLeafIds

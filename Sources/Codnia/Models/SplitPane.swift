@@ -8,11 +8,17 @@ public enum SplitDirection: String, Codable, Equatable {
 public struct SplitLeaf: Codable, Equatable {
     public var id: UUID
     public var tabId: String?
+    public var terminalId: String?
+    public var sessionId: String?
 
-    public init(id: UUID = UUID(), tabId: String? = nil) {
+    public init(id: UUID = UUID(), tabId: String? = nil, terminalId: String? = nil, sessionId: String? = nil) {
         self.id = id
         self.tabId = tabId
+        self.terminalId = terminalId
+        self.sessionId = sessionId
     }
+
+    public var viewId: UUID { id }
 }
 
 public struct SplitContainer: Codable, Equatable {

@@ -41,7 +41,7 @@ public final class TerminalViewModel: ObservableObject {
 
     private func checkProcessStatesIfNeeded() async {
         for (termId, worktreeId) in terminalWorktreeMap {
-            guard let terminal = TerminalManager.shared.get(for: termId) else { continue }
+            guard let session = TerminalSessionManager.shared.getSession(by: termId), let terminal = session.terminal else { continue }
 
             if !terminal.process.running {
                 service.setProcessRunning(id: termId, running: false)
@@ -51,7 +51,7 @@ public final class TerminalViewModel: ObservableObject {
                 terminalProcessingStates.removeValue(forKey: termId)
                 terminalWorktreeMap.removeValue(forKey: termId)
             } else {
-                let isActive = TerminalManager.shared.isActivelyProcessing(for: termId)
+                let isActive = TerminalSessionManager.shared.isActivelyProcessing(for: termId)
                 let wasActive = terminalProcessingStates[termId] ?? false
 
                 if isActive != wasActive {
@@ -68,17 +68,53 @@ public final class TerminalViewModel: ObservableObject {
         let cwd = workspace?.activeProject?.activeWorktree?.path ?? NSHomeDirectory()
         let worktreeId = workspace?.activeProject?.activeWorktreeId
         let tabName = name ?? self.tabName(for: type)
-        let instance = service.createTerminal(cwd: cwd, worktreeId: worktreeId)
+
+        var env = ProcessInfo.processInfo.environment
+        if env["HOME"] == nil { env["HOME"] = NSHomeDirectory() }
+        if env["SHELL"] == nil { env["SHELL"] = "/bin/zsh" }
+        if env["TERM"] == nil { env["TERM"] = "xterm-256color" }
+        if env["LANG"] == nil { env["LANG"] = "en_US.UTF-8" }
+
+        let (executable, args): (String, [String])
+        switch type {
+        case .opencode:
+            executable = "/bin/zsh"
+            args = ["-l", "-c", "opencode"]
+        case .claude:
+            executable = "/bin/zsh"
+            args = ["-l", "-c", "claude"]
+        case .codex:
+            executable = "/bin/zsh"
+            args = ["-l", "-c", "codex"]
+        default:
+            executable = "/bin/zsh"
+            args = ["-l"]
+        }
+
+        let session = TerminalSessionManager.shared.createSession(
+            cwd: cwd,
+            environment: env,
+            executable: executable,
+            arguments: args,
+            tabType: type
+        )
+
+        if let wtId = worktreeId {
+            terminalWorktreeMap[session.id] = wtId
+        }
+
+        let instance = service.createTerminal(cwd: cwd, worktreeId: worktreeId, sessionId: session.id)
         if let wtId = worktreeId {
             terminalWorktreeMap[instance.id] = wtId
         }
+
         let tab = Tab(
             id: UUID().uuidString,
             path: instance.cwd,
             name: tabName,
             language: "",
             type: type,
-            terminalId: instance.id
+            terminalId: session.id
         )
         tabs.append(tab)
         activeId = tab.id
@@ -103,9 +139,8 @@ public final class TerminalViewModel: ObservableObject {
                 terminalProcessingStates.removeValue(forKey: termId)
                 terminalWorktreeMap.removeValue(forKey: termId)
             }
-            TerminalManager.shared.terminateProcess(for: termId)
+            TerminalSessionManager.shared.destroySession(id: termId)
             service.kill(id: termId)
-            TerminalManager.shared.remove(for: termId)
         }
         tabs.removeAll { $0.id == tab.id }
         if activeId == tab.id {
@@ -121,8 +156,8 @@ public final class TerminalViewModel: ObservableObject {
     }
 
     public func killTerminalInstance(key: String) {
+        TerminalSessionManager.shared.destroySession(id: key)
         service.kill(id: key)
-        TerminalManager.shared.remove(for: key)
     }
 
     private func tabName(for type: TabType) -> String {
@@ -162,8 +197,9 @@ public final class TerminalViewModel: ObservableObject {
     public func clearAllTerminals() {
         for tab in tabs {
             if let termId = tab.terminalId {
-                TerminalManager.shared.remove(for: termId)
+                TerminalSessionManager.shared.destroySession(id: termId)
             }
         }
+        TerminalSessionManager.shared.clearAll()
     }
 }

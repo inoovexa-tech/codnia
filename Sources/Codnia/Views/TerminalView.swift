@@ -155,7 +155,7 @@ class TerminalEventMonitor {
 
     private func handle(_ event: NSEvent) -> Bool {
         let mouseLocation = NSEvent.mouseLocation
-        for terminal in TerminalManager.shared.getAllTerminals() {
+        for terminal in TerminalSessionManager.shared.getAllTerminals() {
             guard !terminal.isHidden else { continue }
             guard let window = terminal.window else { continue }
             let windowPoint = window.convertPoint(fromScreen: mouseLocation)

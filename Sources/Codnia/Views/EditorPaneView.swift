@@ -62,7 +62,7 @@ struct EditorPaneView: View {
                 }
 
             case .terminal, .opencode, .claude, .codex:
-                TerminalSingleView(terminalId: leaf.id.uuidString, fontSize: settings.terminalFontSize)
+                TerminalSingleView(viewId: leaf.id, fontSize: settings.terminalFontSize)
 
             case .diff:
                 if let diffLines = editorVM.diffData[tab.id] {
