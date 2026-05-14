@@ -7,6 +7,7 @@ struct SourceControlView: View {
     @State private var newBranchName: String = ""
     @State private var showBranchDialog: Bool = false
     @State private var mergeBranchName: String = ""
+    @State private var selectedMergeBranch: String = ""
     @State private var showMergeDialog: Bool = false
     @State private var deleteWorktreeAfterMerge = false
     @State private var hoveredFileId: String? = nil
@@ -449,19 +450,38 @@ struct SourceControlView: View {
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundColor(.textPrimary)
 
-            HStack(spacing: 6) {
-                TextField("Branch name", text: $mergeBranchName)
-                    .textFieldStyle(PlainTextFieldStyle())
-                    .font(.system(size: 12))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Color(bgHex: "#1c1c1c"))
-                    .cornerRadius(4)
+            Menu {
+                ForEach(gitVM.branches, id: \.self) { branch in
+                    if branch != gitVM.currentBranch {
+                        Button(branch) {
+                            selectedMergeBranch = branch
+                        }
+                    }
+                }
+            } label: {
+                HStack {
+                    Text(selectedMergeBranch.isEmpty ? "Select a branch" : selectedMergeBranch)
+                        .font(.system(size: 12))
+                        .foregroundColor(selectedMergeBranch.isEmpty ? .textTertiary : .textPrimary)
+                    Spacer()
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 9))
+                        .foregroundColor(.textTertiary)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Color(bgHex: "#1c1c1c"))
+                .cornerRadius(4)
+            }
+            .menuStyle(.borderlessButton)
+            .fixedSize(horizontal: false, vertical: true)
 
+            HStack(spacing: 6) {
+                Spacer()
                 Button {
-                    let name = mergeBranchName.trimmingCharacters(in: .whitespacesAndNewlines)
-                    guard !name.isEmpty else { return }
-                    gitVM.merge(branch: name, deleteWorktreeAfterMerge: deleteWorktreeAfterMerge)
+                    guard !selectedMergeBranch.isEmpty else { return }
+                    gitVM.merge(branch: selectedMergeBranch, deleteWorktreeAfterMerge: deleteWorktreeAfterMerge)
+                    selectedMergeBranch = ""
                     mergeBranchName = ""
                     showMergeDialog = false
                     deleteWorktreeAfterMerge = false
@@ -470,7 +490,8 @@ struct SourceControlView: View {
                         .font(.system(size: 11, weight: .medium))
                 }
                 .buttonStyle(PlainButtonStyle())
-                .foregroundColor(.accentBlue)
+                .foregroundColor(selectedMergeBranch.isEmpty ? .textTertiary : .accentBlue)
+                .disabled(selectedMergeBranch.isEmpty)
             }
 
             Toggle("Delete worktree after merge", isOn: $deleteWorktreeAfterMerge)
