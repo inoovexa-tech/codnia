@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 struct GlobalSearchModalView: View {
     @Binding var isPresented: Bool
@@ -11,10 +12,16 @@ struct GlobalSearchModalView: View {
     @State private var caseSensitive: Bool = false
     @State private var searchMode: SearchMode = .all
     @State private var searchTask: Task<Void, Never>?
+    @State private var selectedResultId: String?
+    @State private var eventMonitor: Any?
     @FocusState private var isSearchFieldFocused: Bool
 
+    private var flatResults: [SearchResult] {
+        searchVM.globalResults
+    }
+
     var body: some View {
-        ZStack {
+        ZStack(alignment: .top) {
             Color.black.opacity(0.4)
                 .edgesIgnoringSafeArea(.all)
                 .onTapGesture { isPresented = false }
@@ -24,27 +31,31 @@ struct GlobalSearchModalView: View {
                     searchHeader
                     modeBar
                 }
-                .background(Color.bgSecondary)
-                .cornerRadius(12)
 
-                if !query.isEmpty {
-                    resultsList
-                        .frame(maxHeight: 440)
-                        .background(Color.bgPrimary)
+                if !query.isEmpty && !flatResults.isEmpty {
+                    resultsListWithScroll
+                } else if searchVM.isGlobalSearching {
+                    resultsLoading
+                } else if !query.isEmpty && flatResults.isEmpty {
+                    resultsEmpty
                 }
             }
             .frame(width: 640)
-            .background(Color.bgPrimary)
+            .background(Color.bgTertiary)
             .cornerRadius(12)
             .shadow(color: .black.opacity(0.4), radius: 24, x: 0, y: 8)
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
                     .stroke(Color.borderLight, lineWidth: 1)
             )
-            .padding(.top, 60)
+            .padding(.top, 8)
         }
         .onAppear {
             isSearchFieldFocused = true
+            setupEventMonitor()
+        }
+        .onDisappear {
+            removeEventMonitor()
         }
         .onExitCommand {
             if query.isEmpty {
@@ -54,6 +65,63 @@ struct GlobalSearchModalView: View {
                 searchVM.globalResults = []
             }
         }
+        .onChange(of: flatResults.count) { count in
+            if count > 0 {
+                selectedResultId = flatResults[0].id
+            } else {
+                selectedResultId = nil
+            }
+        }
+    }
+
+    // MARK: - Event Monitor (keyboard navigation)
+
+    private func setupEventMonitor() {
+        eventMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { [self] event in
+            self.handleKeyEvent(event)
+        }
+    }
+
+    private func removeEventMonitor() {
+        if let monitor = eventMonitor {
+            NSEvent.removeMonitor(monitor)
+            eventMonitor = nil
+        }
+    }
+
+    private func handleKeyEvent(_ event: NSEvent) -> NSEvent? {
+        if flatResults.isEmpty {
+            return event
+        }
+
+        switch event.keyCode {
+        case 125:
+            moveSelection(down: true)
+            return nil
+        case 126:
+            moveSelection(down: false)
+            return nil
+        case 36:
+            if let id = selectedResultId,
+               let result = flatResults.first(where: { $0.id == id }) {
+                selectResult(result)
+            }
+            return nil
+        default:
+            return event
+        }
+    }
+
+    private func moveSelection(down: Bool) {
+        guard !flatResults.isEmpty else { return }
+        let currentIndex = flatResults.firstIndex(where: { $0.id == selectedResultId }) ?? -1
+        let newIndex: Int
+        if down {
+            newIndex = min(currentIndex + 1, flatResults.count - 1)
+        } else {
+            newIndex = currentIndex <= 0 ? 0 : currentIndex - 1
+        }
+        selectedResultId = flatResults[newIndex].id
     }
 
     // MARK: - Search Header
@@ -74,6 +142,7 @@ struct GlobalSearchModalView: View {
                     searchTask?.cancel()
                     if newValue.isEmpty {
                         searchVM.globalResults = []
+                        selectedResultId = nil
                     } else {
                         searchTask = Task {
                             try? await Task.sleep(nanoseconds: 300_000_000)
@@ -84,7 +153,7 @@ struct GlobalSearchModalView: View {
                 }
 
             if !query.isEmpty {
-                Button(action: { query = ""; searchVM.globalResults = [] }) {
+                Button(action: { query = ""; searchVM.globalResults = []; selectedResultId = nil }) {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundColor(.textTertiary)
                         .font(.system(size: 13))
@@ -134,52 +203,65 @@ struct GlobalSearchModalView: View {
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
-            .background(isOn.wrappedValue ? Color.accentBlue.opacity(0.15) : Color.bgTertiary)
+            .background(isOn.wrappedValue ? Color.accentBlue.opacity(0.15) : Color.bgHover)
             .foregroundColor(isOn.wrappedValue ? .accentBlue : .textSecondary)
             .cornerRadius(4)
         }
         .buttonStyle(PlainButtonStyle())
     }
 
-    // MARK: - Results
+    // MARK: - Results States
 
-    @ViewBuilder
-    private var resultsList: some View {
-        if searchVM.isGlobalSearching {
-            VStack(spacing: 8) {
-                Spacer()
-                ProgressView()
-                    .scaleEffect(0.8)
-                    .progressViewStyle(CircularProgressViewStyle(tint: .textSecondary))
-                Spacer()
-            }
-            .frame(maxWidth: .infinity)
-        } else if searchVM.globalResults.isEmpty {
-            VStack(spacing: 8) {
-                Spacer()
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 28))
-                    .foregroundColor(.textTertiary)
-                Text("No matches")
-                    .font(.system(size: 13))
-                    .foregroundColor(.textSecondary)
-                Spacer()
-            }
-            .frame(maxWidth: .infinity)
-        } else {
-            let groups = buildGroups(from: searchVM.globalResults)
-            ScrollView {
-                LazyVStack(spacing: 0) {
-                    ForEach(groups) { projectGroup in
-                        ProjectResultSection(
-                            projectGroup: projectGroup,
-                            onSelect: { result in
-                                selectResult(result)
-                            }
-                        )
-                    }
+    private var resultsLoading: some View {
+        VStack(spacing: 8) {
+            Spacer().frame(height: 80)
+            ProgressView()
+                .scaleEffect(0.8)
+                .progressViewStyle(CircularProgressViewStyle(tint: .textSecondary))
+            Spacer().frame(height: 80)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var resultsEmpty: some View {
+        VStack(spacing: 8) {
+            Spacer().frame(height: 80)
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 28))
+                .foregroundColor(.textTertiary)
+            Text("No matches")
+                .font(.system(size: 13))
+                .foregroundColor(.textSecondary)
+            Spacer().frame(height: 80)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    // MARK: - Results with Scroll
+
+    private var resultsListWithScroll: some View {
+        let groups = buildGroups(from: flatResults)
+        return ScrollViewReader { proxy in
+            List {
+                ForEach(groups) { projectGroup in
+                    ProjectResultSectionList(
+                        projectGroup: projectGroup,
+                        allResults: flatResults,
+                        selectedResultId: selectedResultId,
+                        query: query,
+                        onSelect: { result in selectResult(result) }
+                    )
                 }
             }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .scrollIndicators(.visible)
+            .onChange(of: selectedResultId) { id in
+                if let id = id {
+                    proxy.scrollTo(id, anchor: .center)
+                }
+            }
+            .frame(maxHeight: 440)
         }
     }
 
@@ -202,10 +284,13 @@ struct GlobalSearchModalView: View {
         isPresented = false
         query = ""
         searchVM.globalResults = []
+        selectedResultId = nil
+        removeEventMonitor()
         editorVM.openFileInWorktree(
             path: result.filePath,
             projectId: result.projectId,
-            worktreeId: result.worktreeId
+            worktreeId: result.worktreeId,
+            searchQuery: query
         )
     }
 
@@ -249,30 +334,44 @@ struct WorktreeGroup: Identifiable {
     let results: [SearchResult]
 }
 
-// MARK: - Project Result Section
+// MARK: - Project Result Section (List variant)
 
-struct ProjectResultSection: View {
+struct ProjectResultSectionList: View {
     let projectGroup: ProjectGroup
+    let allResults: [SearchResult]
+    let selectedResultId: String?
+    let query: String
     let onSelect: (SearchResult) -> Void
+    @State private var isExpanded: Bool = true
 
     var body: some View {
-        VStack(spacing: 0) {
-            projectHeader
-                .padding(.horizontal, 14)
-                .padding(.vertical, 6)
-
-            ForEach(projectGroup.worktreeGroups) { worktreeGroup in
-                WorktreeResultSection(
-                    worktreeGroup: worktreeGroup,
-                    projectName: projectGroup.projectName,
-                    onSelect: onSelect
-                )
+        Section {
+            if isExpanded {
+                ForEach(projectGroup.worktreeGroups) { worktreeGroup in
+                    WorktreeResultSectionList(
+                        worktreeGroup: worktreeGroup,
+                        allResults: allResults,
+                        selectedResultId: selectedResultId,
+                        query: query,
+                        onSelect: onSelect
+                    )
+                }
             }
+        } header: {
+            Button(action: { isExpanded.toggle() }) {
+                projectHeader
+            }
+            .buttonStyle(PlainButtonStyle())
         }
     }
 
     private var projectHeader: some View {
         HStack(spacing: 6) {
+            Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                .font(.system(size: 9, weight: .medium))
+                .foregroundColor(.textTertiary)
+                .frame(width: 12)
+
             Image(systemName: "folder.fill")
                 .font(.system(size: 11))
                 .foregroundColor(.accentBlue)
@@ -284,31 +383,36 @@ struct ProjectResultSection: View {
                 .font(.system(size: 10))
                 .foregroundColor(.textTertiary)
         }
+        .padding(.vertical, 4)
+        .contentShape(Rectangle())
     }
 }
 
-// MARK: - Worktree Result Section
+// MARK: - Worktree Result Section (List variant)
 
-struct WorktreeResultSection: View {
+struct WorktreeResultSectionList: View {
     let worktreeGroup: WorktreeGroup
-    let projectName: String
+    let allResults: [SearchResult]
+    let selectedResultId: String?
+    let query: String
     let onSelect: (SearchResult) -> Void
 
     var body: some View {
-        VStack(spacing: 0) {
-            worktreeHeader
-                .padding(.leading, 28)
-                .padding(.trailing, 14)
-                .padding(.vertical, 3)
-
+        Section {
             ForEach(worktreeGroup.results) { result in
+                let isSelected = result.id == selectedResultId
                 GlobalSearchResultRow(
                     result: result,
+                    isSelected: isSelected,
+                    query: query,
                     onSelect: { onSelect(result) }
                 )
-                Divider()
-                    .background(Color.borderDefault)
+                .id(result.id)
+                .listRowInsets(EdgeInsets())
+                .listRowSeparator(.visible)
             }
+        } header: {
+            worktreeHeader
         }
     }
 
@@ -322,6 +426,8 @@ struct WorktreeResultSection: View {
                 .foregroundColor(.textTertiary)
             Spacer()
         }
+        .padding(.leading, 14)
+        .padding(.vertical, 2)
     }
 }
 
@@ -329,6 +435,8 @@ struct WorktreeResultSection: View {
 
 struct GlobalSearchResultRow: View {
     let result: SearchResult
+    let isSelected: Bool
+    let query: String
     let onSelect: () -> Void
 
     var body: some View {
@@ -353,9 +461,8 @@ struct GlobalSearchResultRow: View {
                     }
 
                     if !result.matchingLine.isEmpty {
-                        Text(result.matchingLine)
+                        Text(highlightedText(result.matchingLine, query: query))
                             .font(.system(size: 11))
-                            .foregroundColor(.textSecondary)
                             .lineLimit(1)
                             .truncationMode(.tail)
                     }
@@ -368,12 +475,41 @@ struct GlobalSearchResultRow: View {
                 }
 
                 Spacer()
+
+                if isSelected {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(.accentBlue)
+                }
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 5)
             .frame(maxWidth: .infinity, alignment: .leading)
+            .background(isSelected ? Color.accentBlue.opacity(0.12) : Color.clear)
             .contentShape(Rectangle())
         }
         .buttonStyle(PlainButtonStyle())
+        .id(result.id)
     }
+}
+
+private func highlightedText(_ text: String, query: String) -> AttributedString {
+    var attributed = AttributedString(text)
+    guard !query.isEmpty else { return attributed }
+
+    let nsText = text as NSString
+    var searchRange = NSRange(location: 0, length: nsText.length)
+
+    while searchRange.location < nsText.length {
+        let found = nsText.range(of: query, options: .caseInsensitive, range: searchRange)
+        if found.location == NSNotFound { break }
+        if let attrRange = Range(found, in: attributed) {
+            attributed[attrRange].foregroundColor = .accentBlue
+            attributed[attrRange].font = .system(size: 11, weight: .bold)
+        }
+        searchRange.location = found.location + found.length
+        searchRange.length = nsText.length - searchRange.location
+    }
+
+    return attributed
 }

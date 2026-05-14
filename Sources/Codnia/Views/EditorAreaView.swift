@@ -45,14 +45,16 @@ struct EditorAreaView: View {
                     MarkdownPreviewView(content: editorVM.editorContent)
                         .allowsHitTesting(!isTerminalVisible)
                 } else {
+                    let activeSearchResults = editorVM.searchHighlightQuery.isEmpty ? inFileSearchResults : editorVM.searchHighlightRanges
+                    let activeSearchIndex = editorVM.searchHighlightQuery.isEmpty ? inFileSearchCurrentIndex : editorVM.searchHighlightIndex
                     CodeEditorView(
                         content: $editorVM.editorContent,
                         language: editorVM.currentLanguage,
                         onChange: {
                             editorVM.markModified(tabId: activeTab.id)
                         },
-                        searchResults: inFileSearchResults,
-                        currentSearchIndex: inFileSearchCurrentIndex
+                        searchResults: activeSearchResults,
+                        currentSearchIndex: activeSearchIndex
                     )
                     .environmentObject(settings)
                     .allowsHitTesting(!isTerminalVisible)

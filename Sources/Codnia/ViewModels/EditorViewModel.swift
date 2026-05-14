@@ -10,6 +10,9 @@ public final class EditorViewModel: ObservableObject {
     @Published public var editorContent: String = ""
     @Published public var showGlobalSearch: Bool = false
     @Published public var showInFileSearch: Bool = false
+    @Published public var searchHighlightQuery: String = ""
+    @Published public var searchHighlightRanges: [NSRange] = []
+    @Published public var searchHighlightIndex: Int = 0
 
     private let workspace: WorkspaceService
     private let settings: SettingsService
@@ -33,19 +36,45 @@ public final class EditorViewModel: ObservableObject {
         let path: String
         let projectId: String
         let worktreeId: String
+        let searchQuery: String
     }
     private var pendingOpenFile: PendingOpenFile?
 
-    public func openFileInWorktree(path: String, projectId: String, worktreeId: String) {
+    public func openFileInWorktree(path: String, projectId: String, worktreeId: String, searchQuery: String = "") {
+        searchHighlightQuery = searchQuery
+        searchHighlightRanges = []
+        searchHighlightIndex = 0
+
         if workspace.activeProject?.id == projectId,
            workspace.activeProject?.activeWorktree?.id == worktreeId {
             openFile(path)
+            if !searchQuery.isEmpty {
+                computeSearchHighlightRanges(query: searchQuery)
+            }
             return
         }
 
         saveTabsToWorktree()
-        pendingOpenFile = PendingOpenFile(path: path, projectId: projectId, worktreeId: worktreeId)
+        pendingOpenFile = PendingOpenFile(path: path, projectId: projectId, worktreeId: worktreeId, searchQuery: searchQuery)
         workspace.setActiveWorktree(projectId: projectId, worktreeId: worktreeId)
+    }
+
+    private func computeSearchHighlightRanges(query: String) {
+        guard !query.isEmpty else {
+            searchHighlightRanges = []
+            return
+        }
+        let content = editorContent as NSString
+        var ranges: [NSRange] = []
+        var searchStart = 0
+        while searchStart < content.length {
+            let range = content.range(of: query, options: .caseInsensitive, range: NSRange(location: searchStart, length: content.length - searchStart))
+            if range.location == NSNotFound { break }
+            ranges.append(range)
+            searchStart = range.location + range.length
+        }
+        searchHighlightRanges = ranges
+        searchHighlightIndex = 0
     }
 
     public var showMarkdownPreview: Bool {
@@ -87,12 +116,15 @@ public final class EditorViewModel: ObservableObject {
                     self.workspace.saveProjects()
                 }
 
-                if let activeProject = project, let worktree = activeProject.activeWorktree {
+                    if let activeProject = project, let worktree = activeProject.activeWorktree {
                     previousWorktreeId = worktree.id
                     self.loadTabs(from: worktree)
                     if let pending = self.pendingOpenFile {
                         self.pendingOpenFile = nil
                         self.openFile(pending.path)
+                        if !self.searchHighlightQuery.isEmpty {
+                            self.computeSearchHighlightRanges(query: self.searchHighlightQuery)
+                        }
                     }
                 } else {
                     self.tabs = []
