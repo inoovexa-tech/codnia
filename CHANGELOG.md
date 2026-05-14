@@ -1,3 +1,13 @@
+## [0.10.1] — 2026-05-14
+
+### Added
+- Git merge branch selector dropdown with native branch list
+
+### Fixed
+- Make add-task input expand vertically for long text
+- Add visible active project indicator with blue leading bar and icon overlay in sidebar
+- Restore task content in drag payload broken by reorder feature
+
 ## [0.10.0] — 2026-05-14
 
 ### Added
