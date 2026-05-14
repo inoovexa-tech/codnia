@@ -71,7 +71,11 @@ struct QueryResultTabView: View {
         .onAppear {
             loadSavedSQL()
             autoSelectConnection()
-            executeIfPreloaded()
+            if editorVM.queryResults[tabId] == nil,
+               !sql.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+               selectedConnectionId != nil {
+                executeQuery()
+            }
             editorHeight = computedEditorHeight
         }
         .frame(maxHeight: .infinity)
@@ -244,11 +248,7 @@ struct QueryResultTabView: View {
             editorVM.setQueryResult(result, forTab: tabId)
             editorVM.activeTabId = tabId
 
-            if let tabIdx = editorVM.tabs.firstIndex(where: { $0.id == tabId }) {
-                if result.error == nil {
-                    editorVM.tabs[tabIdx].name = result.columns.first ?? "Query"
-                }
-            }
+            // Tab name intentionally left unchanged to preserve user-given name
 
             isExecuting = false
         }

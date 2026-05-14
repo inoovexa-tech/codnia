@@ -458,7 +458,7 @@ struct DatabaseExplorerView: View {
         editorVM.activeTabId = tab.id
         editorVM.saveTabsToWorktree()
 
-        Task {
+        Task { @MainActor in
             let result = await databaseService.execute(configID: configID, sql: sql)
             editorVM.queryResults[tab.id] = result
         }
