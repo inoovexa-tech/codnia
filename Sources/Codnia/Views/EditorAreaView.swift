@@ -171,13 +171,11 @@ struct EditorAreaView: View {
                 .allowsHitTesting(!isTerminalVisible)
             }
 
-            // Terminals - only rendered when a terminal tab is active; sessions stay alive via TerminalManager singleton
-            if isTerminalVisible {
-                TerminalView(
-                    tabs: $terminalVM.tabs,
-                    activeTabId: $editorVM.activeTabId
-                )
-            }
+            // Terminals - always rendered but visibility managed internally
+            TerminalView(
+                tabs: $terminalVM.tabs,
+                activeTabId: $editorVM.activeTabId
+            )
 
             if editorVM.currentTab == nil {
                 EmptyStateView()

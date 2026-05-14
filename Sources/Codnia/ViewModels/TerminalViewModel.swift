@@ -153,4 +153,12 @@ public final class TerminalViewModel: ObservableObject {
         tabs.insert(tab, at: adjustedDestination)
         saveTabsToProject()
     }
+
+    public func clearAllTerminals() {
+        for tab in tabs {
+            if let termId = tab.terminalId {
+                TerminalManager.shared.remove(for: termId)
+            }
+        }
+    }
 }

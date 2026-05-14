@@ -41,9 +41,26 @@ class TerminalManager {
         guard let terminal = terminals[id] else { return }
         terminal.superview?.subviews.forEach { $0.isHidden = true }
         terminal.isHidden = false
+        terminal.frame = terminal.superview?.bounds ?? terminal.frame
         if let window = terminal.window ?? NSApplication.shared.keyWindow ?? NSApplication.shared.mainWindow {
             _ = window.makeFirstResponder(terminal)
         }
+    }
+
+    func hideAll() {
+        for terminal in terminals.values {
+            terminal.isHidden = true
+        }
+    }
+
+    func reset() {
+        for (_, terminal) in terminals {
+            terminal.isHidden = true
+        }
+    }
+
+    func getAll() -> [String: CodniaTerminalView] {
+        terminals
     }
 
     func getAllTerminals() -> [CodniaTerminalView] {
@@ -168,6 +185,26 @@ class TerminalEventMonitor {
 class TerminalContainerView: NSView {
     override var acceptsFirstResponder: Bool { true }
 
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        if window != nil {
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(windowDidBecomeKey),
+                name: NSWindow.didBecomeKeyNotification,
+                object: window
+            )
+        }
+    }
+
+    @objc private func windowDidBecomeKey(_ notification: Notification) {
+        if let activeTerminal = subviews.first(where: { !$0.isHidden && $0 is LocalProcessTerminalView }) as? CodniaTerminalView {
+            DispatchQueue.main.async {
+                _ = self.window?.makeFirstResponder(activeTerminal)
+            }
+        }
+    }
+
     override func hitTest(_ point: NSPoint) -> NSView? {
         let activeTerminal = subviews.first(where: { !$0.isHidden && $0 is LocalProcessTerminalView })
         if let terminal = activeTerminal, terminal.frame.contains(point) {
@@ -191,6 +228,10 @@ class TerminalContainerManager {
         container = newContainer
         return newContainer
     }
+
+    func clearContainer() {
+        container = nil
+    }
 }
 
 struct TerminalHostView: NSViewRepresentable {
@@ -210,22 +251,36 @@ struct TerminalHostView: NSViewRepresentable {
     }
 
     func updateNSView(_ nsView: NSView, context: Context) {
+        let hasActiveTerminal = tabs.first(where: { $0.id == activeTabId })?.terminalId != nil
+
         for tab in tabs {
             guard let termId = tab.terminalId else { continue }
             if let existing = TerminalManager.shared.get(for: termId) {
                 if existing.superview == nil {
                     nsView.addSubview(existing)
-                    existing.frame = nsView.bounds
-                    existing.autoresizingMask = [.width, .height]
                 }
+                existing.frame = nsView.bounds
+                existing.autoresizingMask = [.width, .height]
             } else {
                 createTerminal(cwd: tab.path, fontSize: fontSize, type: tab.type, terminalId: termId, in: nsView)
             }
         }
 
-        if let activeTab = tabs.first(where: { $0.id == activeTabId }),
+        if hasActiveTerminal, let activeTab = tabs.first(where: { $0.id == activeTabId }),
            let termId = activeTab.terminalId {
-            TerminalManager.shared.show(id: termId)
+            for (id, terminal) in TerminalManager.shared.getAll() {
+                terminal.isHidden = (id != termId)
+            }
+            if let terminal = TerminalManager.shared.get(for: termId) {
+                terminal.frame = nsView.bounds
+                if let window = terminal.window ?? NSApplication.shared.keyWindow ?? NSApplication.shared.mainWindow {
+                    _ = window.makeFirstResponder(terminal)
+                }
+            }
+        } else {
+            for (_, terminal) in TerminalManager.shared.getAll() {
+                terminal.isHidden = true
+            }
         }
     }
 
