@@ -2,7 +2,7 @@
 
 A modern, lightweight desktop IDE built with Swift and SwiftUI for macOS.
 
-![Version](https://img.shields.io/badge/version-0.10.1-blue)
+![Version](https://img.shields.io/badge/version-0.10.2-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platform](https://img.shields.io/badge/platform-macOS%2013%2B-lightgrey)
 
@@ -121,18 +121,43 @@ codnia/
 └── README.md
 ```
 
-## Contributing
+## Creating a New Version
 
-Contributions are welcome! Please follow this process:
+Follow these steps to create a new release:
 
-1. **Create an Issue** - Report bugs, errors, or suggest new features.
-2. **Issue Approval** - The issue will be reviewed and approved for development.
-3. **Development** - Develop the fix/feature in a dedicated branch.
-4. **Pull Request** - Submit your changes to the `main` branch.
-5. **PR Approval** - The pull request will be reviewed and approved.
-6. **Release** - Once approved, the changes will be included in the next version.
+1. **Retrieve the latest commits** since the last version:
+   ```bash
+   git log v<last-version>..HEAD --oneline
+   ```
 
-> **Note for maintainers:** When cutting a new release, always update the version badge in this README and keep the changelog in `CHANGELOG.md` up to date.
+2. **Determine release type**:
+   - **Patch** (`0.x.1`): Bug fixes only
+   - **Minor** (`0.x.0`): New features (no breaking changes)
+   - **Major** (`0.0.0`): Breaking changes
+
+3. **Build and generate the DMG** with icon:
+   ```bash
+   swift build --configuration release
+   mkdir -p /tmp/Codnia-v<version>.dmg/Codnia.app/Contents/{MacOS,Resources}
+   cp .build/release/Codnia /tmp/Codnia-v<version>.dmg/Codnia.app/Contents/MacOS/
+   cp .build/release/Codnia_Codnia.bundle/icon.icns /tmp/Codnia-v<version>.dmg/Codnia.app/Contents/Resources/
+   cp Info.plist /tmp/Codnia-v<version>.dmg/Codnia.app/Contents/
+   hdiutil create -volname "Codnia v<version>" -srcfolder /tmp/Codnia-v<version>.dmg -format UDZO Codnia-v<version>.dmg
+   ```
+
+4. **Update README and CHANGELOG**:
+   - Update version badge in README.md
+   - Add new version section in CHANGELOG.md with commit descriptions
+
+5. **Create tag and release**:
+   ```bash
+   git tag -a v<version> -m "Release v<version>"
+   git push origin v<version>
+   gh release create v<version> --title "v<version>" --notes "<changelog内容>"
+   gh release upload v<version> Codnia-v<version>.dmg --clobber
+   ```
+
+> **Note:** Always keep the changelog in `CHANGELOG.md` up to date.
 
 ## License
 
