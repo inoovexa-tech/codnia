@@ -11,8 +11,8 @@ public final class TasksViewModel: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
 
     private var tasksFilePath: String? {
-        guard let worktree = workspace.activeProject?.activeWorktree else { return nil }
-        return (worktree.path as NSString).appendingPathComponent(".codnia/tasks.json")
+        guard let project = workspace.activeProject else { return nil }
+        return (project.path as NSString).appendingPathComponent(".codnia/tasks.json")
     }
 
     public var allTags: [String] {
