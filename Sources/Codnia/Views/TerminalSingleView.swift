@@ -19,6 +19,16 @@ class SessionViewportView: NSView {
 
     private var _terminal: CodniaTerminalView?
 
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        registerForDraggedTypes([.fileURL, .string])
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        registerForDraggedTypes([.fileURL, .string])
+    }
+
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
         guard window != nil else { return }
@@ -60,6 +70,7 @@ class SessionViewportView: NSView {
         terminal.isHidden = false
 
         TerminalSessionManager.shared.attachTerminal(terminal, to: session.id)
+        TerminalManager.shared.set(terminal, for: session.id)
 
         terminal.startProcess(
             executable: session.executable,
@@ -89,6 +100,31 @@ class SessionViewportView: NSView {
         TerminalSessionManager.shared.registerView(viewId, to: session.id)
         sessionId = session.id
         createAndAttachTerminal(to: session, fontSize: fontSize)
+    }
+
+    override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+        return .copy
+    }
+
+    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        let pasteboard = sender.draggingPasteboard
+
+        var textToPaste: String?
+
+        if let fileURLs = pasteboard.readObjects(forClasses: [NSURL.self], options: nil) as? [URL], let first = fileURLs.first {
+            textToPaste = first.path
+        } else if let strings = pasteboard.readObjects(forClasses: [NSString.self], options: nil) as? [String], let first = strings.first {
+            textToPaste = first
+        }
+
+        guard let text = textToPaste, !text.isEmpty else { return false }
+
+        DispatchQueue.main.async {
+            if let sessionId = self.sessionId {
+                TerminalManager.shared.paste(id: sessionId, text: text)
+            }
+        }
+        return true
     }
 }
 

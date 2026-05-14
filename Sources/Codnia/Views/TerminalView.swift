@@ -9,6 +9,14 @@ class CodniaTerminalView: LocalProcessTerminalView {
         super.dataReceived(slice: slice)
         onDataReceived?(slice.count)
     }
+
+    override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+        return super.draggingEntered(sender)
+    }
+
+    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        return super.performDragOperation(sender)
+    }
 }
 
 @MainActor
@@ -91,31 +99,7 @@ class TerminalManager {
 
     func paste(id: String, text: String) {
         guard let terminal = terminals[id] else { return }
-        let pasteboard = NSPasteboard.general
-        let oldContents = pasteboard.string(forType: .string)
-        pasteboard.clearContents()
-        pasteboard.setString(text, forType: .string)
-        terminal.selectAll(nil)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-            if let window = NSApplication.shared.keyWindow {
-                _ = window.makeFirstResponder(terminal)
-            }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                let source = CGEventSource(stateID: .combinedSessionState)
-                let keyDown = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: true)
-                keyDown?.flags = .maskCommand
-                keyDown?.post(tap: .cgSessionEventTap)
-                let keyUp = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: false)
-                keyUp?.flags = .maskCommand
-                keyUp?.post(tap: .cgSessionEventTap)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    if let old = oldContents {
-                        pasteboard.clearContents()
-                        pasteboard.setString(old, forType: .string)
-                    }
-                }
-            }
-        }
+        terminal.feed(byteArray: ArraySlice([UInt8](text.utf8)))
     }
 
     private func recordBytes(for id: String, bytes: Int) {
@@ -185,6 +169,28 @@ class TerminalEventMonitor {
 class TerminalContainerView: NSView {
     override var acceptsFirstResponder: Bool { true }
 
+    private var isDraggingOver = false {
+        didSet { needsDisplay = true }
+    }
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        registerForDraggedTypes([.fileURL, .string])
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        registerForDraggedTypes([.fileURL, .string])
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        super.draw(dirtyRect)
+        if isDraggingOver {
+            NSColor(Color.accentBlue).withAlphaComponent(0.2).setFill()
+            dirtyRect.fill()
+        }
+    }
+
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
         if window != nil {
@@ -211,6 +217,48 @@ class TerminalContainerView: NSView {
             return terminal
         }
         return super.hitTest(point)
+    }
+
+    override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+        isDraggingOver = true
+        return .copy
+    }
+
+    override func draggingExited(_ sender: NSDraggingInfo?) {
+        isDraggingOver = false
+    }
+
+    override func prepareForDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        return true
+    }
+
+    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        isDraggingOver = false
+        let pasteboard = sender.draggingPasteboard
+
+        var textToPaste: String?
+
+        if let fileURLs = pasteboard.readObjects(forClasses: [NSURL.self], options: nil) as? [URL], let first = fileURLs.first {
+            textToPaste = first.path
+        } else if let strings = pasteboard.readObjects(forClasses: [NSString.self], options: nil) as? [String], let first = strings.first {
+            textToPaste = first
+        }
+
+        guard let text = textToPaste, !text.isEmpty else { return false }
+
+        DispatchQueue.main.async {
+            for (id, terminal) in TerminalManager.shared.getAll() {
+                if !terminal.isHidden {
+                    TerminalManager.shared.paste(id: id, text: text)
+                    break
+                }
+            }
+        }
+        return true
+    }
+
+    override func concludeDragOperation(_ sender: NSDraggingInfo?) {
+        isDraggingOver = false
     }
 }
 
@@ -328,6 +376,9 @@ struct TerminalHostView: NSViewRepresentable {
     }
 }
 
+import SwiftUI
+import UniformTypeIdentifiers
+
 struct TerminalView: View {
     @Binding var tabs: [Tab]
     @Binding var activeTabId: String?
@@ -341,5 +392,36 @@ struct TerminalView: View {
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.bgPrimary)
+        .onDrop(of: [.text, .fileURL], isTargeted: nil) { providers in
+            for provider in providers {
+                if provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
+                    provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { item, _ in
+                        var path: String?
+                        if let url = item as? URL {
+                            path = url.path
+                        } else if let data = item as? Data, let url = URL(dataRepresentation: data, relativeTo: nil) {
+                            path = url.path
+                        }
+                        guard let text = path else { return }
+                        DispatchQueue.main.async {
+                            self.pasteToActiveTerminal(text: text)
+                        }
+                    }
+                } else {
+                    provider.loadObject(ofClass: NSString.self) { object, _ in
+                        guard let text = object as? String else { return }
+                        DispatchQueue.main.async {
+                            self.pasteToActiveTerminal(text: text)
+                        }
+                    }
+                }
+            }
+            return true
+        }
+    }
+
+    private func pasteToActiveTerminal(text: String) {
+        guard let termId = tabs.first(where: { $0.id == activeTabId })?.terminalId else { return }
+        TerminalManager.shared.paste(id: termId, text: text)
     }
 }

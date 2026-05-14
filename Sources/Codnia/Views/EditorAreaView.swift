@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct EditorAreaView: View {
     @EnvironmentObject var editorVM: EditorViewModel
@@ -177,17 +178,26 @@ struct EditorAreaView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.bgPrimary)
-        .onDrop(of: [.text], isTargeted: nil) { providers in
+        .onDrop(of: [.text, .fileURL], isTargeted: nil) { providers in
             for provider in providers {
-                _ = provider.loadObject(ofClass: NSString.self) { object, _ in
-                    guard let text = object as? String else { return }
-                    DispatchQueue.main.async {
-                        if let tab = self.editorVM.currentTab {
-                            if let termId = tab.terminalId, self.terminalVM.tabs.contains(where: { $0.id == tab.id }) {
-                                TerminalManager.shared.paste(id: termId, text: text)
-                            } else {
-                                self.editorVM.newFile(name: text, content: text)
-                            }
+                if provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
+                    provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { item, _ in
+                        var path: String?
+                        if let url = item as? URL {
+                            path = url.path
+                        } else if let data = item as? Data, let url = URL(dataRepresentation: data, relativeTo: nil) {
+                            path = url.path
+                        }
+                        guard let text = path else { return }
+                        DispatchQueue.main.async {
+                            self.pasteToTerminal(text: text)
+                        }
+                    }
+                } else {
+                    provider.loadObject(ofClass: NSString.self) { object, _ in
+                        guard let text = object as? String else { return }
+                        DispatchQueue.main.async {
+                            self.pasteToTerminal(text: text)
                         }
                     }
                 }
@@ -222,6 +232,15 @@ struct EditorAreaView: View {
             }
         }
         .help(editorVM.showMarkdownPreview ? "Show code editor" : "Show markdown preview")
+    }
+
+    private func pasteToTerminal(text: String) {
+        guard let tab = self.editorVM.currentTab else { return }
+        if let termId = tab.terminalId, self.terminalVM.tabs.contains(where: { $0.id == tab.id }) {
+            TerminalManager.shared.paste(id: termId, text: text)
+        } else {
+            self.editorVM.newFile(name: text, content: text)
+        }
     }
 
     private func performInFileSearch() {
