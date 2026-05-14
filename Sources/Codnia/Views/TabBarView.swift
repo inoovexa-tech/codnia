@@ -190,7 +190,7 @@ struct TabBarView: View {
                     }
                 }
 
-HStack(spacing: 4) {
+                HStack(spacing: 4) {
                     if editorVM.currentTab != nil {
                         Button(action: {
                             splitVM.splitActivePane(.horizontal, editorVM: editorVM, terminalVM: terminalVM)
@@ -213,33 +213,13 @@ HStack(spacing: 4) {
                         .help("Split top/bottom")
                     }
 
-                    Button(action: onToggleExplorer) {
-                        Image(systemName: "folder")
-                            .font(.system(size: 13))
-                            .foregroundColor(isExplorerActive ? .textPrimary : .textSecondary)
-                    }
-                    .buttonStyle(PlainButtonStyle())
-
-                    Button(action: onToggleSearch) {
-                        Image(systemName: "magnifyingglass")
-                            .font(.system(size: 13))
-                            .foregroundColor(isSearchActive ? .textPrimary : .textSecondary)
-                    }
-                    .buttonStyle(PlainButtonStyle())
-
-                    Button(action: onToggleSourceControl) {
-                        Image(systemName: "arrow.triangle.branch")
-                            .font(.system(size: 13))
-                            .foregroundColor(isSourceControlActive ? .textPrimary : .textSecondary)
-                    }
-                    .buttonStyle(PlainButtonStyle())
-
                     Button(action: onToggleRightSidebar) {
                         Image(systemName: isRightSidebarExpanded ? "sidebar.right" : "sidebar.left")
                             .font(.system(size: 13))
                             .foregroundColor(isRightSidebarExpanded ? .textPrimary : .textSecondary)
                     }
                     .buttonStyle(PlainButtonStyle())
+                    .padding(.trailing, 8)
                 }
                 .buttonStyle(PlainButtonStyle())
             }
