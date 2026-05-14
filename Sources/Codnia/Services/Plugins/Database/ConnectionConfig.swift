@@ -1,5 +1,9 @@
 import Foundation
 
+public enum DatabaseType: String, Codable, Sendable, CaseIterable {
+    case postgres
+}
+
 public struct ConnectionConfig: Identifiable, Codable, Equatable, Sendable {
     public let id: String
     public var name: String
