@@ -16,6 +16,8 @@ struct TabBarView: View {
     var isSourceControlActive: Bool
     var isTasksActive: Bool
     var isTasksEnabled: Bool
+    var isDatabaseEnabled: Bool = false
+    var onNewSQLQuery: () -> Void = {}
 
     @State private var draggedTabId: String?
     @State private var showTabDropdown = false
@@ -35,6 +37,10 @@ struct TabBarView: View {
                     menuItem("New File", shortcutKey: "newFile") { editorVM.newFile() }
                     menuItem("New Terminal", shortcutKey: "newTerminal") { editorVM.createTerminalTab(type: .terminal) }
                     Divider()
+                    if isDatabaseEnabled {
+                        menuItem("New SQL Query", shortcutKey: "newSQLQuery") { onNewSQLQuery() }
+                        Divider()
+                    }
                     menuItem("OpenCode", shortcutKey: "openOpenCode") { editorVM.createTerminalTab(type: .opencode) }
                     menuItem("Claude Code", shortcutKey: "openClaude") { editorVM.createTerminalTab(type: .claude) }
                     menuItem("Codex", shortcutKey: "openCodex") { editorVM.createTerminalTab(type: .codex) }
@@ -209,6 +215,10 @@ struct TabButton: View {
                     Image(systemName: "plus.forwardslash.minus")
                         .foregroundColor(iconColor)
                         .font(.system(size: 13))
+                } else if tab.type == .queryResult {
+                    Image(systemName: "tablecells")
+                        .foregroundColor(iconColor)
+                        .font(.system(size: 13))
                 } else {
                     terminalIcon(for: tab.type)
                         .foregroundColor(iconColor)
@@ -273,6 +283,7 @@ struct TabButton: View {
         case .file: return fileColor(for: tab.name)
         case .image: return .accentBlue
         case .pdf: return .accentRed
+        case .queryResult: return .accentBlue
         }
     }
 

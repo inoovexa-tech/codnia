@@ -4,6 +4,7 @@ struct EditorAreaView: View {
     @EnvironmentObject var editorVM: EditorViewModel
     @EnvironmentObject var terminalVM: TerminalViewModel
     @EnvironmentObject var settings: SettingsService
+    @EnvironmentObject var databaseService: DatabaseConnectionService
 
     private var isTerminalVisible: Bool {
         guard let activeTab = editorVM.currentTab else { return false }
@@ -36,6 +37,12 @@ struct EditorAreaView: View {
             // PDF preview
             if let activeTab = editorVM.currentTab, activeTab.type == .pdf {
                 PDFPreviewView(path: activeTab.path)
+                    .allowsHitTesting(!isTerminalVisible)
+            }
+
+            // Query result tab
+            if let activeTab = editorVM.currentTab, activeTab.type == .queryResult {
+                QueryResultTabView(tabId: activeTab.id)
                     .allowsHitTesting(!isTerminalVisible)
             }
 

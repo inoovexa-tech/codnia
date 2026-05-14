@@ -28,6 +28,7 @@ struct ContentView: View {
                         .environmentObject(appState.editorVM)
                         .environmentObject(appState.terminalVM)
                         .environmentObject(settings)
+                        .environmentObject(appState.databaseService)
 
                     if appState.rightSidebarExpanded {
                         ResizableDivider(
@@ -51,6 +52,7 @@ struct ContentView: View {
                         .environmentObject(appState.gitVM)
                         .environmentObject(appState.tasksVM)
                         .environmentObject(appState.pluginService)
+                        .environmentObject(appState.databaseService)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -100,7 +102,12 @@ struct ContentView: View {
                 isSearchActive: appState.rightSidebarExpanded && appState.rightSidebarTab == .search,
                 isSourceControlActive: appState.rightSidebarExpanded && appState.rightSidebarTab == .sourceControl,
                 isTasksActive: appState.rightSidebarExpanded && appState.rightSidebarTab == .plugin("tasks"),
-                isTasksEnabled: appState.pluginService.isActive(pluginId: "tasks")
+                isTasksEnabled: appState.pluginService.isActive(pluginId: "tasks"),
+                isDatabaseEnabled: appState.databaseService.hasConnections,
+                onNewSQLQuery: {
+                    let connId = appState.databaseService.connections.first?.id
+                    appState.editorVM.newQueryTab(connectionId: connId)
+                }
             )
             .frame(height: 36)
         }

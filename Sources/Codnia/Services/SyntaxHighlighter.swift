@@ -189,15 +189,27 @@ final class SyntaxHighlighter {
             ["true", "false", "yes", "no", "on", "off", "null", "~"]
 
         case "sql":
-            ["SELECT", "FROM", "WHERE", "INSERT", "INTO", "VALUES", "UPDATE",
-             "SET", "DELETE", "CREATE", "TABLE", "ALTER", "DROP", "INDEX",
-             "VIEW", "JOIN", "INNER", "LEFT", "RIGHT", "OUTER", "CROSS",
-             "ON", "AND", "OR", "NOT", "IN", "LIKE", "BETWEEN", "IS", "NULL",
-             "AS", "ORDER", "BY", "GROUP", "HAVING", "LIMIT", "OFFSET",
-             "DISTINCT", "UNION", "ALL", "EXISTS", "CASE", "WHEN", "THEN",
-             "ELSE", "END", "ASC", "DESC", "PRIMARY", "KEY", "FOREIGN",
-             "REFERENCES", "CONSTRAINT", "DEFAULT", "CHECK", "UNIQUE",
-             "BEGIN", "COMMIT", "ROLLBACK", "GRANT", "REVOKE"]
+            ["SELECT", "select", "FROM", "from", "WHERE", "where",
+             "INSERT", "insert", "INTO", "into", "VALUES", "values",
+             "UPDATE", "update", "SET", "set", "DELETE", "delete",
+             "CREATE", "create", "TABLE", "table", "ALTER", "alter",
+             "DROP", "drop", "INDEX", "index", "VIEW", "view",
+             "JOIN", "join", "INNER", "inner", "LEFT", "left",
+             "RIGHT", "right", "OUTER", "outer", "CROSS", "cross",
+             "ON", "on", "AND", "and", "OR", "or", "NOT", "not",
+             "IN", "in", "LIKE", "like", "BETWEEN", "between",
+             "IS", "is", "NULL", "null", "AS", "as",
+             "ORDER", "order", "BY", "by", "GROUP", "group",
+             "HAVING", "having", "LIMIT", "limit", "OFFSET", "offset",
+             "DISTINCT", "distinct", "UNION", "union", "ALL", "all",
+             "EXISTS", "exists", "CASE", "case", "WHEN", "when",
+             "THEN", "then", "ELSE", "else", "END", "end",
+             "ASC", "asc", "DESC", "desc", "PRIMARY", "primary",
+             "KEY", "key", "FOREIGN", "foreign", "REFERENCES", "references",
+             "CONSTRAINT", "constraint", "DEFAULT", "default",
+             "CHECK", "check", "UNIQUE", "unique",
+             "BEGIN", "begin", "COMMIT", "commit", "ROLLBACK", "rollback",
+             "GRANT", "grant", "REVOKE", "revoke"]
 
         default:
             []

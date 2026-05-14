@@ -63,6 +63,7 @@ public final class KeyboardShortcutsService: ObservableObject {
             "openOpenCode": "Cmd+Shift+O",
             "openClaude": "Cmd+Shift+C",
             "openCodex": "Cmd+Shift+X",
+            "newSQLQuery": "Cmd+Shift+Q",
         ]
     }
 }
