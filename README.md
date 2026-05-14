@@ -2,7 +2,7 @@
 
 A modern, lightweight desktop IDE built with Swift and SwiftUI for macOS.
 
-![Version](https://img.shields.io/badge/version-0.10.2-blue)
+![Version](https://img.shields.io/badge/version-0.10.3-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platform](https://img.shields.io/badge/platform-macOS%2013%2B-lightgrey)
 
@@ -135,14 +135,16 @@ Follow these steps to create a new release:
    - **Minor** (`0.x.0`): New features (no breaking changes)
    - **Major** (`0.0.0`): Breaking changes
 
-3. **Build and generate the DMG** with icon:
+3. **Build and generate the DMG** with icon and Applications symlink:
    ```bash
    swift build --configuration release
-   mkdir -p /tmp/Codnia-v<version>.dmg/Codnia.app/Contents/{MacOS,Resources}
-   cp .build/release/Codnia /tmp/Codnia-v<version>.dmg/Codnia.app/Contents/MacOS/
-   cp .build/release/Codnia_Codnia.bundle/icon.icns /tmp/Codnia-v<version>.dmg/Codnia.app/Contents/Resources/
-   cp Info.plist /tmp/Codnia-v<version>.dmg/Codnia.app/Contents/
-   hdiutil create -volname "Codnia v<version>" -srcfolder /tmp/Codnia-v<version>.dmg -format UDZO Codnia-v<version>.dmg
+   mkdir -p /tmp/Codnia-v&lt;version&gt;/Codnia.app/Contents/{MacOS,Resources}
+   cp .build/release/Codnia /tmp/Codnia-v&lt;version&gt;/Codnia.app/Contents/MacOS/
+   cp .build/release/Codnia_Codnia.bundle/icon.icns /tmp/Codnia-v&lt;version&gt;/Codnia.app/Contents/Resources/
+   cp Info.plist /tmp/Codnia-v&lt;version&gt;/Codnia.app/Contents/
+   # Create Applications symlink for drag-and-drop installation
+   ln -s /Applications /tmp/Codnia-v&lt;version&gt;/Applications
+   hdiutil create -volname "Codnia v&lt;version&gt;" -srcfolder /tmp/Codnia-v&lt;version&gt; -format UDZO Codnia-v&lt;version&gt;.dmg
    ```
 
 4. **Update README and CHANGELOG**:

@@ -4,6 +4,7 @@ import AppKit
 struct TabBarView: View {
     @ObservedObject var editorVM: EditorViewModel
     @ObservedObject var terminalVM: TerminalViewModel
+    @ObservedObject var splitVM: SplitViewModel
     @ObservedObject var workspaceVM: WorkspaceService
     @ObservedObject var settings: SettingsService
 
@@ -11,6 +12,10 @@ struct TabBarView: View {
     var isRightSidebarExpanded: Bool
     var isDatabaseEnabled: Bool = false
     var onNewSQLQuery: () -> Void = {}
+
+    var onToggleExplorer: () -> Void = {}
+    var onToggleSearch: () -> Void = {}
+    var onToggleSourceControl: () -> Void = {}
 
     @State private var draggedTabId: String?
     @State private var showTabDropdown = false
@@ -22,6 +27,18 @@ struct TabBarView: View {
 
     private var allWorktreesExpanded: Bool {
         !workspaceVM.projects.isEmpty && workspaceVM.projects.allSatisfy(\.isWorktreesExpanded)
+    }
+
+    private var isExplorerActive: Bool {
+        false
+    }
+
+    private var isSearchActive: Bool {
+        false
+    }
+
+    private var isSourceControlActive: Bool {
+        false
     }
 
     @ViewBuilder
@@ -173,11 +190,36 @@ struct TabBarView: View {
                     }
                 }
 
-                Button(action: onToggleRightSidebar) {
-                    Image(systemName: isRightSidebarExpanded ? "sidebar.right" : "sidebar.left")
-                        .font(.system(size: 13))
-                        .padding(.horizontal, 8)
-                        .foregroundColor(isRightSidebarExpanded ? .textPrimary : .textSecondary)
+                HStack(spacing: 4) {
+                    if editorVM.currentTab != nil {
+                        Button(action: {
+                            splitVM.splitActivePane(.horizontal, editorVM: editorVM, terminalVM: terminalVM)
+                        }) {
+                            Image(systemName: "square.split.2x1")
+                                .font(.system(size: 12))
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .foregroundColor(.textSecondary)
+                        .help("Split left/right")
+
+                        Button(action: {
+                            splitVM.splitActivePane(.vertical, editorVM: editorVM, terminalVM: terminalVM)
+                        }) {
+                            Image(systemName: "square.split.1x2")
+                                .font(.system(size: 12))
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .foregroundColor(.textSecondary)
+                        .help("Split top/bottom")
+                    }
+
+                    Button(action: onToggleRightSidebar) {
+                        Image(systemName: isRightSidebarExpanded ? "sidebar.right" : "sidebar.left")
+                            .font(.system(size: 13))
+                            .foregroundColor(isRightSidebarExpanded ? .textPrimary : .textSecondary)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .padding(.trailing, 8)
                 }
                 .buttonStyle(PlainButtonStyle())
             }

@@ -16,7 +16,7 @@ public final class SearchService: ObservableObject {
     @Published public var globalResults: [SearchResult] = []
     @Published public var isGlobalSearching: Bool = false
 
-    private static let textExtensions: Set<String> = [
+    private nonisolated static let textExtensions: Set<String> = [
         "txt", "md", "swift", "rs", "ts", "tsx", "js", "jsx",
         "json", "html", "css", "scss", "yaml", "yml", "toml",
         "sh", "py", "go", "c", "cpp", "h", "java"
@@ -49,33 +49,31 @@ public final class SearchService: ObservableObject {
         isGlobalSearching = true
         globalResults = []
 
-        Task.detached { [isRegex, caseSensitive, mode] in
+        Task { [isRegex, caseSensitive, mode, projects] in
             var allResults: [SearchResult] = []
             let contentLimit = mode == .all ? maxResults / 2 : maxResults
 
             if mode == .content || mode == .all {
                 if isRegex {
-                    allResults += self.searchAllContentRegex(projects: projects, query: query, maxResults: contentLimit, caseSensitive: caseSensitive)
+                    allResults += await self.searchAllContentRegex(projects: projects, query: query, maxResults: contentLimit, caseSensitive: caseSensitive)
                 } else {
-                    allResults += self.searchAllContentSimple(projects: projects, query: query, maxResults: contentLimit)
+                    allResults += await self.searchAllContentSimple(projects: projects, query: query, maxResults: contentLimit)
                 }
             }
 
             if mode == .filename || mode == .all {
                 let filenameLimit = mode == .all ? maxResults - allResults.count : maxResults
                 if filenameLimit > 0 {
-                    allResults += self.searchAllFileNames(projects: projects, query: query, maxResults: filenameLimit, caseSensitive: caseSensitive)
+                    allResults += await self.searchAllFileNames(projects: projects, query: query, maxResults: filenameLimit, caseSensitive: caseSensitive)
                 }
             }
 
-            await MainActor.run {
-                self.globalResults = allResults
-                self.isGlobalSearching = false
-            }
+            self.globalResults = allResults
+            self.isGlobalSearching = false
         }
     }
 
-    private nonisolated func searchAllContentSimple(projects: [Project], query: String, maxResults: Int) -> [SearchResult] {
+    private func searchAllContentSimple(projects: [Project], query: String, maxResults: Int) -> [SearchResult] {
         var results: [SearchResult] = []
         let fm = FileManager.default
         let textExts = Self.textExtensions
@@ -115,7 +113,7 @@ public final class SearchService: ObservableObject {
         return results
     }
 
-    private nonisolated func searchAllContentRegex(projects: [Project], query: String, maxResults: Int, caseSensitive: Bool) -> [SearchResult] {
+    private func searchAllContentRegex(projects: [Project], query: String, maxResults: Int, caseSensitive: Bool) -> [SearchResult] {
         let options: NSRegularExpression.Options = caseSensitive ? [] : .caseInsensitive
         guard let regex = try? NSRegularExpression(pattern: query, options: options) else {
             return []
@@ -161,7 +159,7 @@ public final class SearchService: ObservableObject {
         return results
     }
 
-    private nonisolated func searchAllFileNames(projects: [Project], query: String, maxResults: Int, caseSensitive: Bool) -> [SearchResult] {
+    private func searchAllFileNames(projects: [Project], query: String, maxResults: Int, caseSensitive: Bool) -> [SearchResult] {
         var results: [SearchResult] = []
         let fm = FileManager.default
 

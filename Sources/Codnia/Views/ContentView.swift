@@ -23,8 +23,9 @@ struct ContentView: View {
                         .environmentObject(appState.gitVM)
                         .environmentObject(settings)
 
-                    EditorAreaView()
+                    SplitEditorView()
                         .background(Color.bgPrimary)
+                        .environmentObject(appState.splitVM)
                         .environmentObject(appState.editorVM)
                         .environmentObject(appState.terminalVM)
                         .environmentObject(settings)
@@ -62,6 +63,7 @@ struct ContentView: View {
             TabBarView(
                 editorVM: appState.editorVM,
                 terminalVM: appState.terminalVM,
+                splitVM: appState.splitVM,
                 workspaceVM: appState.workspaceVM,
                 settings: appState.settings,
                 onToggleRightSidebar: { appState.rightSidebarExpanded.toggle() },
@@ -70,6 +72,32 @@ struct ContentView: View {
                 onNewSQLQuery: {
                     let connId = appState.databaseService.connections.first?.id
                     appState.editorVM.newQueryTab(connectionId: connId)
+                },
+                onToggleExplorer: {
+                    if appState.rightSidebarExpanded && appState.rightSidebarTab == .explorer {
+                        appState.rightSidebarExpanded = false
+                    } else {
+                        appState.rightSidebarTab = .explorer
+                        appState.rightSidebarExpanded = true
+                    }
+                },
+                onToggleSearch: {
+                    if appState.rightSidebarExpanded && appState.rightSidebarTab == .search {
+                        appState.rightSidebarExpanded = false
+                        appState.editorVM.showGlobalSearch = false
+                    } else {
+                        appState.rightSidebarTab = .search
+                        appState.rightSidebarExpanded = true
+                        appState.editorVM.showGlobalSearch = true
+                    }
+                },
+                onToggleSourceControl: {
+                    if appState.rightSidebarExpanded && appState.rightSidebarTab == .sourceControl {
+                        appState.rightSidebarExpanded = false
+                    } else {
+                        appState.rightSidebarTab = .sourceControl
+                        appState.rightSidebarExpanded = true
+                    }
                 }
             )
             .frame(height: 36)

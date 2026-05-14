@@ -1,3 +1,13 @@
+## [0.10.3] — 2026-05-14
+
+### Fixed
+- Restore editor, query, and preview visibility while preserving terminal session state
+
+## [0.10.2] — 2026-05-14
+
+### Changed
+- Add version release workflow documentation to README
+
 ## [0.10.1] — 2026-05-14
 
 ### Added

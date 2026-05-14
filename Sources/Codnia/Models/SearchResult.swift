@@ -1,6 +1,6 @@
 import Foundation
 
-public struct SearchResult: Identifiable, Equatable {
+public struct SearchResult: Identifiable, Equatable, Sendable {
     public let id: String
     public let filePath: String
     public let matchingLine: String
@@ -35,7 +35,7 @@ public struct SearchResult: Identifiable, Equatable {
     }
 }
 
-public enum SearchMatchType: String, Codable, Equatable {
+public enum SearchMatchType: String, Codable, Equatable, Sendable {
     case content
     case filename
 }

@@ -9,6 +9,7 @@ public final class AppState: ObservableObject {
     public let terminalVM: TerminalViewModel
     public let editorVM: EditorViewModel
     public let gitVM: GitViewModel
+    public let splitVM: SplitViewModel
     public let pluginService: PluginService
     public let tasksVM: TasksViewModel
     public let databaseService: DatabaseConnectionService
@@ -25,10 +26,9 @@ public final class AppState: ObservableObject {
         let tm = TerminalViewModel()
         let ed = EditorViewModel(workspace: ws, settings: s, terminal: tm)
         let gv = GitViewModel(workspace: ws, editorVM: ed)
+        let sp = SplitViewModel()
         let tv = TasksViewModel(workspace: ws)
         let db = DatabaseConnectionService()
-        let nv = NotesViewModel()
-
         self.workspaceVM = ws
         self.settings = s
         self.searchVM = sr
@@ -36,6 +36,7 @@ public final class AppState: ObservableObject {
         self.terminalVM = tm
         self.editorVM = ed
         self.gitVM = gv
+        self.splitVM = sp
         self.tasksVM = tv
         self.databaseService = db
         self.notesVM = nv

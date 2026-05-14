@@ -14,8 +14,8 @@
     <string>Codnia</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
-	<key>CFBundleShortVersionString</key>
-	<string>0.10.1</string>
+    <key>CFBundleShortVersionString</key>
+    <string>0.10.3</string>
 	<key>CFBundleVersion</key>
 	<string>10</string>
     <key>LSMinimumSystemVersion</key>

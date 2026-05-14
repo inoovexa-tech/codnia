@@ -1,5 +1,6 @@
 import Foundation
 
+@MainActor
 public final class FileSystemService {
     public static let shared = FileSystemService()
     private init() {}
