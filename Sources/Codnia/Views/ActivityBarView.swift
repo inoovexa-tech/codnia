@@ -7,105 +7,17 @@ struct ActivityBarView: View {
     @EnvironmentObject var editorVM: EditorViewModel
     @EnvironmentObject var searchVM: SearchService
     @EnvironmentObject var gitVM: GitViewModel
+    @EnvironmentObject var tasksVM: TasksViewModel
+    @EnvironmentObject var pluginService: PluginService
+
+    @State private var selectedPath: String? = nil
+    @State private var headerAction: FileTreeHeaderAction? = nil
 
     var body: some View {
         VStack(spacing: 0) {
-            // Header with tabs
-            HStack(spacing: 2) {
-                Button(action: { tab = .explorer }) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "folder")
-                            .font(.system(size: 13))
-                        Text("Explorer")
-                            .font(.system(size: 12, weight: .medium))
-                    }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .background(tab == .explorer ? Color(bgHex: "#1c1c1c") : Color.clear)
-                    .foregroundColor(tab == .explorer ? .textPrimary : .textTertiary)
-                    .cornerRadius(5)
-                }
-                .buttonStyle(PlainButtonStyle())
-
-                Button(action: { tab = .search }) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "magnifyingglass")
-                            .font(.system(size: 13))
-                        Text("Search")
-                            .font(.system(size: 12, weight: .medium))
-                    }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .background(tab == .search ? Color(bgHex: "#1c1c1c") : Color.clear)
-                    .foregroundColor(tab == .search ? .textPrimary : .textTertiary)
-                    .cornerRadius(5)
-                }
-                .buttonStyle(PlainButtonStyle())
-
-                Button(action: { tab = .sourceControl }) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "arrow.triangle.branch")
-                            .font(.system(size: 13))
-                        Text("Git")
-                            .font(.system(size: 12, weight: .medium))
-                    }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .background(tab == .sourceControl ? Color(bgHex: "#1c1c1c") : Color.clear)
-                    .foregroundColor(tab == .sourceControl ? .textPrimary : .textTertiary)
-                    .cornerRadius(5)
-                }
-                .buttonStyle(PlainButtonStyle())
-
-                Spacer()
-
-                HStack(spacing: 2) {
-                    if tab == .explorer {
-                        Button(action: {
-                            workspaceVM.refreshFileTree()
-                        }) {
-                            Image(systemName: "arrow.clockwise")
-                                .font(.system(size: 13))
-                        }
-                        .buttonStyle(PlainActivityButton())
-                    }
-                }
-            }
-            .frame(height: 42)
-            .padding(.horizontal, 8)
-            .background(Color.bgSecondary)
-            .overlay(
-                Rectangle()
-                    .frame(height: 1)
-                    .foregroundColor(Color(bgHex: "#1c1c1c")),
-                alignment: .bottom
-            )
-
-            // Content
-            if tab == .explorer {
-                FileTreeView(
-                    entries: workspaceVM.fileTree,
-                    onSelect: { path in
-                        editorVM.openFile(path)
-                    },
-                    onRefresh: {
-                        workspaceVM.refreshFileTree()
-                    }
-                )
-                .background(Color.bgPrimary)
-                .frame(maxHeight: .infinity)
-            } else if tab == .search {
-                GlobalSearchView()
-                    .environmentObject(searchVM)
-                    .environmentObject(workspaceVM)
-                    .environmentObject(editorVM)
-                    .background(Color.bgPrimary)
-            } else {
-                SourceControlView()
-                    .environmentObject(gitVM)
-                    .environmentObject(workspaceVM)
-                    .background(Color.bgPrimary)
-            }
+            topTabBar
+            header
+            content
         }
         .overlay(
             Rectangle()
@@ -113,6 +25,212 @@ struct ActivityBarView: View {
                 .foregroundColor(.borderDefault),
             alignment: .leading
         )
+        .onChange(of: editorVM.activeTabId) { _ in
+            syncSelectionWithEditor()
+        }
+    }
+
+    private func syncSelectionWithEditor() {
+        guard let tab = editorVM.currentTab else {
+            if tab != .search && tab != .sourceControl {
+                selectedPath = nil
+            }
+            return
+        }
+        guard tab.type == .file || tab.type == .image || tab.type == .pdf else { return }
+        selectedPath = tab.path
+    }
+
+    // MARK: - Top Tab Bar
+
+    private var topTabBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 0) {
+                ForEach(Array(tabItems.enumerated()), id: \.element.id) { index, item in
+                    if index > 0 {
+                        Rectangle()
+                            .frame(width: 1)
+                            .foregroundColor(.borderDefault)
+                    }
+
+                    Button(action: { tab = item.tab }) {
+                        Image(systemName: item.icon)
+                            .font(.system(size: 13))
+                            .foregroundColor(tab == item.tab ? .textPrimary : .textTertiary)
+                            .frame(width: 36, height: 36)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .help(item.title)
+                }
+            }
+            .padding(.horizontal, 4)
+        }
+        .frame(height: 36)
+        .background(Color.bgSecondary)
+        .overlay(
+            Rectangle().frame(height: 1).foregroundColor(.borderDefault),
+            alignment: .bottom
+        )
+    }
+
+    private struct TabItem: Identifiable {
+        let id: String
+        let icon: String
+        let title: String
+        let tab: RightSidebarTab
+    }
+
+    private var tabItems: [TabItem] {
+        var items: [TabItem] = [
+            TabItem(id: "explorer", icon: "folder", title: "Explorer", tab: .explorer),
+            TabItem(id: "search", icon: "magnifyingglass", title: "Search", tab: .search),
+            TabItem(id: "sourceControl", icon: "arrow.triangle.branch", title: "Source Control", tab: .sourceControl),
+        ]
+        for plugin in pluginService.activeSidebarPlugins {
+            items.append(TabItem(id: plugin.id, icon: plugin.iconName, title: plugin.name, tab: .plugin(plugin.id)))
+        }
+        return items
+    }
+
+    // MARK: - Header
+
+    private var header: some View {
+        HStack(spacing: 0) {
+            HStack(spacing: 6) {
+                Image(systemName: currentTabIcon)
+                    .font(.system(size: 13))
+                    .foregroundColor(.textPrimary)
+                Text(currentTabTitle)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.textPrimary)
+            }
+
+            Spacer()
+
+            if tab == .explorer {
+                explorerActions
+            }
+        }
+        .frame(height: 36)
+        .padding(.horizontal, 12)
+        .background(Color.bgPrimary)
+        .overlay(
+            Rectangle().frame(height: 1).foregroundColor(.borderDefault),
+            alignment: .bottom
+        )
+    }
+
+    private var currentTabIcon: String {
+        switch tab {
+        case .explorer: return "folder"
+        case .search: return "magnifyingglass"
+        case .sourceControl: return "arrow.triangle.branch"
+        case .plugin(let id):
+            return pluginService.plugin(withId: id)?.iconName ?? "puzzlepiece"
+        }
+    }
+
+    private var currentTabTitle: String {
+        switch tab {
+        case .explorer: return "Explorer"
+        case .search: return "Search"
+        case .sourceControl: return "Source Control"
+        case .plugin(let id):
+            return pluginService.plugin(withId: id)?.name ?? "Plugin"
+        }
+    }
+
+    private var explorerActions: some View {
+        HStack(spacing: 2) {
+            Button(action: { headerAction = .newFile }) {
+                Image(systemName: "doc.badge.plus")
+                    .font(.system(size: 12))
+            }
+            .buttonStyle(PlainActivityButton())
+            .help("New File")
+
+            Button(action: { headerAction = .newFolder }) {
+                Image(systemName: "folder.badge.plus")
+                    .font(.system(size: 12))
+            }
+            .buttonStyle(PlainActivityButton())
+            .help("New Folder")
+
+            Button(action: { headerAction = .collapseAll }) {
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.system(size: 11))
+            }
+            .buttonStyle(PlainActivityButton())
+            .help("Collapse All")
+
+            Button(action: {
+                workspaceVM.refreshFileTree()
+            }) {
+                Image(systemName: "arrow.clockwise")
+                    .font(.system(size: 12))
+            }
+            .buttonStyle(PlainActivityButton())
+            .help("Refresh")
+        }
+    }
+
+    // MARK: - Content
+
+    @ViewBuilder
+    private var content: some View {
+        switch tab {
+        case .explorer:
+            FileTreeView(
+                entries: workspaceVM.fileTree,
+                onSelect: { path in
+                    editorVM.openFile(path)
+                },
+                onRefresh: {
+                    workspaceVM.refreshFileTree()
+                },
+                selectedPath: $selectedPath,
+                activeFilePath: editorVM.currentTab?.path,
+                rootPath: workspaceVM.activeProject?.activeWorktree?.path ?? "",
+                modifiedPaths: editorVM.modifiedFilePaths,
+                headerAction: $headerAction
+            )
+            .background(Color.bgPrimary)
+            .frame(maxHeight: .infinity)
+
+        case .search:
+            GlobalSearchView()
+                .environmentObject(searchVM)
+                .environmentObject(workspaceVM)
+                .environmentObject(editorVM)
+                .background(Color.bgPrimary)
+
+        case .sourceControl:
+            SourceControlView()
+                .environmentObject(gitVM)
+                .environmentObject(workspaceVM)
+                .background(Color.bgPrimary)
+
+        case .plugin(let id):
+            if let plugin = pluginService.plugin(withId: id) {
+                plugin.makeView()
+                    .environmentObject(tasksVM)
+                    .environmentObject(workspaceVM)
+                    .environmentObject(pluginService)
+                    .background(Color.bgPrimary)
+                    .frame(maxHeight: .infinity)
+            } else {
+                VStack {
+                    Text("Plugin not found")
+                        .font(.system(size: 13))
+                        .foregroundColor(.textTertiary)
+                    Text("ID: \(id)")
+                        .font(.system(size: 11))
+                        .foregroundColor(.textTertiary)
+                }
+                .frame(maxHeight: .infinity)
+                .background(Color.bgPrimary)
+            }
+        }
     }
 }
 
@@ -120,15 +238,8 @@ struct PlainActivityButton: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .foregroundColor(.textTertiary)
-            .frame(width: 28, height: 28)
-            .background(configuration.isPressed ? Color(bgHex: "#1c1c1c") : Color.clear)
+            .frame(width: 26, height: 26)
+            .background(configuration.isPressed ? Color(hex: "#1c1c1c") : Color.clear)
             .cornerRadius(4)
-    }
-}
-
-// Temporary bridge for Color init
-private extension Color {
-    init(bgHex: String) {
-        self = Color(hex: bgHex)
     }
 }

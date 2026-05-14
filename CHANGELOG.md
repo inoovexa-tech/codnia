@@ -1,3 +1,41 @@
+## [0.10.1] — 2026-05-14
+
+### Added
+- Git merge branch selector dropdown with native branch list
+
+### Fixed
+- Make add-task input expand vertically for long text
+- Add visible active project indicator with blue leading bar and icon overlay in sidebar
+- Restore task content in drag payload broken by reorder feature
+
+## [0.10.0] — 2026-05-14
+
+### Added
+- SQL database manager with PostgreSQL support
+- Database connection management (save, edit, delete connections)
+- Database explorer with schema browser (tables, views, columns, indexes, foreign keys)
+- SQL query editor with syntax highlighting and execution
+- Paginated data grid for query results with sorting and column resize
+- Keyboard shortcut for New SQL Query
+- Tab bar sidebar toggle buttons (Explorer, Search, Git, Tasks)
+
+### Changed
+- Refactored TabBarView to closure-based architecture, removing direct workspace/settings dependencies
+
+## [0.9.0] — 2026-05-11
+
+### Added
+- Plugin-based task system with sidebar integration
+- Drag-and-drop task to tab bar
+- AI terminal activity detection with sidebar loading indicator
+- Auto-dismiss git sidebar notifications after 5 seconds
+
+### Fixed
+- Improve task drag-drop to tab bar and terminal
+- Remove Task: prefix from dropped task content
+- Switch active project when clicking worktree from another project
+- Set fixed height with scroll for git changes in sidebar
+
 ## [0.8.0] — 2026-05-09
 
 ### Added

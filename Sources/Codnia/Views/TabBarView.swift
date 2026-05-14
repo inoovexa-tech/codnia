@@ -5,15 +5,17 @@ struct TabBarView: View {
     @ObservedObject var editorVM: EditorViewModel
     @ObservedObject var terminalVM: TerminalViewModel
     @ObservedObject var splitVM: SplitViewModel
+    @ObservedObject var workspaceVM: WorkspaceService
+    @ObservedObject var settings: SettingsService
 
-    var onToggleExplorer: () -> Void
-    var onToggleSearch: () -> Void
-    var onToggleSourceControl: () -> Void
     var onToggleRightSidebar: () -> Void
     var isRightSidebarExpanded: Bool
-    var isExplorerActive: Bool
-    var isSearchActive: Bool
-    var isSourceControlActive: Bool
+    var isDatabaseEnabled: Bool = false
+    var onNewSQLQuery: () -> Void = {}
+
+    var onToggleExplorer: () -> Void = {}
+    var onToggleSearch: () -> Void = {}
+    var onToggleSourceControl: () -> Void = {}
 
     @State private var draggedTabId: String?
     @State private var showTabDropdown = false
@@ -23,16 +25,89 @@ struct TabBarView: View {
         editorVM.tabs + terminalVM.tabs
     }
 
+    private var allWorktreesExpanded: Bool {
+        !workspaceVM.projects.isEmpty && workspaceVM.projects.allSatisfy(\.isWorktreesExpanded)
+    }
+
+    private var isExplorerActive: Bool {
+        false
+    }
+
+    private var isSearchActive: Bool {
+        false
+    }
+
+    private var isSourceControlActive: Bool {
+        false
+    }
+
+    @ViewBuilder
+    private var navButtons: some View {
+        HStack(spacing: 4) {
+            Button(action: { workspaceVM.previousProject() }) {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 13))
+                    .frame(width: 28, height: 36)
+            }
+            .buttonStyle(PlainButtonStyle())
+            .foregroundColor(.textSecondary)
+            .disabled(workspaceVM.projects.count <= 1)
+
+            Button(action: { workspaceVM.nextProject() }) {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13))
+                    .frame(width: 28, height: 36)
+            }
+            .buttonStyle(PlainButtonStyle())
+            .foregroundColor(.textSecondary)
+            .disabled(workspaceVM.projects.count <= 1)
+        }
+    }
+
     var body: some View {
         ZStack {
             HStack(spacing: 0) {
-                WindowDragView()
-                    .frame(width: 90)
+                HStack(spacing: 0) {
+                    WindowDragView()
+                        .frame(width: 90)
+
+                    if !workspaceVM.projects.isEmpty {
+                        if settings.leftSidebarExpanded {
+                            HStack(spacing: 0) {
+                                Spacer(minLength: 0)
+                                HStack(spacing: 4) {
+                                    Button(action: toggleAllWorktrees) {
+                                        Image(systemName: "chevron.up.chevron.down")
+                                            .font(.system(size: 10))
+                                            .frame(width: 28, height: 36)
+                                    }
+                                    .buttonStyle(PlainButtonStyle())
+                                    .foregroundColor(.textSecondary)
+
+                                    navButtons
+                                }
+                                .padding(.trailing, 6)
+                            }
+                        } else {
+                            navButtons
+                                .padding(.leading, 4)
+                        }
+                    }
+                }
+                .frame(width: settings.leftSidebarExpanded ? max(settings.leftSidebarWidth - 1, 0) : nil, alignment: .leading)
+
+                Rectangle()
+                    .frame(width: 1)
+                    .foregroundColor(.borderDefault)
 
                 Menu {
                     menuItem("New File", shortcutKey: "newFile") { editorVM.newFile() }
                     menuItem("New Terminal", shortcutKey: "newTerminal") { editorVM.createTerminalTab(type: .terminal) }
                     Divider()
+                    if isDatabaseEnabled {
+                        menuItem("New SQL Query", shortcutKey: "newSQLQuery") { onNewSQLQuery() }
+                        Divider()
+                    }
                     menuItem("OpenCode", shortcutKey: "openOpenCode") { editorVM.createTerminalTab(type: .opencode) }
                     menuItem("Claude Code", shortcutKey: "openClaude") { editorVM.createTerminalTab(type: .claude) }
                     menuItem("Codex", shortcutKey: "openCodex") { editorVM.createTerminalTab(type: .codex) }
@@ -86,6 +161,23 @@ struct TabBarView: View {
                         }
                         .frame(maxWidth: .infinity)
                         .clipped()
+                        .onDrop(of: [.text], isTargeted: nil) { providers in
+                            var result = false
+                            for provider in providers {
+                                let sem = DispatchSemaphore(value: 0)
+                                provider.loadObject(ofClass: NSString.self) { object, _ in
+                                    if let text = object as? String {
+                                        DispatchQueue.main.async {
+                                            editorVM.newFile(name: text, content: text)
+                                        }
+                                        result = true
+                                    }
+                                    sem.signal()
+                                }
+                                sem.wait()
+                            }
+                            return result
+                        }
 
                         if hasOverflow {
                             TabOverflowMenu(
@@ -98,7 +190,7 @@ struct TabBarView: View {
                     }
                 }
 
-                HStack(spacing: 4) {
+HStack(spacing: 4) {
                     if editorVM.currentTab != nil {
                         Button(action: {
                             splitVM.splitActivePane(.horizontal, editorVM: editorVM, terminalVM: terminalVM)
@@ -149,7 +241,7 @@ struct TabBarView: View {
                     }
                     .buttonStyle(PlainButtonStyle())
                 }
-                .padding(.horizontal, 8)
+                .buttonStyle(PlainButtonStyle())
             }
             .frame(height: 36)
         }
@@ -159,6 +251,13 @@ struct TabBarView: View {
             Rectangle().frame(height: 1).foregroundColor(.borderDefault),
             alignment: .bottom
         )
+    }
+
+    private func toggleAllWorktrees() {
+        let newValue = !allWorktreesExpanded
+        for project in workspaceVM.projects {
+            workspaceVM.setWorktreesExpanded(projectId: project.id, expanded: newValue)
+        }
     }
 
     @ViewBuilder
@@ -203,13 +302,17 @@ struct TabButton: View {
                     Image(systemName: "plus.forwardslash.minus")
                         .foregroundColor(iconColor)
                         .font(.system(size: 13))
+                } else if tab.type == .queryResult {
+                    Image(systemName: "tablecells")
+                        .foregroundColor(iconColor)
+                        .font(.system(size: 13))
                 } else {
                     terminalIcon(for: tab.type)
                         .foregroundColor(iconColor)
                         .font(.system(size: 13))
                 }
 
-                Text(tab.isModified ? "\(tab.name) ●" : tab.name)
+                Text(tab.isModified ? "\(tab.name) \u{25CF}" : tab.name)
                     .font(.system(size: 12))
                     .lineLimit(1)
 
@@ -267,6 +370,7 @@ struct TabButton: View {
         case .file: return fileColor(for: tab.name)
         case .image: return .accentBlue
         case .pdf: return .accentRed
+        case .queryResult: return .accentBlue
         }
     }
 

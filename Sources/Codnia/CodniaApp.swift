@@ -77,6 +77,7 @@ struct CodniaApp: App {
         Settings {
             SettingsView()
                 .environmentObject(appDelegate.appState.settings)
+                .environmentObject(appDelegate.appState.pluginService)
                 .frame(minWidth: 700, minHeight: 540)
         }
         .commands {
@@ -91,6 +92,9 @@ struct CodniaApp: App {
                     .keyboardShortcut("c", modifiers: [.command, .shift])
                 Button("Codex") { appDelegate.appState.editorVM.createTerminalTab(type: .codex) }
                     .keyboardShortcut("x", modifiers: [.command, .shift])
+                Divider()
+                Button("New SQL Query") { appDelegate.appState.editorVM.newQueryTab(connectionId: nil) }
+                    .keyboardShortcut("q", modifiers: [.command, .shift])
                 Divider()
                 Button("Open File...") { appDelegate.appState.editorVM.openFileDialog() }
                     .keyboardShortcut("o", modifiers: .command)
@@ -118,15 +122,7 @@ struct CodniaApp: App {
                 }
                 .keyboardShortcut("`", modifiers: .command)
                 Button("Global Search") {
-                    let state = appDelegate.appState
-                    if state.rightSidebarExpanded && state.rightSidebarTab == .search {
-                        state.rightSidebarExpanded = false
-                        state.editorVM.showGlobalSearch = false
-                    } else {
-                        state.rightSidebarTab = .search
-                        state.rightSidebarExpanded = true
-                        state.editorVM.showGlobalSearch = true
-                    }
+                    appDelegate.appState.showGlobalSearchModal.toggle()
                 }
                 .keyboardShortcut("f", modifiers: [.command, .shift])
                 Button("Find in File") {

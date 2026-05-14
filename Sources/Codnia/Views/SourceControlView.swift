@@ -7,10 +7,12 @@ struct SourceControlView: View {
     @State private var newBranchName: String = ""
     @State private var showBranchDialog: Bool = false
     @State private var mergeBranchName: String = ""
+    @State private var selectedMergeBranch: String = ""
     @State private var showMergeDialog: Bool = false
     @State private var deleteWorktreeAfterMerge = false
     @State private var hoveredFileId: String? = nil
     @State private var selectedForDiscard: Set<String> = []
+    @State private var copiedCommitId: String? = nil
 
     var body: some View {
         VStack(spacing: 0) {
@@ -176,13 +178,25 @@ struct SourceControlView: View {
                     .lineLimit(2)
 
                 HStack(spacing: 4) {
-                    Text(commit.shortHash)
-                        .font(.system(size: 9, weight: .medium, design: .monospaced))
-                        .foregroundColor(.accentBlue)
-                        .padding(.horizontal, 4)
-                        .padding(.vertical, 1)
-                        .background(Color.accentBlue.opacity(0.15))
-                        .cornerRadius(3)
+                    if copiedCommitId == commit.id {
+                        Text("Copied")
+                            .font(.system(size: 9, weight: .medium, design: .monospaced))
+                            .foregroundColor(.green)
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 1)
+                            .background(Color.green.opacity(0.15))
+                            .cornerRadius(3)
+                            .transition(.opacity.combined(with: .scale(scale: 0.8)))
+                    } else {
+                        Text(commit.shortHash)
+                            .font(.system(size: 9, weight: .medium, design: .monospaced))
+                            .foregroundColor(.accentBlue)
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 1)
+                            .background(Color.accentBlue.opacity(0.15))
+                            .cornerRadius(3)
+                            .transition(.opacity.combined(with: .scale(scale: 0.8)))
+                    }
 
                     Text(commit.author)
                         .font(.system(size: 10))
@@ -202,6 +216,32 @@ struct SourceControlView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
+        .onTapGesture {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(commit.shortHash, forType: .string)
+            withAnimation(.easeInOut(duration: 0.2)) {
+                copiedCommitId = commit.id
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    copiedCommitId = nil
+                }
+            }
+        }
+        .contextMenu {
+            Button("Copy Hash") {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(commit.hash, forType: .string)
+            }
+            Button("Copy Short Hash") {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(commit.shortHash, forType: .string)
+            }
+            Button("Copy Message") {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(commit.message, forType: .string)
+            }
+        }
     }
 
     // MARK: - Branch Header
@@ -231,7 +271,7 @@ struct SourceControlView: View {
 
             Spacer()
 
-            if gitVM.isLoading || (gitVM.isRefreshing && !gitVM.isAutoRefreshing) {
+            if gitVM.isRefreshing && !gitVM.isAutoRefreshing {
                 ProgressView()
                     .scaleEffect(0.6)
                     .frame(width: 16, height: 16)
@@ -410,19 +450,38 @@ struct SourceControlView: View {
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundColor(.textPrimary)
 
-            HStack(spacing: 6) {
-                TextField("Branch name", text: $mergeBranchName)
-                    .textFieldStyle(PlainTextFieldStyle())
-                    .font(.system(size: 12))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Color(bgHex: "#1c1c1c"))
-                    .cornerRadius(4)
+            Menu {
+                ForEach(gitVM.branches, id: \.self) { branch in
+                    if branch != gitVM.currentBranch {
+                        Button(branch) {
+                            selectedMergeBranch = branch
+                        }
+                    }
+                }
+            } label: {
+                HStack {
+                    Text(selectedMergeBranch.isEmpty ? "Select a branch" : selectedMergeBranch)
+                        .font(.system(size: 12))
+                        .foregroundColor(selectedMergeBranch.isEmpty ? .textTertiary : .textPrimary)
+                    Spacer()
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 9))
+                        .foregroundColor(.textTertiary)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Color(bgHex: "#1c1c1c"))
+                .cornerRadius(4)
+            }
+            .menuStyle(.borderlessButton)
+            .fixedSize(horizontal: false, vertical: true)
 
+            HStack(spacing: 6) {
+                Spacer()
                 Button {
-                    let name = mergeBranchName.trimmingCharacters(in: .whitespacesAndNewlines)
-                    guard !name.isEmpty else { return }
-                    gitVM.merge(branch: name, deleteWorktreeAfterMerge: deleteWorktreeAfterMerge)
+                    guard !selectedMergeBranch.isEmpty else { return }
+                    gitVM.merge(branch: selectedMergeBranch, deleteWorktreeAfterMerge: deleteWorktreeAfterMerge)
+                    selectedMergeBranch = ""
                     mergeBranchName = ""
                     showMergeDialog = false
                     deleteWorktreeAfterMerge = false
@@ -431,7 +490,8 @@ struct SourceControlView: View {
                         .font(.system(size: 11, weight: .medium))
                 }
                 .buttonStyle(PlainButtonStyle())
-                .foregroundColor(.accentBlue)
+                .foregroundColor(selectedMergeBranch.isEmpty ? .textTertiary : .accentBlue)
+                .disabled(selectedMergeBranch.isEmpty)
             }
 
             Toggle("Delete worktree after merge", isOn: $deleteWorktreeAfterMerge)

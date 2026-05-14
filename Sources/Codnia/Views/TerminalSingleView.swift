@@ -73,7 +73,7 @@ struct TerminalSingleContainerView: NSViewRepresentable {
     }
 
     private func createTerminal(in container: NSView) {
-        let terminal = LocalProcessTerminalView(frame: container.bounds)
+        let terminal = CodniaTerminalView(frame: container.bounds)
         terminal.autoresizingMask = [.width, .height]
         terminal.nativeBackgroundColor = NSColor(Color.bgPrimary)
         terminal.nativeForegroundColor = NSColor(Color.textPrimary)

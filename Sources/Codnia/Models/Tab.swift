@@ -9,6 +9,14 @@ public enum TabType: String, Codable, Equatable {
     case diff
     case image
     case pdf
+    case queryResult
+
+    public var isAI: Bool {
+        switch self {
+        case .opencode, .claude, .codex: return true
+        default: return false
+        }
+    }
 }
 
 public enum PreviewType: String, Codable, Equatable {
@@ -25,6 +33,8 @@ public struct Tab: Identifiable, Codable, Equatable {
     public var language: String
     public var type: TabType
     public var terminalId: String?
+    public var queryConnectionId: String?
+    public var querySql: String?
 
     public init(
         id: String = UUID().uuidString,
@@ -33,7 +43,9 @@ public struct Tab: Identifiable, Codable, Equatable {
         isModified: Bool = false,
         language: String = "Plain Text",
         type: TabType = .file,
-        terminalId: String? = nil
+        terminalId: String? = nil,
+        queryConnectionId: String? = nil,
+        querySql: String? = nil
     ) {
         self.id = id
         self.path = path
@@ -42,6 +54,8 @@ public struct Tab: Identifiable, Codable, Equatable {
         self.language = language
         self.type = type
         self.terminalId = terminalId
+        self.queryConnectionId = queryConnectionId
+        self.querySql = querySql
     }
 
     public static func == (lhs: Tab, rhs: Tab) -> Bool {
@@ -52,5 +66,7 @@ public struct Tab: Identifiable, Codable, Equatable {
             && lhs.language == rhs.language
             && lhs.type == rhs.type
             && lhs.terminalId == rhs.terminalId
+            && lhs.queryConnectionId == rhs.queryConnectionId
+            && lhs.querySql == rhs.querySql
     }
 }

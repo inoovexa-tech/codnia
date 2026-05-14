@@ -10,6 +10,9 @@ public final class EditorViewModel: ObservableObject {
     @Published public var editorContent: String = ""
     @Published public var showGlobalSearch: Bool = false
     @Published public var showInFileSearch: Bool = false
+    @Published public var searchHighlightQuery: String = ""
+    @Published public var searchHighlightRanges: [NSRange] = []
+    @Published public var searchHighlightIndex: Int = 0
 
     private let workspace: WorkspaceService
     private let settings: SettingsService
@@ -18,11 +21,59 @@ public final class EditorViewModel: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     public var fileContents: [String: String] = [:]
     @Published public var diffData: [String: [DiffLine]] = [:]
+    @Published public var queryResults: [String: QueryPageResult] = [:]
+    @Published public var querySql: [String: String] = [:]
     private var autoSaveTimer: AnyCancellable?
     private var markdownPreviewTabs: Set<String> = []
 
     public var isCurrentTabMarkdown: Bool {
         currentTab?.language == "Markdown"
+    }
+
+    public var modifiedFilePaths: Set<String> {
+        Set(tabs.filter(\.isModified).map(\.path).filter { !$0.isEmpty })
+    }
+
+    private struct PendingOpenFile {
+        let path: String
+        let projectId: String
+        let worktreeId: String
+        let searchQuery: String
+    }
+    private var pendingOpenFile: PendingOpenFile?
+
+    public func openFileInWorktree(path: String, projectId: String, worktreeId: String, searchQuery: String = "") {
+        if workspace.activeProject?.id == projectId,
+           workspace.activeProject?.activeWorktree?.id == worktreeId {
+            openFile(path)
+            if !searchQuery.isEmpty {
+                searchHighlightQuery = searchQuery
+                computeSearchHighlightRanges(query: searchQuery)
+            }
+            return
+        }
+
+        saveTabsToWorktree()
+        pendingOpenFile = PendingOpenFile(path: path, projectId: projectId, worktreeId: worktreeId, searchQuery: searchQuery)
+        workspace.setActiveWorktree(projectId: projectId, worktreeId: worktreeId)
+    }
+
+    private func computeSearchHighlightRanges(query: String) {
+        guard !query.isEmpty else {
+            searchHighlightRanges = []
+            return
+        }
+        let content = editorContent as NSString
+        var ranges: [NSRange] = []
+        var searchStart = 0
+        while searchStart < content.length {
+            let range = content.range(of: query, options: .caseInsensitive, range: NSRange(location: searchStart, length: content.length - searchStart))
+            if range.location == NSNotFound { break }
+            ranges.append(range)
+            searchStart = range.location + range.length
+        }
+        searchHighlightRanges = ranges
+        searchHighlightIndex = 0
     }
 
     public var showMarkdownPreview: Bool {
@@ -64,9 +115,17 @@ public final class EditorViewModel: ObservableObject {
                     self.workspace.saveProjects()
                 }
 
-                if let activeProject = project, let worktree = activeProject.activeWorktree {
+                    if let activeProject = project, let worktree = activeProject.activeWorktree {
                     previousWorktreeId = worktree.id
                     self.loadTabs(from: worktree)
+                    if let pending = self.pendingOpenFile {
+                        self.pendingOpenFile = nil
+                        self.openFile(pending.path)
+                        if !pending.searchQuery.isEmpty {
+                            self.searchHighlightQuery = pending.searchQuery
+                            self.computeSearchHighlightRanges(query: pending.searchQuery)
+                        }
+                    }
                 } else {
                     self.tabs = []
                     self.terminal.tabs = []
@@ -82,7 +141,14 @@ public final class EditorViewModel: ObservableObject {
 
         tabs = worktree.fileTabs
         terminal.tabs = worktree.terminalTabs
+        terminal.setWorktreeMapping(tabs: worktree.terminalTabs, worktreeId: worktree.id)
         activeTabId = worktree.activeTabId
+
+        if tabs.isEmpty && terminal.tabs.isEmpty,
+           let tabType = TabType(rawValue: settings.defaultTabOnProjectOpen) {
+            createTerminalTab(type: tabType)
+            saveTabsToWorktree()
+        }
 
         for tab in worktree.fileTabs where (tab.type == .file || tab.type == .diff) && !tab.path.isEmpty {
             if fileContents[tab.id] == nil {
@@ -92,6 +158,12 @@ public final class EditorViewModel: ObservableObject {
                     let content = fs.readFile(path: tab.path)
                     fileContents[tab.id] = content
                 }
+            }
+        }
+
+        for tab in worktree.fileTabs where tab.type == .queryResult {
+            if querySql[tab.id] == nil {
+                querySql[tab.id] = tab.querySql ?? ""
             }
         }
 
@@ -125,11 +197,15 @@ public final class EditorViewModel: ObservableObject {
             .store(in: &cancellables)
     }
 
-    private func saveTabsToWorktree() {
+    func saveTabsToWorktree() {
         guard let project = workspace.activeProject,
               let worktreeId = project.activeWorktreeId,
               let projIdx = workspace.projects.firstIndex(where: { $0.id == project.id }),
               let wtIdx = workspace.projects[projIdx].worktrees.firstIndex(where: { $0.id == worktreeId }) else { return }
+
+        for i in tabs.indices where tabs[i].type == .queryResult {
+            tabs[i].querySql = querySql[tabs[i].id]
+        }
 
         workspace.projects[projIdx].worktrees[wtIdx].fileTabs = tabs
         workspace.projects[projIdx].worktrees[wtIdx].terminalTabs = terminal.tabs
@@ -147,13 +223,39 @@ public final class EditorViewModel: ObservableObject {
     }
 
     public func newFile() {
-        let tab = Tab(name: "Untitled", type: .file)
+        newFile(name: "Untitled", content: "")
+    }
+
+    public func newFile(name: String, content: String) {
+        let tab = Tab(name: name, type: .file)
         tabs.append(tab)
         activeTabId = tab.id
-        editorContent = ""
-        currentLanguage = "Plain Text"
-        fileContents[tab.id] = ""
+        editorContent = content
+        currentLanguage = detectedLanguageName(from: name)
+        fileContents[tab.id] = content
         saveTabsToWorktree()
+    }
+
+    private func detectedLanguageName(from filename: String) -> String {
+        let ext = URL(fileURLWithPath: filename).pathExtension.lowercased()
+        switch ext {
+        case "swift": return "Swift"
+        case "ts", "tsx": return "TypeScript"
+        case "js", "jsx": return "JavaScript"
+        case "rs": return "Rust"
+        case "go": return "Go"
+        case "py": return "Python"
+        case "md", "markdown": return "Markdown"
+        case "json": return "JSON"
+        case "html", "htm": return "HTML"
+        case "css", "scss": return "CSS"
+        case "sh": return "Shell"
+        case "c", "h": return "C"
+        case "cpp", "hpp", "cc": return "C++"
+        case "java": return "Java"
+        case "kt": return "Kotlin"
+        default: return "Plain Text"
+        }
     }
 
     public func openFileDialog() {
@@ -167,6 +269,9 @@ public final class EditorViewModel: ObservableObject {
     }
 
     public func openFile(_ path: String) {
+        searchHighlightQuery = ""
+        searchHighlightRanges = []
+        searchHighlightIndex = 0
         let name = URL(fileURLWithPath: path).lastPathComponent
         let ext = URL(fileURLWithPath: path).pathExtension.lowercased()
 
@@ -253,7 +358,26 @@ public final class EditorViewModel: ObservableObject {
         openFile(entry.path)
     }
 
+    // MARK: - Query Result Tabs
+
+    public func newQueryTab(connectionId: String?) {
+        let tab = Tab(name: "SQL Query", type: .queryResult, queryConnectionId: connectionId)
+        tabs.append(tab)
+        activeTabId = tab.id
+        querySql[tab.id] = ""
+        saveTabsToWorktree()
+    }
+
+    public func setQueryResult(_ result: QueryPageResult, forTab tabId: String) {
+        var updated = queryResults
+        updated[tabId] = result
+        queryResults = updated
+    }
+
     public func activateTab(_ id: String) {
+        searchHighlightQuery = ""
+        searchHighlightRanges = []
+        searchHighlightIndex = 0
         if let currentTabId = activeTabId,
            let currentTabIdx = tabs.firstIndex(where: { $0.id == currentTabId }),
            tabs[currentTabIdx].type == .file || tabs[currentTabIdx].type == .diff {
@@ -269,6 +393,9 @@ public final class EditorViewModel: ObservableObject {
                     editorContent = ""
                 }
                 currentLanguage = "Diff"
+            } else if tab.type == .queryResult {
+                editorContent = ""
+                currentLanguage = "SQL"
             } else {
                 if let savedContent = fileContents[tab.id] {
                     editorContent = savedContent
@@ -289,6 +416,8 @@ public final class EditorViewModel: ObservableObject {
             tabs.removeAll { $0.id == id }
             fileContents.removeValue(forKey: id)
             diffData.removeValue(forKey: id)
+            queryResults.removeValue(forKey: id)
+            querySql.removeValue(forKey: id)
 
             if activeTabId == id {
                 activeTabId = tabs.last?.id ?? terminal.tabs.last?.id

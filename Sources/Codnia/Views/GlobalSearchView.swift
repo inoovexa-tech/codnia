@@ -12,94 +12,119 @@ struct GlobalSearchView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Search input
-            HStack(spacing: 8) {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 13))
-                    .foregroundColor(.textTertiary)
+            searchHeader
+            filterBar
+            results
+        }
+    }
 
-                TextField("Search", text: $query)
-                    .font(.system(size: 13))
-                    .foregroundColor(.textPrimary)
-                    .textFieldStyle(PlainTextFieldStyle())
-                    .onSubmit {
-                        performSearch()
-                    }
-                    .onChange(of: query) { newValue in
-                        searchTask?.cancel()
-                        if newValue.isEmpty {
-                            searchVM.results = []
-                        } else {
-                            searchTask = Task {
-                                try? await Task.sleep(nanoseconds: 300_000_000)
-                                guard !Task.isCancelled else { return }
-                                performSearch()
-                            }
-                        }
-                    }
+    // MARK: - Search Header
 
-                if !query.isEmpty {
-                    Button(action: {
-                        query = ""
+    private var searchHeader: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass")
+                .foregroundColor(.textTertiary)
+                .font(.system(size: 12))
+            TextField("Search files...", text: $query)
+                .textFieldStyle(PlainTextFieldStyle())
+                .font(.system(size: 12))
+                .foregroundColor(.textPrimary)
+                .onSubmit(performSearch)
+                .onChange(of: query) { newValue in
+                    searchTask?.cancel()
+                    if newValue.isEmpty {
                         searchVM.results = []
-                    }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 13))
-                            .foregroundColor(.textTertiary)
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                }
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(Color.bgTertiary)
-            .cornerRadius(6)
-            .padding(8)
-
-            // Options
-            HStack(spacing: 12) {
-                Toggle("Regex", isOn: $useRegex)
-                    .toggleStyle(CheckboxToggleStyle())
-                Toggle("Case", isOn: $caseSensitive)
-                    .toggleStyle(CheckboxToggleStyle())
-                Spacer()
-            }
-            .font(.system(size: 11))
-            .foregroundColor(.textSecondary)
-            .padding(.horizontal, 8)
-            .padding(.bottom, 4)
-
-            Divider()
-                .background(Color.borderDefault)
-
-            // Results
-            if searchVM.isSearching {
-                Spacer()
-                ProgressView()
-                    .scaleEffect(0.8)
-                    .progressViewStyle(CircularProgressViewStyle(tint: .textSecondary))
-                Spacer()
-            } else if searchVM.results.isEmpty && !query.isEmpty {
-                Spacer()
-                Text("No results found")
-                    .font(.system(size: 13))
-                    .foregroundColor(.textTertiary)
-                Spacer()
-            } else {
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 0) {
-                        ForEach(searchVM.results, id: \.0) { result in
-                            SearchResultRow(
-                                path: result.0,
-                                line: result.1,
-                                onSelect: {
-                                    editorVM.openFile(result.0)
-                                }
-                            )
+                    } else {
+                        searchTask = Task {
+                            try? await Task.sleep(nanoseconds: 300_000_000)
+                            guard !Task.isCancelled else { return }
+                            performSearch()
                         }
                     }
                 }
+            if !query.isEmpty {
+                Button(action: { query = ""; searchVM.results = [] }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(.textTertiary)
+                        .font(.system(size: 12))
+                }
+                .buttonStyle(PlainButtonStyle())
             }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+        .background(Color.bgSecondary)
+    }
+
+    // MARK: - Filter Bar
+
+    private var filterBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 4) {
+                filterChip(label: "Regex", isOn: $useRegex)
+                filterChip(label: "Case", isOn: $caseSensitive)
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+        }
+        .background(Color.bgSecondary)
+        .overlay(Rectangle().frame(height: 1).foregroundColor(.borderDefault), alignment: .bottom)
+    }
+
+    private func filterChip(label: String, isOn: Binding<Bool>) -> some View {
+        Button(action: { isOn.wrappedValue.toggle() }) {
+            HStack(spacing: 3) {
+                Image(systemName: isOn.wrappedValue ? "checkmark.square.fill" : "square")
+                    .font(.system(size: 10))
+                    .foregroundColor(isOn.wrappedValue ? .accentBlue : .textTertiary)
+                Text(label)
+                    .font(.system(size: 11))
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(isOn.wrappedValue ? Color.accentBlue.opacity(0.15) : Color.bgTertiary)
+            .foregroundColor(isOn.wrappedValue ? .accentBlue : .textSecondary)
+            .cornerRadius(4)
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+
+    // MARK: - Results
+
+    @ViewBuilder
+    private var results: some View {
+        if searchVM.isSearching {
+            Spacer()
+            ProgressView()
+                .scaleEffect(0.8)
+                .progressViewStyle(CircularProgressViewStyle(tint: .textSecondary))
+            Spacer()
+        } else if searchVM.results.isEmpty && !query.isEmpty {
+            Spacer()
+            VStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 28))
+                    .foregroundColor(.textTertiary)
+                Text("No matches")
+                    .font(.system(size: 13))
+                    .foregroundColor(.textSecondary)
+            }
+            Spacer()
+        } else {
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    ForEach(searchVM.results, id: \.0) { result in
+                        SearchResultRow(
+                            path: result.0,
+                            line: result.1,
+                            onSelect: { editorVM.openFile(result.0) }
+                        )
+                        Divider()
+                            .background(Color.borderDefault)
+                    }
+                }
+            }
+            .background(Color.bgPrimary)
         }
     }
 
@@ -135,19 +160,5 @@ struct SearchResultRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(PlainButtonStyle())
-    }
-}
-
-struct CheckboxToggleStyle: ToggleStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        HStack(spacing: 4) {
-            Image(systemName: configuration.isOn ? "checkmark.square.fill" : "square")
-                .font(.system(size: 12))
-                .foregroundColor(configuration.isOn ? .accentBlue : .textTertiary)
-            configuration.label
-        }
-        .onTapGesture {
-            configuration.isOn.toggle()
-        }
     }
 }

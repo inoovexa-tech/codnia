@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @EnvironmentObject var settings: SettingsService
+    @EnvironmentObject var pluginService: PluginService
     @State private var selectedTab: SettingsTab = .general
 
     var body: some View {
@@ -58,6 +59,9 @@ struct SettingsView: View {
                         TerminalSettingsSection()
                     case .keyboard:
                         KeyboardSettingsSection()
+                    case .plugins:
+                        PluginsSettingsSection()
+                            .environmentObject(pluginService)
                     }
                 }
                 .padding(20)
@@ -74,6 +78,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
     case editor = "Editor"
     case terminal = "Terminal"
     case keyboard = "Keyboard"
+    case plugins = "Plugins"
 
     var id: String { rawValue }
 }
@@ -96,6 +101,19 @@ struct GeneralSettingsSection: View {
             SettingsSectionHeader("Behavior")
             SettingsToggleRow(label: "Auto Save", description: "Automatically save files", isOn: $settings.autoSave)
                 .onChange(of: settings.autoSave) { _ in settings.save() }
+
+            SettingsRow(label: "Default Tab on Project Open", description: "Tab type to open when opening a project with no tabs") {
+                Picker("", selection: $settings.defaultTabOnProjectOpen) {
+                    Text("Terminal").tag("terminal")
+                    Text("OpenCode Agent").tag("opencode")
+                    Text("Claude Agent").tag("claude")
+                    Text("Codex Agent").tag("codex")
+                    Text("None").tag("none")
+                }
+                .pickerStyle(MenuPickerStyle())
+                .frame(width: 200)
+                .onChange(of: settings.defaultTabOnProjectOpen) { _ in settings.save() }
+            }
         }
     }
 }
@@ -166,6 +184,7 @@ struct TerminalSettingsSection: View {
                     .cornerRadius(4)
                     .onChange(of: settings.terminalScrollback) { _ in settings.save() }
             }
+
         }
     }
 }
@@ -253,6 +272,59 @@ struct SettingsRow<Content: View>: View {
             }
             Spacer()
             content
+        }
+    }
+}
+
+struct PluginsSettingsSection: View {
+    @EnvironmentObject var pluginService: PluginService
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            SettingsSectionHeader("Installed Plugins")
+
+            if pluginService.plugins.isEmpty {
+                Text("No plugins installed")
+                    .font(.system(size: 13))
+                    .foregroundColor(.textTertiary)
+                    .padding(.vertical, 8)
+            } else {
+                ForEach(pluginService.plugins) { plugin in
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(plugin.name)
+                                .font(.system(size: 13))
+                                .foregroundColor(.textPrimary)
+                            Text("v\(plugin.version) by \(plugin.author)")
+                                .font(.system(size: 10))
+                                .foregroundColor(.textTertiary)
+                            Text(plugin.description)
+                                .font(.system(size: 11))
+                                .foregroundColor(.textSecondary)
+                        }
+                        Spacer()
+                        Toggle("", isOn: Binding(
+                            get: { pluginService.isActive(pluginId: plugin.id) },
+                            set: { _ in pluginService.togglePlugin(pluginId: plugin.id) }
+                        ))
+                        .toggleStyle(SwitchToggleStyle(tint: Color.accentBlue))
+                        .labelsHidden()
+                    }
+                    .padding(8)
+                    .background(Color.bgTertiary)
+                    .cornerRadius(6)
+
+                    if plugin.id != pluginService.plugins.last?.id {
+                        Divider()
+                            .background(Color.borderDefault)
+                    }
+                }
+            }
+
+            SettingsSectionHeader("Marketplace")
+            Text("Coming soon")
+                .font(.system(size: 12))
+                .foregroundColor(.textTertiary)
         }
     }
 }

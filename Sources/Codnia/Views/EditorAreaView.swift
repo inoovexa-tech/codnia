@@ -4,6 +4,7 @@ struct EditorAreaView: View {
     @EnvironmentObject var editorVM: EditorViewModel
     @EnvironmentObject var terminalVM: TerminalViewModel
     @EnvironmentObject var settings: SettingsService
+    @EnvironmentObject var databaseService: DatabaseConnectionService
 
     private var isTerminalVisible: Bool {
         guard let activeTab = editorVM.currentTab else { return false }
@@ -39,20 +40,29 @@ struct EditorAreaView: View {
                     .allowsHitTesting(!isTerminalVisible)
             }
 
+            // Query result tab
+            if let activeTab = editorVM.currentTab, activeTab.type == .queryResult {
+                QueryResultTabView(tabId: activeTab.id)
+                    .allowsHitTesting(!isTerminalVisible)
+            }
+
             // File editor
             if let activeTab = editorVM.currentTab, activeTab.type == .file {
                 if editorVM.isCurrentTabMarkdown && editorVM.showMarkdownPreview {
                     MarkdownPreviewView(content: editorVM.editorContent)
                         .allowsHitTesting(!isTerminalVisible)
                 } else {
+                    let hasInFileSearch = editorVM.showInFileSearch || !inFileSearchResults.isEmpty
+                    let activeSearchResults = hasInFileSearch ? inFileSearchResults : editorVM.searchHighlightRanges
+                    let activeSearchIndex = hasInFileSearch ? inFileSearchCurrentIndex : editorVM.searchHighlightIndex
                     CodeEditorView(
                         content: $editorVM.editorContent,
                         language: editorVM.currentLanguage,
                         onChange: {
                             editorVM.markModified(tabId: activeTab.id)
                         },
-                        searchResults: inFileSearchResults,
-                        currentSearchIndex: inFileSearchCurrentIndex
+                        searchResults: activeSearchResults,
+                        currentSearchIndex: activeSearchIndex
                     )
                     .environmentObject(settings)
                     .allowsHitTesting(!isTerminalVisible)
@@ -161,13 +171,11 @@ struct EditorAreaView: View {
                 .allowsHitTesting(!isTerminalVisible)
             }
 
-            // Terminals - persistent container keeps sessions alive across tab/project switches
+            // Terminals - always rendered but visibility managed internally
             TerminalView(
                 tabs: $terminalVM.tabs,
                 activeTabId: $editorVM.activeTabId
             )
-            .opacity(terminalVisibility)
-            .allowsHitTesting(isTerminalVisible)
 
             if editorVM.currentTab == nil {
                 EmptyStateView()
@@ -175,6 +183,23 @@ struct EditorAreaView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.bgPrimary)
+        .onDrop(of: [.text], isTargeted: nil) { providers in
+            for provider in providers {
+                _ = provider.loadObject(ofClass: NSString.self) { object, _ in
+                    guard let text = object as? String else { return }
+                    DispatchQueue.main.async {
+                        if let tab = self.editorVM.currentTab {
+                            if let termId = tab.terminalId, self.terminalVM.tabs.contains(where: { $0.id == tab.id }) {
+                                TerminalManager.shared.paste(id: termId, text: text)
+                            } else {
+                                self.editorVM.newFile(name: text, content: text)
+                            }
+                        }
+                    }
+                }
+            }
+            return true
+        }
     }
 
     private var markdownToggleButton: some View {
@@ -203,11 +228,6 @@ struct EditorAreaView: View {
             }
         }
         .help(editorVM.showMarkdownPreview ? "Show code editor" : "Show markdown preview")
-    }
-
-    private var terminalVisibility: Double {
-        guard let activeTab = editorVM.currentTab else { return 0 }
-        return terminalVM.tabs.contains { $0.id == activeTab.id } ? 1 : 0
     }
 
     private func performInFileSearch() {

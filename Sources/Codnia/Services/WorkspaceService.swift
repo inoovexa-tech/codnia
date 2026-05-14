@@ -8,7 +8,7 @@ public final class WorkspaceService: ObservableObject {
     @Published public var fileTree: [FileEntry] = []
     @Published public var branches: [String: String] = [:]
     @Published public var changesCount: [String: (added: Int, deleted: Int)] = [:]
-    @Published     public var projectRunningStates: [String: Bool] = [:]
+    @Published public var worktreeRunningStates: [String: Int] = [:]
 
     private var refreshTask: Task<Void, Never>?
     private var gitTasks: [String: Task<Void, Never>] = [:]
@@ -41,7 +41,6 @@ public final class WorkspaceService: ObservableObject {
         refreshTask = Task { [weak self] in
             while !Task.isCancelled {
                 await self?.refreshAllChanges()
-                await self?.refreshRunningStates()
                 try? await Task.sleep(nanoseconds: 30_000_000_000)
             }
         }
@@ -100,15 +99,19 @@ public final class WorkspaceService: ObservableObject {
         }
     }
 
-    private func refreshRunningStates() async {
-        for project in projects {
-            if let worktree = project.activeWorktree {
-                let hasAITerminal = worktree.terminalTabs.contains {
-                    $0.type == .opencode || $0.type == .claude || $0.type == .codex
+    public func updateRunningState(for worktreeId: String, isRunning: Bool) {
+        if isRunning {
+            worktreeRunningStates[worktreeId, default: 0] += 1
+        } else {
+            if let count = worktreeRunningStates[worktreeId], count > 0 {
+                if count <= 1 {
+                    worktreeRunningStates.removeValue(forKey: worktreeId)
+                } else {
+                    worktreeRunningStates[worktreeId] = count - 1
                 }
-                projectRunningStates[worktree.id] = hasAITerminal
             }
         }
+        objectWillChange.send()
     }
 
     public func loadProjects() {
@@ -243,7 +246,7 @@ public final class WorkspaceService: ObservableObject {
 
     public func setActiveProject(id: String) {
         guard let idx = projects.firstIndex(where: { $0.id == id }) else { return }
-        projects[idx].isWorktreesExpanded = true
+        projects[idx].isWorktreesExpanded.toggle()
         let project = projects[idx]
         activeProject = project
         saveProjects()

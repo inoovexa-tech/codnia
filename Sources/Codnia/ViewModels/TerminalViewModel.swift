@@ -10,27 +10,72 @@ public final class TerminalViewModel: ObservableObject {
     private let service = TerminalService()
     private var cancellables = Set<AnyCancellable>()
     var workspace: WorkspaceService?
+    private var terminalWorktreeMap: [String: String] = [:]
+    private var terminalProcessingStates: [String: Bool] = [:]
+    private var pollingTask: Task<Void, Never>?
 
     public init(workspace: WorkspaceService? = nil) {
         self.workspace = workspace
-        // Bridge service instances to tabs
         service.$instances
             .receive(on: RunLoop.main)
             .sink { [weak self] inst in
                 self?.instances = inst
             }
             .store(in: &cancellables)
+        startPolling()
+    }
+
+    deinit {
+        pollingTask?.cancel()
+    }
+
+    private func startPolling() {
+        pollingTask?.cancel()
+        pollingTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                await self?.checkProcessStatesIfNeeded()
+            }
+        }
+    }
+
+    private func checkProcessStatesIfNeeded() async {
+        for (termId, worktreeId) in terminalWorktreeMap {
+            guard let terminal = TerminalManager.shared.get(for: termId) else { continue }
+
+            if !terminal.process.running {
+                service.setProcessRunning(id: termId, running: false)
+                if terminalProcessingStates[termId] == true {
+                    workspace?.updateRunningState(for: worktreeId, isRunning: false)
+                }
+                terminalProcessingStates.removeValue(forKey: termId)
+                terminalWorktreeMap.removeValue(forKey: termId)
+            } else {
+                let isActive = TerminalManager.shared.isActivelyProcessing(for: termId)
+                let wasActive = terminalProcessingStates[termId] ?? false
+
+                if isActive != wasActive {
+                    service.setProcessRunning(id: termId, running: isActive)
+                    workspace?.updateRunningState(for: worktreeId, isRunning: isActive)
+                    terminalProcessingStates[termId] = isActive
+                }
+            }
+        }
     }
 
     @discardableResult
-    public func createTerminalTab(type: TabType = .terminal) -> Tab {
+    public func createTerminalTab(type: TabType = .terminal, name: String? = nil) -> Tab {
         let cwd = workspace?.activeProject?.activeWorktree?.path ?? NSHomeDirectory()
-        let name = tabName(for: type)
-        let instance = service.createTerminal(cwd: cwd)
+        let worktreeId = workspace?.activeProject?.activeWorktreeId
+        let tabName = name ?? self.tabName(for: type)
+        let instance = service.createTerminal(cwd: cwd, worktreeId: worktreeId)
+        if let wtId = worktreeId {
+            terminalWorktreeMap[instance.id] = wtId
+        }
         let tab = Tab(
             id: UUID().uuidString,
             path: instance.cwd,
-            name: name,
+            name: tabName,
             language: "",
             type: type,
             terminalId: instance.id
@@ -41,12 +86,31 @@ public final class TerminalViewModel: ObservableObject {
         return tab
     }
 
+    public func setWorktreeMapping(tabs: [Tab], worktreeId: String) {
+        for tab in tabs {
+            if let termId = tab.terminalId {
+                terminalWorktreeMap[termId] = worktreeId
+            }
+        }
+    }
+
     public func closeTab(_ tab: Tab) {
         if let termId = tab.terminalId {
+            if let worktreeId = terminalWorktreeMap[termId] {
+                if terminalProcessingStates[termId] == true {
+                    workspace?.updateRunningState(for: worktreeId, isRunning: false)
+                }
+                terminalProcessingStates.removeValue(forKey: termId)
+                terminalWorktreeMap.removeValue(forKey: termId)
+            }
+            TerminalManager.shared.terminateProcess(for: termId)
             service.kill(id: termId)
             TerminalManager.shared.remove(for: termId)
         }
         tabs.removeAll { $0.id == tab.id }
+        if activeId == tab.id {
+            activeId = tabs.last?.id
+        }
         saveTabsToProject()
     }
 
@@ -71,6 +135,7 @@ public final class TerminalViewModel: ObservableObject {
         case .diff: return "Terminal"
         case .image: return "Image Viewer"
         case .pdf: return "PDF Viewer"
+        case .queryResult: return "SQL Query"
         }
     }
 
@@ -92,5 +157,13 @@ public final class TerminalViewModel: ObservableObject {
         let adjustedDestination = source < destination ? destination - 1 : destination
         tabs.insert(tab, at: adjustedDestination)
         saveTabsToProject()
+    }
+
+    public func clearAllTerminals() {
+        for tab in tabs {
+            if let termId = tab.terminalId {
+                TerminalManager.shared.remove(for: termId)
+            }
+        }
     }
 }

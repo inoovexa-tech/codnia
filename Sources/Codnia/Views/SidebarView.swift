@@ -3,6 +3,7 @@ import AppKit
 
 struct SidebarView: View {
     @Binding var expanded: Bool
+    @EnvironmentObject var appState: AppState
     @EnvironmentObject var workspaceVM: WorkspaceService
     @EnvironmentObject var editorVM: EditorViewModel
     @EnvironmentObject var terminalVM: TerminalViewModel
@@ -42,6 +43,7 @@ struct SidebarView: View {
 
         let settingsView = SettingsView()
             .environmentObject(settings)
+            .environmentObject(appState.pluginService)
             .frame(minWidth: 700, minHeight: 540)
 
         let hostingView = NSHostingView(rootView: settingsView)
@@ -167,6 +169,11 @@ struct ProjectRowExpanded: View {
         project?.activeWorktree
     }
 
+    private var hasRunningProcess: Bool {
+        guard let project = project else { return false }
+        return project.worktrees.contains { (workspaceVM.worktreeRunningStates[$0.id] ?? 0) > 0 }
+    }
+
     private var initials: String {
         guard let project = project else { return "" }
         return project.name
@@ -183,7 +190,11 @@ struct ProjectRowExpanded: View {
             Image(nsImage: nsImage)
                 .resizable()
                 .frame(width: 28, height: 28)
-                .cornerRadius(6)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(isActive ? Color.accentBlue.opacity(0.25) : Color.clear)
+                )
         } else {
             Text(initials)
                 .font(.system(size: 11, weight: .semibold))
@@ -199,17 +210,26 @@ struct ProjectRowExpanded: View {
         VStack(spacing: 2) {
             ZStack(alignment: .trailing) {
                 Button(action: {
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        isWorktreesExpanded.toggle()
+                    }
                     workspaceVM.setActiveProject(id: projectId)
                 }) {
                     HStack(spacing: 8) {
                         projectIcon
 
                         VStack(alignment: .leading, spacing: 2) {
-                            HStack(spacing: 4) {
+                            HStack(spacing: 6) {
                                 Text(project?.name ?? "")
                                     .font(.system(size: 12, weight: .medium))
                                     .foregroundColor(.white)
                                     .lineLimit(1)
+
+                                if hasRunningProcess {
+                                    DashedBorderLoading()
+                                }
+
+                                Spacer()
                             }
 
                             if let worktree = activeWorktree {
@@ -264,7 +284,15 @@ struct ProjectRowExpanded: View {
                 .padding(.trailing, 8)
             }
             .frame(maxWidth: .infinity, minHeight: 44)
-            .background(isActive ? Color.bgTertiary : Color.clear)
+            .background(isActive ? Color.bgActive : Color.clear)
+            .overlay(alignment: .leading) {
+                if isActive {
+                    Rectangle()
+                        .fill(Color.accentBlue)
+                        .frame(width: 3)
+                        .padding(.vertical, 8)
+                }
+            }
             .cornerRadius(8)
 
             if isWorktreesExpanded {
@@ -332,7 +360,8 @@ struct ProjectRowExpanded: View {
                         contextMenuWorktree = worktree
                         showWorktreeContextMenu = true
                     } : nil,
-                    changes: count
+                    changes: count,
+                    hasRunningProcess: (workspaceVM.worktreeRunningStates[worktree.id] ?? 0) > 0
                 )
             }
 
@@ -390,6 +419,7 @@ struct WorktreeRow: View {
     let onSelect: () -> Void
     let onRemove: (() -> Void)?
     let changes: (added: Int, deleted: Int)
+    var hasRunningProcess: Bool = false
 
     var body: some View {
         HStack(spacing: 4) {
@@ -404,6 +434,10 @@ struct WorktreeRow: View {
                         .foregroundColor(isActive ? .textPrimary : .textSecondary)
                         .lineLimit(1)
                         .frame(maxWidth: 100, alignment: .leading)
+
+                    if hasRunningProcess {
+                        DashedBorderLoading()
+                    }
 
                     if changes.added > 0 || changes.deleted > 0 {
                         HStack(spacing: 2) {
@@ -516,6 +550,11 @@ struct ProjectRowCollapsed: View {
             .joined()
     }
 
+    private var hasLoading: Bool {
+        guard let project = project else { return false }
+        return project.worktrees.contains { (workspaceVM.worktreeRunningStates[$0.id] ?? 0) > 0 }
+    }
+
     @ViewBuilder
     private var projectIcon: some View {
         if let project = project, let iconPath = project.detectedIconPath,
@@ -523,14 +562,24 @@ struct ProjectRowCollapsed: View {
             Image(nsImage: nsImage)
                 .resizable()
                 .frame(width: 36, height: 36)
-                .cornerRadius(8)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(isActive ? Color.accentBlue.opacity(0.25) : Color.clear)
+                )
         } else {
-            Text(initials)
-                .font(.system(size: 11, weight: .semibold))
-                .frame(width: 36, height: 36)
-                .background(isActive ? Color.accentBlue : Color.bgTertiary)
-                .foregroundColor(.white)
-                .cornerRadius(8)
+            ZStack(alignment: .bottomTrailing) {
+                Text(initials)
+                    .font(.system(size: 11, weight: .semibold))
+                    .frame(width: 36, height: 36)
+                    .background(isActive ? Color.accentBlue : Color.bgTertiary)
+                    .foregroundColor(.white)
+                    .cornerRadius(8)
+
+                if hasLoading {
+                    DashedBorderLoading()
+                }
+            }
         }
     }
 
@@ -542,6 +591,32 @@ struct ProjectRowCollapsed: View {
         }
         .buttonStyle(BorderlessButtonStyle())
         .frame(width: 36, height: 36)
+        .overlay(alignment: .leading) {
+            if isActive {
+                Rectangle()
+                    .fill(Color.accentBlue)
+                    .frame(width: 3)
+                    .frame(height: 20)
+            }
+        }
         .help(project?.name ?? "")
+    }
+}
+
+struct DashedBorderLoading: View {
+    @State private var phase: CGFloat = 0
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: 2)
+            .stroke(
+                Color.gray,
+                style: StrokeStyle(lineWidth: 1.5, dash: [2, 3], dashPhase: phase)
+            )
+            .frame(width: 10, height: 10)
+            .onAppear {
+                withAnimation(.linear(duration: 0.6).repeatForever(autoreverses: false)) {
+                    phase -= 5
+                }
+            }
     }
 }

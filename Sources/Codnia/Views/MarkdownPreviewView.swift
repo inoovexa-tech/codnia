@@ -2,89 +2,145 @@ import SwiftUI
 
 struct MarkdownPreviewView: View {
     let content: String
-    @State private var renderedContent: AttributedString = AttributedString()
+    @State private var blocks: [Block] = []
 
     var body: some View {
         ScrollView {
-            Text(renderedContent)
-                .textSelection(.enabled)
-                .padding(20)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            VStack(alignment: .leading, spacing: 12) {
+                ForEach(Array(blocks.enumerated()), id: \.offset) { index, block in
+                    blockView(block)
+                }
+            }
+            .textSelection(.enabled)
+            .padding(20)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .background(Color.bgPrimary)
-        .onAppear { renderedContent = renderContent() }
-        .onChange(of: content) { _ in renderedContent = renderContent() }
+        .onAppear { blocks = parseBlocks(content) }
+        .onChange(of: content) { _ in blocks = parseBlocks(content) }
     }
 
-    private func renderContent() -> AttributedString {
-        var result = AttributedString()
-        let blocks = parseBlocks(content)
-
-        for (index, block) in blocks.enumerated() {
-            if index > 0 {
-                result += paddingBlock()
-            }
-            result += attributedBlock(block)
-        }
-
-        return result
-    }
-
-    private func attributedBlock(_ block: Block) -> AttributedString {
+    @ViewBuilder
+    private func blockView(_ block: Block) -> some View {
         switch block {
         case .header(let level, let text):
-            let fontSize: CGFloat = [26, 22, 18, 16, 14, 13][min(max(level - 1, 0), 5)]
-            let topPad: CGFloat = level <= 2 ? 16 : 10
-            var attr = AttributedString(String(repeating: "\n", count: Int(topPad / 6)))
-            attr.foregroundColor = .clear
-            var textAttr = inlineMarkdown(text, baseSize: fontSize)
-            textAttr.font = .systemFont(ofSize: fontSize, weight: .bold)
-            textAttr.foregroundColor = .textPrimary
-            attr += textAttr
-            return attr
-
+            headerView(level: level, text: text)
         case .paragraph(let text):
-            if text.trimmingCharacters(in: .whitespaces).isEmpty {
-                var attr = AttributedString("\n")
-                attr.foregroundColor = .clear
-                return attr
-            }
-            return inlineMarkdown(text, baseSize: 15)
-
+            paragraphView(text)
         case .codeBlock(let code):
-            var attr = AttributedString(code)
-            attr.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
-            attr.foregroundColor = .textPrimary
-            attr.backgroundColor = .bgTertiary
-            return attr
-
+            codeBlockView(code)
         case .list(let items, let ordered):
-            var result = AttributedString()
-            for (i, item) in items.enumerated() {
-                if i > 0 { result += AttributedString("\n") }
-                let bullet = ordered ? "\(i + 1)." : "•"
-                var bulletAttr = AttributedString(bullet + " ")
-                bulletAttr.foregroundColor = .textSecondary
-                bulletAttr.font = .systemFont(ofSize: 15)
-                result += bulletAttr
-                result += inlineMarkdown(item, baseSize: 15)
-            }
-            return result
-
+            listView(items: items, ordered: ordered)
         case .blockquote(let text):
-            var bar = AttributedString("\u{00a0}\u{00a0}")
-            bar.backgroundColor = Color.textTertiary.opacity(0.3)
-            bar.foregroundColor = .clear
-            var body = inlineMarkdown(text, baseSize: 14)
-            body.foregroundColor = .textSecondary
-            return bar + body
-
+            blockquoteView(text)
         case .divider:
-            var attr = AttributedString(String(repeating: "\u{00a0}", count: 80))
-            attr.foregroundColor = .clear
-            attr.backgroundColor = Color.borderLight.opacity(0.5)
-            return attr
+            dividerView()
+        case .table(let headers, let alignments, let rows):
+            tableView(headers: headers, alignments: alignments, rows: rows)
         }
+    }
+
+    private func headerView(level: Int, text: String) -> some View {
+        let fontSize: CGFloat = [26, 22, 18, 16, 14, 13][min(max(level - 1, 0), 5)]
+        return Text(inlineMarkdown(text, baseSize: fontSize))
+            .font(.system(size: fontSize, weight: .bold))
+            .foregroundColor(.textPrimary)
+            .padding(.top, level <= 2 ? 16 : 10)
+    }
+
+    @ViewBuilder
+    private func paragraphView(_ text: String) -> some View {
+        if text.trimmingCharacters(in: .whitespaces).isEmpty {
+            Color.clear.frame(height: 8)
+        } else {
+            Text(inlineMarkdown(text, baseSize: 15))
+        }
+    }
+
+    private func codeBlockView(_ code: String) -> some View {
+        Text(AttributedString(code))
+            .font(.system(size: 12, design: .monospaced))
+            .foregroundColor(.textPrimary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(12)
+            .background(Color.bgTertiary)
+            .cornerRadius(6)
+    }
+
+    private func listView(items: [String], ordered: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            ForEach(Array(items.enumerated()), id: \.offset) { i, item in
+                HStack(alignment: .top, spacing: 6) {
+                    let bullet = ordered ? "\(i + 1)." : "•"
+                    Text(bullet)
+                        .foregroundColor(.textSecondary)
+                        .font(.system(size: 15))
+                    Text(inlineMarkdown(item, baseSize: 15))
+                }
+            }
+        }
+    }
+
+    private func blockquoteView(_ text: String) -> some View {
+        HStack(spacing: 0) {
+            Rectangle()
+                .fill(Color.textTertiary.opacity(0.3))
+                .frame(width: 3)
+            Text(inlineMarkdown(text, baseSize: 14))
+                .foregroundColor(.textSecondary)
+                .padding(.leading, 12)
+        }
+    }
+
+    private func dividerView() -> some View {
+        Divider()
+            .background(Color.borderLight.opacity(0.5))
+    }
+
+    private func tableView(headers: [String], alignments: [TextAlignment], rows: [[String]]) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            VStack(spacing: 0) {
+                HStack(spacing: 0) {
+                    ForEach(Array(headers.enumerated()), id: \.offset) { index, header in
+                        let alignment = index < alignments.count ? alignments[index] : .leading
+                        Text(inlineMarkdown(header, baseSize: 13))
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(.textPrimary)
+                            .frame(minWidth: 80, maxWidth: .infinity, alignment: alignment.frameAlignment)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                    }
+                }
+                .background(Color.bgTertiary)
+
+                Divider()
+                    .background(Color.borderLight)
+
+                ForEach(Array(rows.enumerated()), id: \.offset) { rowIndex, row in
+                    HStack(spacing: 0) {
+                        ForEach(Array(row.enumerated()), id: \.offset) { colIndex, cell in
+                            let alignment = colIndex < alignments.count ? alignments[colIndex] : .leading
+                            Text(inlineMarkdown(cell, baseSize: 13))
+                                .frame(minWidth: 80, maxWidth: .infinity, alignment: alignment.frameAlignment)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                        }
+                    }
+                    .background(rowIndex % 2 == 1 ? Color.bgTertiary.opacity(0.4) : Color.clear)
+
+                    if rowIndex < rows.count - 1 {
+                        Divider()
+                            .background(Color.borderLight.opacity(0.5))
+                    }
+                }
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(Color.borderLight, lineWidth: 1)
+            )
+        }
+        .fixedSize(horizontal: false, vertical: true)
     }
 
     private func inlineMarkdown(_ text: String, baseSize: CGFloat) -> AttributedString {
@@ -114,12 +170,6 @@ struct MarkdownPreviewView: View {
 
         return result
     }
-
-    private func paddingBlock() -> AttributedString {
-        var attr = AttributedString("\n")
-        attr.foregroundColor = .clear
-        return attr
-    }
 }
 
 // MARK: - Parser
@@ -131,6 +181,7 @@ private enum Block {
     case list(items: [String], ordered: Bool)
     case blockquote(text: String)
     case divider
+    case table(headers: [String], alignments: [TextAlignment], rows: [[String]])
 }
 
 private func isOrderedListItem(_ line: String) -> Bool {
@@ -148,6 +199,41 @@ private func isHeaderLine(_ line: String) -> Bool {
         else { break }
     }
     return level > 0 && level <= 6 && line.count > level && line[line.index(line.startIndex, offsetBy: level)] == " "
+}
+
+private func isTableRow(_ line: String) -> Bool {
+    let trimmed = line.trimmingCharacters(in: .whitespaces)
+    return trimmed.hasPrefix("|") && trimmed.hasSuffix("|")
+}
+
+private func isTableSeparatorLine(_ line: String) -> Bool {
+    let cells = parseTableRow(line)
+    return cells.count > 0 && cells.allSatisfy { cell in
+        let trimmed = cell.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return false }
+        return trimmed.allSatisfy { $0 == "-" || $0 == ":" }
+    }
+}
+
+private func parseTableRow(_ line: String) -> [String] {
+    let trimmed = line.trimmingCharacters(in: .whitespaces)
+    var cells = trimmed.split(separator: "|", omittingEmptySubsequences: false).map(String.init)
+    if cells.first?.trimmingCharacters(in: .whitespaces).isEmpty ?? false {
+        cells.removeFirst()
+    }
+    if cells.last?.trimmingCharacters(in: .whitespaces).isEmpty ?? false {
+        cells.removeLast()
+    }
+    return cells.map { $0.trimmingCharacters(in: .whitespaces) }
+}
+
+private func parseTextAlignment(from cell: String) -> TextAlignment {
+    let trimmed = cell.trimmingCharacters(in: .whitespaces)
+    let left = trimmed.hasPrefix(":")
+    let right = trimmed.hasSuffix(":")
+    if left && right { return .center }
+    if right { return .trailing }
+    return .leading
 }
 
 private func parseBlocks(_ content: String) -> [Block] {
@@ -244,13 +330,25 @@ private func parseBlocks(_ content: String) -> [Block] {
             continue
         }
 
-        // Merge consecutive paragraph lines into one block
+        if isTableRow(line) && i + 1 < lines.count && isTableSeparatorLine(lines[i + 1]) {
+            let headers = parseTableRow(line)
+            let alignments = parseTableRow(lines[i + 1]).map { parseTextAlignment(from: $0) }
+            var rows: [[String]] = []
+            i += 2
+            while i < lines.count && isTableRow(lines[i]) {
+                rows.append(parseTableRow(lines[i]))
+                i += 1
+            }
+            blocks.append(.table(headers: headers, alignments: alignments, rows: rows))
+            continue
+        }
+
         var paraLines: [String] = []
         paraLines.append(line)
         i += 1
         while i < lines.count {
             let next = lines[i]
-            if next.hasPrefix("```") || next.hasPrefix("> ") || next.hasPrefix("---") || next.hasPrefix("***") || next.hasPrefix("___") || next.hasPrefix("- ") || next.hasPrefix("* ") || next.hasPrefix("+ ") || isOrderedListItem(next) || isHeaderLine(next) {
+            if next.hasPrefix("```") || next.hasPrefix("> ") || next.hasPrefix("---") || next.hasPrefix("***") || next.hasPrefix("___") || next.hasPrefix("- ") || next.hasPrefix("* ") || next.hasPrefix("+ ") || isOrderedListItem(next) || isHeaderLine(next) || (isTableRow(next) && i + 1 < lines.count && isTableSeparatorLine(lines[i + 1])) {
                 break
             }
             paraLines.append(next)
@@ -260,4 +358,17 @@ private func parseBlocks(_ content: String) -> [Block] {
     }
 
     return blocks
+}
+
+// MARK: - Helpers
+
+private extension TextAlignment {
+    var frameAlignment: Alignment {
+        switch self {
+        case .leading: return .leading
+        case .center: return .center
+        case .trailing: return .trailing
+        @unknown default: return .leading
+        }
+    }
 }

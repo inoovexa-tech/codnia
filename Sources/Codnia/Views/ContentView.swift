@@ -6,14 +6,11 @@ struct ContentView: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            // Conteúdo principal (começa abaixo da tab bar)
             VStack(spacing: 0) {
-                // Espaçador para a área da tab bar (36pt)
                 Color.clear
                     .frame(height: 36)
                     .allowsHitTesting(false)
 
-                // Main area
                 HStack(spacing: 0) {
                     SidebarView(expanded: $settings.leftSidebarExpanded)
                         .frame(width: settings.leftSidebarExpanded ? settings.leftSidebarWidth : 52)
@@ -32,6 +29,7 @@ struct ContentView: View {
                         .environmentObject(appState.editorVM)
                         .environmentObject(appState.terminalVM)
                         .environmentObject(settings)
+                        .environmentObject(appState.databaseService)
 
                     if appState.rightSidebarExpanded {
                         ResizableDivider(
@@ -53,18 +51,20 @@ struct ContentView: View {
                         .environmentObject(appState.editorVM)
                         .environmentObject(appState.searchVM)
                         .environmentObject(appState.gitVM)
+                        .environmentObject(appState.tasksVM)
+                        .environmentObject(appState.pluginService)
+                        .environmentObject(appState.databaseService)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-                // StatusBarView removed as per user request
             }
 
-            // Tab bar sobreposta no topo absoluto da janela
             TabBarView(
                 editorVM: appState.editorVM,
                 terminalVM: appState.terminalVM,
                 splitVM: appState.splitVM,
+                workspaceVM: appState.workspaceVM,
+                settings: appState.settings,
                 onToggleExplorer: {
                     if appState.rightSidebarExpanded && appState.rightSidebarTab == .explorer {
                         appState.rightSidebarExpanded = false
@@ -93,14 +93,26 @@ struct ContentView: View {
                 },
                 onToggleRightSidebar: { appState.rightSidebarExpanded.toggle() },
                 isRightSidebarExpanded: appState.rightSidebarExpanded,
-                isExplorerActive: appState.rightSidebarExpanded && appState.rightSidebarTab == .explorer,
-                isSearchActive: appState.rightSidebarExpanded && appState.rightSidebarTab == .search,
-                isSourceControlActive: appState.rightSidebarExpanded && appState.rightSidebarTab == .sourceControl
+                isDatabaseEnabled: appState.databaseService.hasConnections,
+                onNewSQLQuery: {
+                    let connId = appState.databaseService.connections.first?.id
+                    appState.editorVM.newQueryTab(connectionId: connId)
+                }
             )
             .frame(height: 36)
         }
         .background(Color.bgPrimary)
         .edgesIgnoringSafeArea(.top)
+        .overlay(
+            Group {
+                if appState.showGlobalSearchModal {
+                    GlobalSearchModalView(isPresented: $appState.showGlobalSearchModal)
+                        .environmentObject(appState.searchVM)
+                        .environmentObject(appState.workspaceVM)
+                        .environmentObject(appState.editorVM)
+                }
+            }
+        )
         .onAppear {
             if appState.workspaceVM.projects.isEmpty {
                 appState.workspaceVM.loadProjects()

@@ -1,34 +1,141 @@
 import SwiftUI
 import SwiftTerm
+import Carbon
+
+class CodniaTerminalView: LocalProcessTerminalView {
+    var onDataReceived: ((Int) -> Void)?
+
+    override func dataReceived(slice: ArraySlice<UInt8>) {
+        super.dataReceived(slice: slice)
+        onDataReceived?(slice.count)
+    }
+}
 
 @MainActor
 class TerminalManager {
     static let shared = TerminalManager()
-    private var terminals: [String: LocalProcessTerminalView] = [:]
+    private var terminals: [String: CodniaTerminalView] = [:]
+    private var bytesSinceLastPoll: [String: Int] = [:]
+    private var lastActiveTimes: [String: Date] = [:]
 
-    func get(for id: String) -> LocalProcessTerminalView? {
+    func get(for id: String) -> CodniaTerminalView? {
         terminals[id]
     }
 
-    func set(_ terminal: LocalProcessTerminalView, for id: String) {
+    func set(_ terminal: CodniaTerminalView, for id: String) {
         terminals[id] = terminal
+        terminal.onDataReceived = { [weak self] byteCount in
+            DispatchQueue.main.async {
+                self?.recordBytes(for: id, bytes: byteCount)
+            }
+        }
     }
 
     func remove(for id: String) {
         terminals.removeValue(forKey: id)?.removeFromSuperview()
+        bytesSinceLastPoll.removeValue(forKey: id)
+        lastActiveTimes.removeValue(forKey: id)
     }
 
     func show(id: String) {
         guard let terminal = terminals[id] else { return }
         terminal.superview?.subviews.forEach { $0.isHidden = true }
         terminal.isHidden = false
+        terminal.frame = terminal.superview?.bounds ?? terminal.frame
         if let window = terminal.window ?? NSApplication.shared.keyWindow ?? NSApplication.shared.mainWindow {
             _ = window.makeFirstResponder(terminal)
         }
     }
 
-    func getAllTerminals() -> [LocalProcessTerminalView] {
+    func hideAll() {
+        for terminal in terminals.values {
+            terminal.isHidden = true
+        }
+    }
+
+    func reset() {
+        for (_, terminal) in terminals {
+            terminal.isHidden = true
+        }
+    }
+
+    func getAll() -> [String: CodniaTerminalView] {
+        terminals
+    }
+
+    func getAllTerminals() -> [CodniaTerminalView] {
         Array(terminals.values)
+    }
+
+    func terminateProcess(for id: String) {
+        terminals[id]?.terminate()
+    }
+
+    func isProcessRunning(for id: String) -> Bool {
+        terminals[id]?.process.running ?? false
+    }
+
+    func sendText(id: String, text: String) {
+        guard let terminal = terminals[id] else { return }
+        terminal.feed(byteArray: ArraySlice([UInt8](text.utf8)))
+    }
+
+    func focus(id: String) {
+        guard let terminal = terminals[id] else { return }
+        DispatchQueue.main.async {
+            if let window = NSApplication.shared.keyWindow {
+                _ = window.makeFirstResponder(terminal)
+            }
+        }
+    }
+
+    func paste(id: String, text: String) {
+        guard let terminal = terminals[id] else { return }
+        let pasteboard = NSPasteboard.general
+        let oldContents = pasteboard.string(forType: .string)
+        pasteboard.clearContents()
+        pasteboard.setString(text, forType: .string)
+        terminal.selectAll(nil)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            if let window = NSApplication.shared.keyWindow {
+                _ = window.makeFirstResponder(terminal)
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                let source = CGEventSource(stateID: .combinedSessionState)
+                let keyDown = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: true)
+                keyDown?.flags = .maskCommand
+                keyDown?.post(tap: .cgSessionEventTap)
+                let keyUp = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: false)
+                keyUp?.flags = .maskCommand
+                keyUp?.post(tap: .cgSessionEventTap)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    if let old = oldContents {
+                        pasteboard.clearContents()
+                        pasteboard.setString(old, forType: .string)
+                    }
+                }
+            }
+        }
+    }
+
+    private func recordBytes(for id: String, bytes: Int) {
+        bytesSinceLastPoll[id] = (bytesSinceLastPoll[id] ?? 0) + bytes
+    }
+
+    func isActivelyProcessing(for id: String) -> Bool {
+        let bytes = bytesSinceLastPoll[id] ?? 0
+        bytesSinceLastPoll[id] = nil
+
+        if bytes >= 150 {
+            lastActiveTimes[id] = Date()
+            return true
+        }
+
+        if let lastActive = lastActiveTimes[id], Date().timeIntervalSince(lastActive) < 3.0 {
+            return true
+        }
+
+        return false
     }
 }
 
@@ -78,6 +185,26 @@ class TerminalEventMonitor {
 class TerminalContainerView: NSView {
     override var acceptsFirstResponder: Bool { true }
 
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        if window != nil {
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(windowDidBecomeKey),
+                name: NSWindow.didBecomeKeyNotification,
+                object: window
+            )
+        }
+    }
+
+    @objc private func windowDidBecomeKey(_ notification: Notification) {
+        if let activeTerminal = subviews.first(where: { !$0.isHidden && $0 is LocalProcessTerminalView }) as? CodniaTerminalView {
+            DispatchQueue.main.async {
+                _ = self.window?.makeFirstResponder(activeTerminal)
+            }
+        }
+    }
+
     override func hitTest(_ point: NSPoint) -> NSView? {
         let activeTerminal = subviews.first(where: { !$0.isHidden && $0 is LocalProcessTerminalView })
         if let terminal = activeTerminal, terminal.frame.contains(point) {
@@ -93,13 +220,17 @@ class TerminalContainerManager {
     private var container: TerminalContainerView?
 
     func getContainer() -> TerminalContainerView {
-        if let existing = container, existing.window != nil {
+        if let existing = container {
             return existing
         }
         let newContainer = TerminalContainerView()
         newContainer.autoresizingMask = [.width, .height]
         container = newContainer
         return newContainer
+    }
+
+    func clearContainer() {
+        container = nil
     }
 }
 
@@ -120,28 +251,42 @@ struct TerminalHostView: NSViewRepresentable {
     }
 
     func updateNSView(_ nsView: NSView, context: Context) {
+        let hasActiveTerminal = tabs.first(where: { $0.id == activeTabId })?.terminalId != nil
+
         for tab in tabs {
             guard let termId = tab.terminalId else { continue }
             if let existing = TerminalManager.shared.get(for: termId) {
                 if existing.superview == nil {
                     nsView.addSubview(existing)
-                    existing.frame = nsView.bounds
-                    existing.autoresizingMask = [.width, .height]
                 }
+                existing.frame = nsView.bounds
+                existing.autoresizingMask = [.width, .height]
             } else {
-                let terminal = createTerminal(cwd: tab.path, fontSize: fontSize, type: tab.type, in: nsView)
-                TerminalManager.shared.set(terminal, for: termId)
+                createTerminal(cwd: tab.path, fontSize: fontSize, type: tab.type, terminalId: termId, in: nsView)
             }
         }
 
-        if let activeTab = tabs.first(where: { $0.id == activeTabId }),
+        if hasActiveTerminal, let activeTab = tabs.first(where: { $0.id == activeTabId }),
            let termId = activeTab.terminalId {
-            TerminalManager.shared.show(id: termId)
+            for (id, terminal) in TerminalManager.shared.getAll() {
+                terminal.isHidden = (id != termId)
+            }
+            if let terminal = TerminalManager.shared.get(for: termId) {
+                terminal.frame = nsView.bounds
+                if let window = terminal.window ?? NSApplication.shared.keyWindow ?? NSApplication.shared.mainWindow {
+                    _ = window.makeFirstResponder(terminal)
+                }
+            }
+        } else {
+            for (_, terminal) in TerminalManager.shared.getAll() {
+                terminal.isHidden = true
+            }
         }
     }
 
-    private func createTerminal(cwd: String, fontSize: Double, type: TabType, in container: NSView) -> LocalProcessTerminalView {
-        let terminal = LocalProcessTerminalView(frame: container.bounds)
+    private func createTerminal(cwd: String, fontSize: Double, type: TabType, terminalId: String, in container: NSView) {
+        let terminal = CodniaTerminalView(frame: container.bounds)
+        TerminalManager.shared.set(terminal, for: terminalId)
         terminal.autoresizingMask = [.width, .height]
         terminal.nativeBackgroundColor = NSColor(Color.bgPrimary)
         terminal.nativeForegroundColor = NSColor(Color.textPrimary)
@@ -155,31 +300,31 @@ struct TerminalHostView: NSViewRepresentable {
         if env["LANG"] == nil { env["LANG"] = "en_US.UTF-8" }
         let envStrings = env.map { "\($0.key)=\($0.value)" }
 
+        let (executable, args): (String, [String])
+        switch type {
+        case .opencode:
+            executable = "/bin/zsh"
+            args = ["-l", "-c", "opencode"]
+        case .claude:
+            executable = "/bin/zsh"
+            args = ["-l", "-c", "claude"]
+        case .codex:
+            executable = "/bin/zsh"
+            args = ["-l", "-c", "codex"]
+        default:
+            executable = "/bin/zsh"
+            args = ["-l"]
+        }
+
         terminal.startProcess(
-            executable: "/bin/zsh",
-            args: ["-l"],
+            executable: executable,
+            args: args,
             environment: envStrings,
             execName: nil,
             currentDirectory: cwd.isEmpty ? nil : cwd
         )
 
-        let autoCommand: String? = {
-            switch type {
-            case .opencode: return "opencode"
-            case .claude: return "claude"
-            case .codex: return "codex"
-            default: return nil
-            }
-        }()
-
-        if let command = autoCommand {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                terminal.send(txt: command + "\n")
-            }
-        }
-
         container.addSubview(terminal)
-        return terminal
     }
 }
 

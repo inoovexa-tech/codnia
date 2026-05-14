@@ -44,7 +44,7 @@ struct EditorNSTextView: NSViewRepresentable {
         let textView = NSTextView()
         textView.isRichText = false
         textView.font = NSFont.monospacedSystemFont(ofSize: CGFloat(fontSize), weight: .regular)
-        textView.textColor = NSColor.textPrimary
+        textView.textColor = nil
         textView.backgroundColor = NSColor.bgPrimary
         textView.insertionPointColor = NSColor.accentBlue
         textView.selectedTextAttributes = [
@@ -105,7 +105,7 @@ struct EditorNSTextView: NSViewRepresentable {
         Coordinator(text: $text, language: language, onChange: onChange)
     }
 
-    class Coordinator: NSObject, NSTextViewDelegate {
+    class Coordinator: NSObject {
         @Binding var text: String
         let onChange: () -> Void
         var highlighter: SyntaxHighlighter?
@@ -133,6 +133,7 @@ struct EditorNSTextView: NSViewRepresentable {
                   let textStorage = textView.textStorage else { return }
             isHighlighting = true
             highlighter.highlight(textStorage)
+            textView.needsDisplay = true
             isHighlighting = false
         }
 
@@ -160,11 +161,14 @@ struct EditorNSTextView: NSViewRepresentable {
             let rect = layoutManager.boundingRect(forGlyphRange: glyphRange, in: textView.textContainer ?? NSTextContainer())
             textView.scrollToVisible(rect)
         }
+    }
+}
 
-        func textDidChange(_ notification: Notification) {
-            guard let textView = notification.object as? NSTextView else { return }
-            text = textView.string
-            onChange()
-        }
+extension EditorNSTextView.Coordinator: NSTextViewDelegate {
+    func textDidChange(_ notification: Notification) {
+        guard let textView = notification.object as? NSTextView else { return }
+        text = textView.string
+        applyHighlighting(textView)
+        onChange()
     }
 }
