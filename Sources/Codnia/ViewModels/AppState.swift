@@ -29,6 +29,7 @@ public final class AppState: ObservableObject {
         let sp = SplitViewModel()
         let tv = TasksViewModel(workspace: ws)
         let db = DatabaseConnectionService()
+        let nv = NotesViewModel()
         self.workspaceVM = ws
         self.settings = s
         self.searchVM = sr

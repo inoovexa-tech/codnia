@@ -70,9 +70,20 @@ public final class NotesViewModel: ObservableObject {
     }
 
     public func loadNotes(from path: String) {
-        guard !path.isEmpty else { return }
+        guard !path.isEmpty else {
+            entries = []
+            favoriteEntries = []
+            recentEntries = []
+            allTags = []
+            workspacePath = ""
+            return
+        }
         workspacePath = path
         isLoading = true
+        entries = []
+        favoriteEntries = []
+        recentEntries = []
+        allTags = []
 
         let notesDir = (path as NSString).appendingPathComponent(".codnia/notes")
         let mdExtensions = ["md", "markdown"]

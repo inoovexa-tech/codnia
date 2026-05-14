@@ -340,106 +340,236 @@ struct NotesView: View {
     }
 
     private var newNoteSheet: some View {
-        VStack(spacing: 16) {
-            HStack {
-                Text("New Note")
-                    .font(.system(size: 14, weight: .semibold))
-                Spacer()
-                Button(action: { notesVM.showNewNoteSheet = false }) {
-                    Image(systemName: "xmark.circle.fill")
+        VStack(spacing: 0) {
+            // Header
+            HStack(spacing: 10) {
+                ZStack {
+                    Circle()
+                        .fill(Color.accentBlue.opacity(0.15))
+                        .frame(width: 32, height: 32)
+                    Image(systemName: "doc.badge.plus")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.accentBlue)
+                }
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("New Note")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(.textPrimary)
+                    Text("Create a new markdown note")
+                        .font(.system(size: 11))
                         .foregroundColor(.textTertiary)
-                        .font(.system(size: 18))
+                }
+                
+                Spacer()
+                
+                Button(action: {
+                    notesVM.showNewNoteSheet = false
+                    newNoteName = ""
+                    selectedTemplateId = nil
+                }) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.textTertiary)
+                        .frame(width: 26, height: 26)
+                        .background(Color.bgTertiary)
+                        .cornerRadius(6)
                 }
                 .buttonStyle(PlainButtonStyle())
             }
             .padding(.horizontal, 20)
-            .padding(.top, 16)
-
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Note Name")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(.textSecondary)
-                TextField("My Note", text: $newNoteName)
-                    .textFieldStyle(.roundedBorder)
-            }
-            .padding(.horizontal, 20)
-
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Location")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(.textSecondary)
-                TextField("Default (.codnia/notes)", text: $newNoteDirectory)
-                    .textFieldStyle(.roundedBorder)
-            }
-            .padding(.horizontal, 20)
-
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Template")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(.textSecondary)
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(notesVM.templates) { template in
-                            templateButton(template)
+            .padding(.vertical, 16)
+            .background(Color.bgSecondary)
+            .overlay(Rectangle().frame(height: 1).foregroundColor(.borderDefault), alignment: .bottom)
+            
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 20) {
+                    // Note Name
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "textformat")
+                                .font(.system(size: 9))
+                                .foregroundColor(.textTertiary)
+                            Text("NOTE NAME")
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundColor(.textTertiary)
+                                .tracking(0.5)
+                        }
+                        TextField("Enter note title...", text: $newNoteName)
+                            .font(.system(size: 13))
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 10)
+                            .background(Color.bgSecondary)
+                            .cornerRadius(8)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(newNoteName.isEmpty ? Color.borderDefault : Color.accentBlue.opacity(0.5), lineWidth: 1)
+                            )
+                    }
+                    
+                    // Location
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "folder")
+                                .font(.system(size: 9))
+                                .foregroundColor(.textTertiary)
+                            Text("LOCATION")
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundColor(.textTertiary)
+                                .tracking(0.5)
+                        }
+                        HStack(spacing: 0) {
+                            Text(".codnia/notes/")
+                                .font(.system(size: 12))
+                                .foregroundColor(.textTertiary)
+                                .padding(.leading, 12)
+                            TextField("subfolder (optional)", text: $newNoteDirectory)
+                                .font(.system(size: 12))
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 10)
+                        }
+                        .background(Color.bgSecondary)
+                        .cornerRadius(8)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(Color.borderDefault, lineWidth: 1)
+                        )
+                    }
+                    
+                    // Templates
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "doc.on.doc")
+                                .font(.system(size: 9))
+                                .foregroundColor(.textTertiary)
+                            Text("TEMPLATE")
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundColor(.textTertiary)
+                                .tracking(0.5)
+                        }
+                        
+                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+                            // Blank option
+                            templateCard(
+                                id: nil,
+                                name: "Blank",
+                                icon: "doc",
+                                description: "Empty note"
+                            )
+                            
+                            ForEach(notesVM.templates) { template in
+                                templateCard(
+                                    id: template.id,
+                                    name: template.name,
+                                    icon: template.icon,
+                                    description: templatePreview(template)
+                                )
+                            }
                         }
                     }
                 }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 20)
             }
-            .padding(.horizontal, 20)
-
+            
             Spacer()
-
-            HStack(spacing: 12) {
+            
+            // Footer buttons
+            HStack(spacing: 10) {
                 Button(action: {
                     notesVM.showNewNoteSheet = false
                     newNoteName = ""
+                    selectedTemplateId = nil
                 }) {
                     Text("Cancel")
-                        .font(.system(size: 13))
+                        .font(.system(size: 12, weight: .medium))
                         .foregroundColor(.textSecondary)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
+                        .padding(.vertical, 9)
                         .background(Color.bgTertiary)
-                        .cornerRadius(8)
+                        .cornerRadius(7)
                 }
+                .buttonStyle(PlainButtonStyle())
+                
                 Button(action: createNewNote) {
-                    Text("Create")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
-                        .background(Color.accentBlue)
-                        .cornerRadius(8)
+                    HStack(spacing: 4) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 10, weight: .semibold))
+                        Text("Create Note")
+                            .font(.system(size: 12, weight: .semibold))
+                    }
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 9)
+                    .background(newNoteName.trimmingCharacters(in: .whitespaces).isEmpty ? Color.accentBlue.opacity(0.5) : Color.accentBlue)
+                    .cornerRadius(7)
                 }
                 .disabled(newNoteName.trimmingCharacters(in: .whitespaces).isEmpty)
+                .buttonStyle(PlainButtonStyle())
             }
             .padding(.horizontal, 20)
-            .padding(.bottom, 20)
+            .padding(.vertical, 16)
+            .background(Color.bgSecondary)
+            .overlay(Rectangle().frame(height: 1).foregroundColor(.borderDefault), alignment: .top)
         }
-        .frame(width: 420, height: 400)
+        .frame(width: 380, height: 520)
         .background(Color.bgPrimary)
+        .cornerRadius(12)
+        .shadow(color: .black.opacity(0.25), radius: 20, x: 0, y: 8)
     }
-
-    private func templateButton(_ template: NoteTemplate) -> some View {
-        Button(action: { selectedTemplateId = template.id }) {
-            VStack(spacing: 6) {
-                Image(systemName: template.icon)
-                    .font(.system(size: 20))
-                    .foregroundColor(selectedTemplateId == template.id ? .accentBlue : .textTertiary)
-                Text(template.name)
-                    .font(.system(size: 10))
-                    .foregroundColor(selectedTemplateId == template.id ? .accentBlue : .textSecondary)
-                    .lineLimit(1)
+    
+    private func templateCard(id: String?, name: String, icon: String, description: String) -> some View {
+        let isSelected = selectedTemplateId == id
+        
+        return Button(action: { selectedTemplateId = id }) {
+            HStack(spacing: 10) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(isSelected ? Color.accentBlue.opacity(0.15) : Color.bgTertiary)
+                        .frame(width: 32, height: 32)
+                    Image(systemName: icon)
+                        .font(.system(size: 14))
+                        .foregroundColor(isSelected ? .accentBlue : .textTertiary)
+                }
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(name)
+                        .font(.system(size: 12, weight: isSelected ? .semibold : .medium))
+                        .foregroundColor(isSelected ? .textPrimary : .textSecondary)
+                    Text(description)
+                        .font(.system(size: 10))
+                        .foregroundColor(.textTertiary)
+                        .lineLimit(1)
+                }
+                
+                Spacer()
+                
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 14))
+                        .foregroundColor(.accentBlue)
+                }
             }
-            .frame(width: 70, height: 60)
-            .background(selectedTemplateId == template.id ? Color.accentBlue.opacity(0.1) : Color.bgSecondary)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .background(isSelected ? Color.accentBlue.opacity(0.08) : Color.bgSecondary)
             .cornerRadius(8)
             .overlay(
                 RoundedRectangle(cornerRadius: 8)
-                    .stroke(selectedTemplateId == template.id ? Color.accentBlue : Color.clear, lineWidth: 1)
+                    .stroke(isSelected ? Color.accentBlue.opacity(0.3) : Color.borderDefault, lineWidth: 1)
             )
         }
         .buttonStyle(PlainButtonStyle())
+    }
+    
+    private func templatePreview(_ template: NoteTemplate) -> String {
+        switch template.name {
+        case "Meeting Notes": return "Attendees, agenda, action items"
+        case "Task List": return "To do, in progress, done"
+        case "Daily Journal": return "Morning, afternoon, gratitude"
+        case "Project Notes": return "Overview, goals, progress"
+        default: return "Template"
+        }
     }
 
     private var newFolderSheet: some View {
