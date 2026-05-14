@@ -4,6 +4,7 @@ import AppKit
 struct TabBarView: View {
     @ObservedObject var editorVM: EditorViewModel
     @ObservedObject var terminalVM: TerminalViewModel
+    @ObservedObject var splitVM: SplitViewModel
 
     var onToggleExplorer: () -> Void
     var onToggleSearch: () -> Void
@@ -98,6 +99,28 @@ struct TabBarView: View {
                 }
 
                 HStack(spacing: 4) {
+                    if editorVM.currentTab != nil {
+                        Button(action: {
+                            splitVM.splitActivePane(.horizontal, editorVM: editorVM, terminalVM: terminalVM)
+                        }) {
+                            Image(systemName: "square.split.2x1")
+                                .font(.system(size: 12))
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .foregroundColor(.textSecondary)
+                        .help("Split left/right")
+
+                        Button(action: {
+                            splitVM.splitActivePane(.vertical, editorVM: editorVM, terminalVM: terminalVM)
+                        }) {
+                            Image(systemName: "square.split.1x2")
+                                .font(.system(size: 12))
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .foregroundColor(.textSecondary)
+                        .help("Split top/bottom")
+                    }
+
                     Button(action: onToggleExplorer) {
                         Image(systemName: "folder")
                             .font(.system(size: 13))

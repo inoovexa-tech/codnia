@@ -16,7 +16,7 @@ public final class EditorViewModel: ObservableObject {
     private let terminal: TerminalViewModel
     private let fs = FileSystemService.shared
     private var cancellables = Set<AnyCancellable>()
-    private var fileContents: [String: String] = [:]
+    public var fileContents: [String: String] = [:]
     @Published public var diffData: [String: [DiffLine]] = [:]
     private var autoSaveTimer: AnyCancellable?
     private var markdownPreviewTabs: Set<String> = []
@@ -216,6 +216,36 @@ public final class EditorViewModel: ObservableObject {
         fileContents[tab.id] = content
         detectLanguage(from: name)
         saveTabsToWorktree()
+    }
+
+    @discardableResult
+    public func openFileInNewTab(_ path: String) -> Tab {
+        let name = URL(fileURLWithPath: path).lastPathComponent
+        let ext = URL(fileURLWithPath: path).pathExtension.lowercased()
+
+        if isImageExtension(ext) {
+            let tab = Tab(path: path, name: name, language: "Image", type: .image)
+            tabs.append(tab)
+            saveTabsToWorktree()
+            return tab
+        }
+
+        if isPDFExtension(ext) {
+            let tab = Tab(path: path, name: name, language: "PDF", type: .pdf)
+            tabs.append(tab)
+            saveTabsToWorktree()
+            return tab
+        }
+
+        let language = languageForExtension(ext)
+        let content = fs.readFile(path: path)
+
+        let tab = Tab(path: path, name: name, language: language, type: .file)
+        tabs.append(tab)
+        fileContents[tab.id] = content
+        detectLanguage(from: name)
+        saveTabsToWorktree()
+        return tab
     }
 
     public func openFileFromTree(_ entry: FileEntry) {

@@ -56,6 +56,11 @@ public final class TerminalViewModel: ObservableObject {
         }
     }
 
+    public func killTerminalInstance(key: String) {
+        service.kill(id: key)
+        TerminalManager.shared.remove(for: key)
+    }
+
     private func tabName(for type: TabType) -> String {
         switch type {
         case .opencode: return "OpenCode"

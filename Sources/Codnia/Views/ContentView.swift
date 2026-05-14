@@ -26,8 +26,9 @@ struct ContentView: View {
                         .environmentObject(appState.gitVM)
                         .environmentObject(settings)
 
-                    EditorAreaView()
+                    SplitEditorView()
                         .background(Color.bgPrimary)
+                        .environmentObject(appState.splitVM)
                         .environmentObject(appState.editorVM)
                         .environmentObject(appState.terminalVM)
                         .environmentObject(settings)
@@ -63,6 +64,7 @@ struct ContentView: View {
             TabBarView(
                 editorVM: appState.editorVM,
                 terminalVM: appState.terminalVM,
+                splitVM: appState.splitVM,
                 onToggleExplorer: {
                     if appState.rightSidebarExpanded && appState.rightSidebarTab == .explorer {
                         appState.rightSidebarExpanded = false

@@ -9,6 +9,7 @@ public final class AppState: ObservableObject {
     public let terminalVM: TerminalViewModel
     public let editorVM: EditorViewModel
     public let gitVM: GitViewModel
+    public let splitVM: SplitViewModel
     @Published var rightSidebarExpanded: Bool = false
     @Published var rightSidebarTab: RightSidebarTab = .explorer
 
@@ -19,11 +20,13 @@ public final class AppState: ObservableObject {
         let tm = TerminalViewModel()
         let ed = EditorViewModel(workspace: ws, settings: s, terminal: tm)
         let gv = GitViewModel(workspace: ws, editorVM: ed)
+        let sp = SplitViewModel()
         self.workspaceVM = ws
         self.settings = s
         self.searchVM = sr
         self.terminalVM = tm
         self.editorVM = ed
         self.gitVM = gv
+        self.splitVM = sp
     }
 }
