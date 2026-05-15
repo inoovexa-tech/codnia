@@ -148,13 +148,11 @@ struct TerminalSessionView: NSViewRepresentable {
         container.viewId = viewId
 
         if let session = TerminalSessionManager.shared.getSession(for: viewId) {
-            print("[TERMINAL] makeNSView: found session \(session.id) for viewId \(viewId), has terminal: \(session.terminal != nil)")
             container.sessionId = session.id
             if session.terminal == nil {
                 container.createAndAttachTerminal(to: session, fontSize: fontSize)
             }
         } else {
-            print("[TERMINAL] makeNSView: no session found for viewId \(viewId), creating new session")
             container.createNewSession(viewId: viewId, fontSize: fontSize)
         }
 
@@ -165,14 +163,10 @@ struct TerminalSessionView: NSViewRepresentable {
         guard let container = nsView as? SessionViewportView else { return }
         container.viewId = viewId
 
-        print("[TERMINAL] updateNSView: viewId \(viewId), container.sessionId: \(container.sessionId ?? "nil")")
-
         // Case 1: viewId is registered to a session
         if let session = TerminalSessionManager.shared.getSession(for: viewId) {
-            print("[TERMINAL] updateNSView Case 1: found session \(session.id) for viewId \(viewId)")
             container.sessionId = session.id
             if session.terminal != nil {
-                print("[TERMINAL] updateNSView Case 1: reclaiming terminal")
                 container.reclaimTerminalIfNeeded()
                 return
             }
@@ -182,7 +176,6 @@ struct TerminalSessionView: NSViewRepresentable {
         if let sessionId = container.sessionId,
            let session = TerminalSessionManager.shared.getSession(by: sessionId),
            session.terminal != nil {
-            print("[TERMINAL] updateNSView Case 2: registering orphaned viewId \(viewId) to session \(sessionId)")
             TerminalSessionManager.shared.registerView(viewId, to: sessionId)
             container.reclaimTerminalIfNeeded()
             return
@@ -191,13 +184,11 @@ struct TerminalSessionView: NSViewRepresentable {
         // Case 3: container has sessionId but no terminal (session empty)
         if let sessionId = container.sessionId,
            let session = TerminalSessionManager.shared.getSession(by: sessionId) {
-            print("[TERMINAL] updateNSView Case 3: creating terminal for session \(sessionId)")
             TerminalSessionManager.shared.registerView(viewId, to: sessionId)
             container.createAndAttachTerminal(to: session, fontSize: fontSize)
             return
         }
 
-        print("[TERMINAL] updateNSView: no cases matched, creating new session")
         container.createNewSession(viewId: viewId, fontSize: fontSize)
     }
 }

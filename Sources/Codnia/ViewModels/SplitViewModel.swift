@@ -17,7 +17,6 @@ public final class SplitViewModel: ObservableObject {
 
         let isTerminalType = tab.type == .terminal || tab.type == .opencode || tab.type == .claude || tab.type == .codex
         let existingSessionId = leaf.sessionId
-        print("[PANE-TAB] splitPane(paneId:\(paneId), tabId:\(tabId)) leaf.sessionId=\(leaf.sessionId ?? "nil") leaf.tabId=\(leaf.tabId ?? "nil")")
 
         let containerId = UUID()
         let newLeaf: SplitLeaf
@@ -171,10 +170,7 @@ public final class SplitViewModel: ObservableObject {
 
     public func setActivePaneTab(_ tabId: String?, terminalVM: TerminalViewModel? = nil) {
         let paneId = activePaneId ?? root.allLeafIds.first
-        guard let id = paneId else {
-            print("[PANE-TAB] setActivePaneTab: no paneId found, tabId=\(tabId ?? "nil")")
-            return
-        }
+        guard let id = paneId else { return }
         activePaneId = id
         var didSetSession = false
         root.mutateLeaf(id: id) { leaf in
@@ -193,8 +189,7 @@ public final class SplitViewModel: ObservableObject {
                 }
             }
         }
-        let after = root.findLeaf(id: id)
-        print("[PANE-TAB] setActivePaneTab(id:\(id), tabId:\(tabId ?? "nil")) didSetSession=\(didSetSession) after.sessionId=\(after?.sessionId ?? "nil")")
+        root.findLeaf(id: id)
     }
 
     public func setActivePaneSession(_ sessionId: String?, viewId: UUID? = nil) {
