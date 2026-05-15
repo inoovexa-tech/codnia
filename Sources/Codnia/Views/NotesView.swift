@@ -274,6 +274,12 @@ struct NotesView: View {
         .onTapGesture {
             openNote(entry)
         }
+        .onDrag {
+            if let content = try? String(contentsOfFile: entry.path, encoding: .utf8) {
+                return NSItemProvider(object: content as NSString)
+            }
+            return NSItemProvider(object: entry.path as NSString)
+        }
         .contextMenu {
             Button(action: { openNote(entry) }) {
                 Label("Open", systemImage: "doc.text")
