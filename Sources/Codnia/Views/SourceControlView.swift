@@ -513,11 +513,7 @@ struct SourceControlView: View {
                     title: "Staged",
                     count: gitVM.stagedEntries.count,
                     actionTitle: "Unstage All",
-                    action: {
-                        for entry in gitVM.stagedEntries {
-                            gitVM.unstageFile(entry.filePath)
-                        }
-                    }
+                    action: { gitVM.unstageAll() }
                 )
 
                 ForEach(gitVM.stagedEntries) { entry in

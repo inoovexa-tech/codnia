@@ -150,6 +150,26 @@ public final class GitViewModel: ObservableObject {
         }
     }
 
+    public func unstageAll() {
+        guard let path = worktreePath else { return }
+        let filesToUnstage = stagedEntries.map { $0.filePath }
+        Task { [weak self] in
+            guard let self = self else { return }
+            var allSuccess = true
+            for filePath in filesToUnstage {
+                let success = await self.git.unstageFile(path: path, filePath: filePath)
+                if !success {
+                    allSuccess = false
+                }
+            }
+            if allSuccess {
+                self.refreshAll()
+            } else {
+                self.actionError = "Failed to unstage some files"
+            }
+        }
+    }
+
     public func discardFile(_ filePath: String) {
         guard let path = worktreePath else { return }
         Task { [weak self] in
