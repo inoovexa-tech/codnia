@@ -8,6 +8,8 @@ class CodniaApplicationDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.regular)
 
+        TerminalEventMonitor.shared.install()
+
         let isAppBundle = Bundle.main.bundlePath.hasSuffix(".app")
         if !isAppBundle {
             let icon: NSImage? = {

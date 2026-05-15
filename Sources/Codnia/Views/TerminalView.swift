@@ -131,9 +131,11 @@ class TerminalManager {
 class TerminalEventMonitor {
     static let shared = TerminalEventMonitor()
     private var monitor: Any?
+    private static var installed = false
 
     func install() {
-        guard monitor == nil else { return }
+        guard !Self.installed else { return }
+        Self.installed = true
         monitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { [weak self] event in
             guard let self = self else { return event }
             let result = self.handle(event)
@@ -142,16 +144,18 @@ class TerminalEventMonitor {
     }
 
     private func handle(_ event: NSEvent) -> Bool {
+        let terminals = TerminalSessionManager.shared.getAllTerminals()
         let mouseLocation = NSEvent.mouseLocation
-        for terminal in TerminalSessionManager.shared.getAllTerminals() {
+        for terminal in terminals {
             guard !terminal.isHidden else { continue }
             guard let window = terminal.window else { continue }
             let windowPoint = window.convertPoint(fromScreen: mouseLocation)
             let viewPoint = terminal.convert(windowPoint, from: nil)
             guard terminal.bounds.contains(viewPoint) else { continue }
-            guard terminal.allowMouseReporting else { continue }
+
+            guard terminal.allowMouseReporting else { return false }
             let mode = terminal.terminal?.mouseMode
-            guard mode != nil, mode != .off else { continue }
+            guard mode != nil, mode != .off else { return false }
 
             let cols = terminal.terminal!.cols
             let rows = terminal.terminal!.rows
@@ -299,7 +303,6 @@ struct TerminalHostView: NSViewRepresentable {
     let fontSize: Double
 
     func makeNSView(context: Context) -> NSView {
-        TerminalEventMonitor.shared.install()
         let container = TerminalContainerManager.shared.getContainer()
         DispatchQueue.main.async {
             if let superview = container.superview {
