@@ -15,6 +15,11 @@ public final class SettingsService: ObservableObject {
     @Published public var leftSidebarWidth: CGFloat = 220
     @Published public var leftSidebarExpanded: Bool = true
 
+    @Published public var browserEnabled: Bool = true
+    @Published public var browserAutoRedirect: Bool = false
+    @Published public var browserInterceptLocalhost: Bool = true
+    @Published public var browserInterceptPrivateIPs: Bool = true
+
     private let defaults = UserDefaults.standard
     private let prefix = "codnia.settings."
     private var cancellables = Set<AnyCancellable>()
@@ -43,6 +48,11 @@ public final class SettingsService: ObservableObject {
         if leftSidebarWidth == 0 { leftSidebarWidth = 220 }
         leftSidebarExpanded = defaults.object(forKey: prefix + "leftSidebarExpanded") as? Bool ?? true
 
+        browserEnabled = defaults.object(forKey: prefix + "browserEnabled") as? Bool ?? true
+        browserAutoRedirect = defaults.object(forKey: prefix + "browserAutoRedirect") as? Bool ?? false
+        browserInterceptLocalhost = defaults.object(forKey: prefix + "browserInterceptLocalhost") as? Bool ?? true
+        browserInterceptPrivateIPs = defaults.object(forKey: prefix + "browserInterceptPrivateIPs") as? Bool ?? true
+
         setupAutosave()
     }
 
@@ -58,7 +68,11 @@ public final class SettingsService: ObservableObject {
             $wordWrap.map { _ in () }.eraseToAnyPublisher(),
             $activityBarWidth.map { _ in () }.eraseToAnyPublisher(),
             $leftSidebarWidth.map { _ in () }.eraseToAnyPublisher(),
-            $leftSidebarExpanded.map { _ in () }.eraseToAnyPublisher()
+            $leftSidebarExpanded.map { _ in () }.eraseToAnyPublisher(),
+            $browserEnabled.map { _ in () }.eraseToAnyPublisher(),
+            $browserAutoRedirect.map { _ in () }.eraseToAnyPublisher(),
+            $browserInterceptLocalhost.map { _ in () }.eraseToAnyPublisher(),
+            $browserInterceptPrivateIPs.map { _ in () }.eraseToAnyPublisher()
         ]
         Publishers.MergeMany(publishers)
             .debounce(for: .milliseconds(200), scheduler: DispatchQueue.main)
@@ -81,5 +95,9 @@ public final class SettingsService: ObservableObject {
         defaults.set(Double(activityBarWidth), forKey: prefix + "activityBarWidth")
         defaults.set(Double(leftSidebarWidth), forKey: prefix + "leftSidebarWidth")
         defaults.set(leftSidebarExpanded, forKey: prefix + "leftSidebarExpanded")
+        defaults.set(browserEnabled, forKey: prefix + "browserEnabled")
+        defaults.set(browserAutoRedirect, forKey: prefix + "browserAutoRedirect")
+        defaults.set(browserInterceptLocalhost, forKey: prefix + "browserInterceptLocalhost")
+        defaults.set(browserInterceptPrivateIPs, forKey: prefix + "browserInterceptPrivateIPs")
     }
 }

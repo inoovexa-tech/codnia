@@ -79,6 +79,25 @@ struct EditorPaneView: View {
 
             case .queryResult:
                 QueryResultTabView(tabId: tab.id)
+
+            case .browser:
+                BrowserView(
+                    tabId: tab.id,
+                    urlString: Binding(
+                        get: { editorVM.browserURLs[tab.id] ?? tab.url ?? "about:blank" },
+                        set: { editorVM.updateBrowserURL(tabId: tab.id, url: $0) }
+                    ),
+                    pageTitle: Binding(
+                        get: { editorVM.browserTitles[tab.id] ?? "" },
+                        set: { editorVM.updateBrowserTitle(tabId: tab.id, title: $0) }
+                    ),
+                    onNavigate: { url in
+                        editorVM.openURL(url)
+                    },
+                    onClose: {
+                        editorVM.closeTab(tab.id)
+                    }
+                )
             }
         } else {
             emptyTabView

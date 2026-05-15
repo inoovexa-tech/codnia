@@ -19,6 +19,8 @@ struct TabBarView: View {
 
     @State private var draggedTabId: String?
     @State private var showTabDropdown = false
+    @State private var showURLSheet = false
+    @State private var urlSheetInput: String = ""
     @ObservedObject private var shortcutsService = KeyboardShortcutsService.shared
 
     private var allTabs: [Tab] {
@@ -103,6 +105,8 @@ struct TabBarView: View {
                 Menu {
                     menuItem("New File", shortcutKey: "newFile") { editorVM.newFile() }
                     menuItem("New Terminal", shortcutKey: "newTerminal") { editorVM.createTerminalTab(type: .terminal) }
+                    Divider()
+                    menuItem("Open URL…", shortcutKey: "openURL") { showURLSheet = true }
                     Divider()
                     if isDatabaseEnabled {
                         menuItem("New SQL Query", shortcutKey: "newSQLQuery") { onNewSQLQuery() }
@@ -231,6 +235,47 @@ struct TabBarView: View {
             Rectangle().frame(height: 1).foregroundColor(.borderDefault),
             alignment: .bottom
         )
+        .sheet(isPresented: $showURLSheet) {
+            VStack(spacing: 16) {
+                Text("Open URL")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.textPrimary)
+
+                TextField("http://localhost:3000", text: $urlSheetInput)
+                    .textFieldStyle(PlainTextFieldStyle())
+                    .font(.system(size: 13, design: .monospaced))
+                    .padding(8)
+                    .background(Color.bgTertiary)
+                    .cornerRadius(6)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6)
+                            .stroke(Color.borderLight, lineWidth: 0.5)
+                    )
+                    .frame(width: 340)
+
+                HStack(spacing: 12) {
+                    Button("Cancel") {
+                        showURLSheet = false
+                        urlSheetInput = ""
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .foregroundColor(.textSecondary)
+
+                    Button("Open") {
+                        let url = urlSheetInput
+                        showURLSheet = false
+                        urlSheetInput = ""
+                        editorVM.openURL(url)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .foregroundColor(.accentBlue)
+                    .disabled(urlSheetInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+            .padding(24)
+            .frame(width: 400)
+            .background(Color.bgPrimary)
+        }
     }
 
     private func toggleAllWorktrees() {
@@ -284,6 +329,10 @@ struct TabButton: View {
                         .font(.system(size: 13))
                 } else if tab.type == .queryResult {
                     Image(systemName: "tablecells")
+                        .foregroundColor(iconColor)
+                        .font(.system(size: 13))
+                } else if tab.type == .browser {
+                    Image(systemName: "globe")
                         .foregroundColor(iconColor)
                         .font(.system(size: 13))
                 } else {
@@ -351,6 +400,7 @@ struct TabButton: View {
         case .image: return .accentBlue
         case .pdf: return .accentRed
         case .queryResult: return .accentBlue
+        case .browser: return .accentBlue
         }
     }
 

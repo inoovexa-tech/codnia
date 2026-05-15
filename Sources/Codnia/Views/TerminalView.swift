@@ -9,6 +9,12 @@ class CodniaTerminalView: LocalProcessTerminalView {
         super.dataReceived(slice: slice)
         onDataReceived?(slice.count)
     }
+
+    func requestOpenLink(source: TerminalView, link: String, params: [String: String]) {
+        if let url = URL(string: link) {
+            BrowserService.handleTerminalURLClick(url)
+        }
+    }
 }
 
 @MainActor

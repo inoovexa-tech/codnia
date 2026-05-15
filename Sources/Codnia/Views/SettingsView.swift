@@ -57,6 +57,8 @@ struct SettingsView: View {
                         EditorSettingsSection()
                     case .terminal:
                         TerminalSettingsSection()
+                    case .browser:
+                        BrowserSettingsSection()
                     case .keyboard:
                         KeyboardSettingsSection()
                     case .plugins:
@@ -77,6 +79,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
     case general = "General"
     case editor = "Editor"
     case terminal = "Terminal"
+    case browser = "Browser"
     case keyboard = "Keyboard"
     case plugins = "Plugins"
 
@@ -185,6 +188,46 @@ struct TerminalSettingsSection: View {
                     .onChange(of: settings.terminalScrollback) { _ in settings.save() }
             }
 
+        }
+    }
+}
+
+struct BrowserSettingsSection: View {
+    @EnvironmentObject var settings: SettingsService
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            SettingsSectionHeader("Browser Emulator")
+
+            SettingsToggleRow(
+                label: "Enable Browser Emulator",
+                description: "Show browser tabs in the editor",
+                isOn: $settings.browserEnabled
+            )
+            .onChange(of: settings.browserEnabled) { _ in settings.save() }
+
+            SettingsToggleRow(
+                label: "Auto-Redirect",
+                description: "Auto-open localhost/private IP URLs in browser tab (off = show prompt)",
+                isOn: $settings.browserAutoRedirect
+            )
+            .onChange(of: settings.browserAutoRedirect) { _ in settings.save() }
+
+            SettingsSectionHeader("URL Interception")
+
+            SettingsToggleRow(
+                label: "Intercept localhost",
+                description: "Detect http://localhost and http://127.0.0.1 URLs in terminal",
+                isOn: $settings.browserInterceptLocalhost
+            )
+            .onChange(of: settings.browserInterceptLocalhost) { _ in settings.save() }
+
+            SettingsToggleRow(
+                label: "Intercept private IPs",
+                description: "Detect 10.x.x.x, 192.168.x.x, 172.16-31.x.x URLs in terminal",
+                isOn: $settings.browserInterceptPrivateIPs
+            )
+            .onChange(of: settings.browserInterceptPrivateIPs) { _ in settings.save() }
         }
     }
 }

@@ -50,6 +50,27 @@ struct EditorAreaView: View {
                 QueryResultTabView(tabId: activeTab.id)
             }
 
+            // Browser tab
+            if let activeTab = editorVM.currentTab, activeTab.type == .browser {
+                BrowserView(
+                    tabId: activeTab.id,
+                    urlString: Binding(
+                        get: { editorVM.browserURLs[activeTab.id] ?? activeTab.url ?? "about:blank" },
+                        set: { editorVM.updateBrowserURL(tabId: activeTab.id, url: $0) }
+                    ),
+                    pageTitle: Binding(
+                        get: { editorVM.browserTitles[activeTab.id] ?? "" },
+                        set: { editorVM.updateBrowserTitle(tabId: activeTab.id, title: $0) }
+                    ),
+                    onNavigate: { url in
+                        editorVM.openURL(url)
+                    },
+                    onClose: {
+                        editorVM.closeTab(activeTab.id)
+                    }
+                )
+            }
+
             // File editor
             if let activeTab = editorVM.currentTab, activeTab.type == .file {
                 if editorVM.isCurrentTabMarkdown && editorVM.showMarkdownPreview {

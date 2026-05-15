@@ -23,6 +23,8 @@ public final class EditorViewModel: ObservableObject {
     @Published public var diffData: [String: [DiffLine]] = [:]
     @Published public var queryResults: [String: QueryPageResult] = [:]
     @Published public var querySql: [String: String] = [:]
+    @Published public var browserURLs: [String: String] = [:]
+    @Published public var browserTitles: [String: String] = [:]
     private var autoSaveTimer: AnyCancellable?
     private var markdownPreviewTabs: Set<String> = []
 
@@ -165,6 +167,15 @@ public final class EditorViewModel: ObservableObject {
         for tab in worktree.fileTabs where tab.type == .queryResult {
             if querySql[tab.id] == nil {
                 querySql[tab.id] = tab.querySql ?? ""
+            }
+        }
+
+        for tab in worktree.fileTabs where tab.type == .browser {
+            if browserURLs[tab.id] == nil {
+                browserURLs[tab.id] = tab.url ?? "about:blank"
+            }
+            if browserTitles[tab.id] == nil {
+                browserTitles[tab.id] = tab.name
             }
         }
 
@@ -359,6 +370,51 @@ public final class EditorViewModel: ObservableObject {
         openFile(entry.path)
     }
 
+    // MARK: - Browser Tabs
+
+    public func openURL(_ urlString: String) {
+        let normalized = normalizeURL(urlString)
+
+        if let existing = tabs.first(where: { $0.url == normalized && $0.type == .browser }) {
+            activateTab(existing.id)
+            return
+        }
+        let displayName = URL(string: normalized)?.host ?? normalized
+        let tab = Tab(
+            name: displayName,
+            type: .browser,
+            url: normalized
+        )
+        tabs.append(tab)
+        activeTabId = tab.id
+        browserURLs[tab.id] = normalized
+        browserTitles[tab.id] = ""
+        saveTabsToWorktree()
+    }
+
+    public func updateBrowserURL(tabId: String, url: String) {
+        browserURLs[tabId] = url
+        if let idx = tabs.firstIndex(where: { $0.id == tabId }) {
+            tabs[idx].url = url
+        }
+    }
+
+    public func updateBrowserTitle(tabId: String, title: String) {
+        browserTitles[tabId] = title
+        if !title.isEmpty, let idx = tabs.firstIndex(where: { $0.id == tabId }) {
+            tabs[idx].name = title
+            saveTabsToWorktree()
+        }
+    }
+
+    private func normalizeURL(_ urlString: String) -> String {
+        let trimmed = urlString.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.hasPrefix("http://") || trimmed.hasPrefix("https://") {
+            return trimmed
+        }
+        return "http://" + trimmed
+    }
+
     // MARK: - Query Result Tabs
 
     public func newQueryTab(connectionId: String?) {
@@ -397,6 +453,9 @@ public final class EditorViewModel: ObservableObject {
             } else if tab.type == .queryResult {
                 editorContent = ""
                 currentLanguage = "SQL"
+            } else if tab.type == .browser {
+                editorContent = ""
+                currentLanguage = "Browser"
             } else {
                 if let savedContent = fileContents[tab.id] {
                     editorContent = savedContent
@@ -419,6 +478,8 @@ public final class EditorViewModel: ObservableObject {
             diffData.removeValue(forKey: id)
             queryResults.removeValue(forKey: id)
             querySql.removeValue(forKey: id)
+            browserURLs.removeValue(forKey: id)
+            browserTitles.removeValue(forKey: id)
 
             if activeTabId == id {
                 activeTabId = tabs.last?.id ?? terminal.tabs.last?.id
