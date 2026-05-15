@@ -220,7 +220,6 @@ struct TreeNode: View {
                         .font(.system(size: 10, weight: .medium))
                         .foregroundColor(.textTertiary)
                         .frame(width: 12, height: 16)
-                        .onTapGesture { toggleExpand() }
                 } else {
                     Spacer().frame(width: 12)
                 }
@@ -280,24 +279,21 @@ struct TreeNode: View {
             )
             .opacity(entry.isHidden ? 0.5 : 1)
             .onHover { hovered = $0 }
-            .onChange(of: isExpanded) { expanded in
-                if expanded && !loaded {
-                    children = FileSystemService.shared.listDirectory(path: entry.path)
-                    loaded = true
-                }
-            }
             .onDrag { NSItemProvider(object: entry.path as NSString) }
             .onDrop(of: [.text], isTargeted: $isDropTarget) { providers in
                 handleDrop(providers: providers)
             }
-            .onTapGesture {
-                if entry.isDirectory {
-                    toggleExpand()
-                } else {
-                    selectedPath = entry.path
-                    onSelect(entry.path)
-                }
-            }
+            .simultaneousGesture(
+                TapGesture()
+                    .onEnded { _ in
+                        if entry.isDirectory {
+                            toggleExpand()
+                        } else {
+                            selectedPath = entry.path
+                            onSelect(entry.path)
+                        }
+                    }
+            )
             .contextMenu { contextMenuContent }
 
             if isExpanded && loaded {
