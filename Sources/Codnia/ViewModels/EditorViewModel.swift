@@ -27,6 +27,7 @@ public final class EditorViewModel: ObservableObject {
     @Published public var browserTitles: [String: String] = [:]
     private var autoSaveTimer: AnyCancellable?
     private var markdownPreviewTabs: Set<String> = []
+    private var autoSaveTabId: String?
 
     public var isCurrentTabMarkdown: Bool {
         currentTab?.language == "Markdown"
@@ -201,10 +202,12 @@ public final class EditorViewModel: ObservableObject {
                 guard let self = self else { return }
                 guard self.settings.autoSave else { return }
                 guard let tab = self.currentTab, tab.type == .file, !tab.path.isEmpty else { return }
+                guard tab.id == self.autoSaveTabId else { return }
                 let original = self.fileContents[tab.id] ?? ""
                 if content != original {
                     self.saveCurrentFile()
                 }
+                self.autoSaveTabId = nil
             }
             .store(in: &cancellables)
     }
@@ -459,6 +462,8 @@ public final class EditorViewModel: ObservableObject {
         searchHighlightQuery = ""
         searchHighlightRanges = []
         searchHighlightIndex = 0
+        autoSaveTimer?.cancel()
+        autoSaveTabId = nil
         if let currentTabId = activeTabId,
            let currentTabIdx = tabs.firstIndex(where: { $0.id == currentTabId }),
            tabs[currentTabIdx].type == .file || tabs[currentTabIdx].type == .diff {
@@ -491,6 +496,9 @@ public final class EditorViewModel: ObservableObject {
                 currentLanguage = tab.language
                 detectLanguage(from: tab.name)
             }
+            if tab.type == .file && !tab.path.isEmpty {
+                autoSaveTabId = tab.id
+            }
             saveTabsToWorktree()
         }
     }
@@ -506,7 +514,15 @@ public final class EditorViewModel: ObservableObject {
             browserTitles.removeValue(forKey: id)
 
             if activeTabId == id {
-                activeTabId = tabs.last?.id ?? terminal.tabs.last?.id
+                let newActiveId = tabs.last?.id ?? terminal.tabs.last?.id
+                activeTabId = newActiveId
+                if let newId = newActiveId, tabs.contains(where: { $0.id == newId }) {
+                    let content = fileContents[newId] ?? (tabs.first { $0.id == newId }?.path.isEmpty == false ? fs.readFile(path: tabs.first { $0.id == newId }!.path) : "")
+                    editorContent = content
+                    if let tab = tabs.first(where: { $0.id == newId }), tab.type == .file && !tab.path.isEmpty {
+                        autoSaveTabId = tab.id
+                    }
+                }
             }
             saveTabsToWorktree()
         } else if terminal.tabs.firstIndex(where: { $0.id == id }) != nil {
