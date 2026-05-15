@@ -1,3 +1,9 @@
+## [0.11.1] — 2026-05-15
+
+### Fixed
+- Fix new terminal tab not appearing when another terminal is already running
+  - Force TerminalSingleView to recreate when active tab changes to ensure the correct terminal session is displayed
+
 ## [0.11.0] — 2026-05-15
 
 ### Added
