@@ -56,7 +56,7 @@ final class TerminalSession: ObservableObject, Identifiable {
 
     func sendText(_ text: String) {
         guard let terminal = terminal else { return }
-        terminal.feed(byteArray: ArraySlice([UInt8](text.utf8)))
+        terminal.send(txt: text)
     }
 
     func terminate() {

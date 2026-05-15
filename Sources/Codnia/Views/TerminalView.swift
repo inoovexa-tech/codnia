@@ -9,14 +9,6 @@ class CodniaTerminalView: LocalProcessTerminalView {
         super.dataReceived(slice: slice)
         onDataReceived?(slice.count)
     }
-
-    override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
-        return super.draggingEntered(sender)
-    }
-
-    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
-        return super.performDragOperation(sender)
-    }
 }
 
 @MainActor
@@ -85,7 +77,7 @@ class TerminalManager {
 
     func sendText(id: String, text: String) {
         guard let terminal = terminals[id] else { return }
-        terminal.feed(byteArray: ArraySlice([UInt8](text.utf8)))
+        terminal.send(txt: text)
     }
 
     func focus(id: String) {
@@ -98,8 +90,14 @@ class TerminalManager {
     }
 
     func paste(id: String, text: String) {
-        guard let terminal = terminals[id] else { return }
-        terminal.feed(byteArray: ArraySlice([UInt8](text.utf8)))
+        print("[PASTE] paste called id=\(id) text=\(text)")
+        guard let terminal = terminals[id] else {
+            print("[PASTE] terminal not found for id=\(id)")
+            return
+        }
+        print("[PASTE] sending text to terminal process")
+        terminal.send(txt: text)
+        print("[PASTE] send complete")
     }
 
     private func recordBytes(for id: String, bytes: Int) {
@@ -233,31 +231,38 @@ class TerminalContainerView: NSView {
     }
 
     override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        print("[CONTAINER-DRAG] performDragOperation")
         isDraggingOver = false
         let pasteboard = sender.draggingPasteboard
 
         var textToPaste: String?
 
         if let fileURLs = pasteboard.readObjects(forClasses: [NSURL.self], options: nil) as? [URL], let first = fileURLs.first {
+            print("[CONTAINER-DRAG] fileURL: \(first.path)")
             textToPaste = first.path
         } else if let strings = pasteboard.readObjects(forClasses: [NSString.self], options: nil) as? [String], let first = strings.first {
+            print("[CONTAINER-DRAG] string: \(first)")
             textToPaste = first
         }
 
-        guard let text = textToPaste, !text.isEmpty else { return false }
+        guard let text = textToPaste, !text.isEmpty else {
+            print("[CONTAINER-DRAG] no text to paste")
+            return false
+        }
 
-        DispatchQueue.main.async {
-            for (id, terminal) in TerminalManager.shared.getAll() {
-                if !terminal.isHidden {
-                    TerminalManager.shared.paste(id: id, text: text)
-                    break
-                }
+        print("[CONTAINER-DRAG] pasting to all visible terminals")
+        for (id, terminal) in TerminalManager.shared.getAll() {
+            if !terminal.isHidden {
+                print("[CONTAINER-DRAG] calling paste for id=\(id)")
+                TerminalManager.shared.paste(id: id, text: text)
+                break
             }
         }
         return true
     }
 
     override func concludeDragOperation(_ sender: NSDraggingInfo?) {
+        print("[CONTAINER-DRAG] concludeDragOperation - no first responder manipulation")
         isDraggingOver = false
     }
 }
