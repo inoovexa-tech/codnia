@@ -163,6 +163,10 @@ struct TabBarView: View {
                         .frame(maxWidth: .infinity)
                         .clipped()
                         .onDrop(of: [.text], isTargeted: nil) { providers in
+                            // If this is an internal tab drag, reject it so TabDropDelegate handles it.
+                            if self.draggedTabId != nil {
+                                return false
+                            }
                             var foundItems: [String] = []
                             for provider in providers {
                                 let sem = DispatchSemaphore(value: 0)
