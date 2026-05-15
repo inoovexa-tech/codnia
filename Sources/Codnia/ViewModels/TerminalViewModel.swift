@@ -160,6 +160,43 @@ public final class TerminalViewModel: ObservableObject {
         service.kill(id: key)
     }
 
+    func refreshSessionsForRestoredTabs(workspace: WorkspaceService?) {
+        for i in tabs.indices {
+            let tab = tabs[i]
+            let isTerminalType = tab.type == .terminal || tab.type == .opencode || tab.type == .claude || tab.type == .codex
+            guard isTerminalType, let oldId = tab.terminalId else { continue }
+            if TerminalSessionManager.shared.getSession(by: oldId) != nil { continue }
+
+            let cwd = tab.path.isEmpty ? NSHomeDirectory() : tab.path
+            var env = ProcessInfo.processInfo.environment
+            if env["HOME"] == nil { env["HOME"] = NSHomeDirectory() }
+            if env["SHELL"] == nil { env["SHELL"] = "/bin/zsh" }
+            if env["TERM"] == nil { env["TERM"] = "xterm-256color" }
+            if env["LANG"] == nil { env["LANG"] = "en_US.UTF-8" }
+
+            let (executable, args): (String, [String])
+            switch tab.type {
+            case .opencode: executable = "/bin/zsh"; args = ["-l", "-c", "opencode"]
+            case .claude: executable = "/bin/zsh"; args = ["-l", "-c", "claude"]
+            case .codex: executable = "/bin/zsh"; args = ["-l", "-c", "codex"]
+            default: executable = "/bin/zsh"; args = ["-l"]
+            }
+
+            let session = TerminalSessionManager.shared.createSession(
+                cwd: cwd,
+                environment: env,
+                executable: executable,
+                arguments: args,
+                tabType: tab.type
+            )
+            tabs[i].terminalId = session.id
+
+            if let worktreeId = workspace?.activeProject?.activeWorktreeId {
+                terminalWorktreeMap[session.id] = worktreeId
+            }
+        }
+    }
+
     private func tabName(for type: TabType) -> String {
         switch type {
         case .opencode: return "OpenCode"

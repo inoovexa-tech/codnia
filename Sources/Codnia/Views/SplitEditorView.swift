@@ -45,9 +45,7 @@ struct SplitEditorView: View {
             if let firstId = ids.first {
                 splitVM.activePaneId = firstId
                 if let tabId = editorVM.activeTabId {
-                    splitVM.root.mutateLeaf(id: firstId) { leaf in
-                        leaf.tabId = tabId
-                    }
+                    splitVM.setActivePaneTab(tabId, terminalVM: terminalVM)
                 }
             }
         }

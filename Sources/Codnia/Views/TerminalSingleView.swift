@@ -31,12 +31,12 @@ class SessionViewportView: NSView {
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
-        guard window != nil else { return }
-        reclaimTerminalIfNeeded()
     }
 
     override func layout() {
         super.layout()
+        guard bounds.width > 0 && bounds.height > 0 else { return }
+        reclaimTerminalIfNeeded()
         subviews.forEach {
             $0.frame = bounds
             if let term = $0 as? CodniaTerminalView {
@@ -49,6 +49,7 @@ class SessionViewportView: NSView {
         guard let sessionId = sessionId,
               let session = TerminalSessionManager.shared.getSession(by: sessionId),
               let terminal = session.terminal else { return }
+        guard self.window != nil else { return }
         if terminal.superview != self {
             terminal.removeFromSuperview()
             addSubview(terminal)
@@ -149,9 +150,7 @@ struct TerminalSessionView: NSViewRepresentable {
         if let session = TerminalSessionManager.shared.getSession(for: viewId) {
             print("[TERMINAL] makeNSView: found session \(session.id) for viewId \(viewId), has terminal: \(session.terminal != nil)")
             container.sessionId = session.id
-            if session.terminal != nil {
-                container.reclaimTerminalIfNeeded()
-            } else {
+            if session.terminal == nil {
                 container.createAndAttachTerminal(to: session, fontSize: fontSize)
             }
         } else {
@@ -199,6 +198,7 @@ struct TerminalSessionView: NSViewRepresentable {
         }
 
         print("[TERMINAL] updateNSView: no cases matched, creating new session")
+        container.createNewSession(viewId: viewId, fontSize: fontSize)
     }
 }
 

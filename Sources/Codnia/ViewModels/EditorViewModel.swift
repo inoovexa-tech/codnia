@@ -142,6 +142,7 @@ public final class EditorViewModel: ObservableObject {
         tabs = worktree.fileTabs
         terminal.tabs = worktree.terminalTabs
         terminal.setWorktreeMapping(tabs: worktree.terminalTabs, worktreeId: worktree.id)
+        terminal.refreshSessionsForRestoredTabs(workspace: workspace)
         activeTabId = worktree.activeTabId
 
         if tabs.isEmpty && terminal.tabs.isEmpty,

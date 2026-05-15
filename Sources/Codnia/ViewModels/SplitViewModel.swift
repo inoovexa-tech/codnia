@@ -17,9 +17,15 @@ public final class SplitViewModel: ObservableObject {
 
         let isTerminalType = tab.type == .terminal || tab.type == .opencode || tab.type == .claude || tab.type == .codex
         let existingSessionId = leaf.sessionId
+        print("[PANE-TAB] splitPane(paneId:\(paneId), tabId:\(tabId)) leaf.sessionId=\(leaf.sessionId ?? "nil") leaf.tabId=\(leaf.tabId ?? "nil")")
 
         let containerId = UUID()
-        let newLeaf = SplitLeaf(id: UUID(), tabId: tabId, terminalId: leaf.terminalId, sessionId: existingSessionId)
+        let newLeaf: SplitLeaf
+        if isTerminalType {
+            newLeaf = SplitLeaf(id: UUID(), tabId: tabId)
+        } else {
+            newLeaf = SplitLeaf(id: UUID(), tabId: tabId, terminalId: leaf.terminalId, sessionId: existingSessionId)
+        }
 
         let split: SplitPane
         let newActiveId: UUID
@@ -48,19 +54,39 @@ public final class SplitViewModel: ObservableObject {
         setContainerProportion(containerId, 0.5)
         activePaneId = newActiveId
 
-if isTerminalType, let sessionId = existingSessionId {
-            print("[SPLIT] Registering original leaf \(leaf.id) to session \(sessionId)")
-            TerminalSessionManager.shared.registerView(leaf.id, to: sessionId)
-            print("[SPLIT] Registering new leaf \(newLeaf.id) to session \(sessionId)")
-            TerminalSessionManager.shared.registerView(newLeaf.id, to: sessionId)
-            if let session = TerminalSessionManager.shared.getSession(by: sessionId) {
-                print("[SPLIT] Session \(sessionId) has terminal: \(session.terminal != nil)")
-                print("[SPLIT] Session viewIds: \(session.viewIds)")
-            } else {
-                print("[SPLIT] Session \(sessionId) not found!")
+        if isTerminalType {
+            var env = ProcessInfo.processInfo.environment
+            if env["HOME"] == nil { env["HOME"] = NSHomeDirectory() }
+            if env["SHELL"] == nil { env["SHELL"] = "/bin/zsh" }
+            if env["TERM"] == nil { env["TERM"] = "xterm-256color" }
+            if env["LANG"] == nil { env["LANG"] = "en_US.UTF-8" }
+
+            let cmd = terminalCommand(for: tab.type)
+            let cwd = tab.path.isEmpty ? NSHomeDirectory() : tab.path
+
+            let newSession = TerminalSessionManager.shared.createSession(
+                cwd: cwd,
+                environment: env,
+                executable: cmd.executable,
+                arguments: cmd.args,
+                tabType: tab.type
+            )
+            TerminalSessionManager.shared.registerView(newLeaf.id, to: newSession.id)
+
+            root.mutateLeaf(id: newLeaf.id) { leaf in
+                leaf.sessionId = newSession.id
+                leaf.terminalId = newSession.id
             }
+
+            if let sessionId = existingSessionId {
+                TerminalSessionManager.shared.registerView(leaf.id, to: sessionId)
+                print("[SPLIT] Original leaf \(leaf.id) kept session \(sessionId)")
+            } else {
+                print("[SPLIT] Original leaf \(leaf.id) has no sessionId (will keep its current session)")
+            }
+            print("[SPLIT] New leaf \(newLeaf.id) created \(tab.type) session \(newSession.id)")
         } else {
-            print("[SPLIT] Not terminal type or no sessionId. isTerminalType: \(isTerminalType), existingSessionId: \(existingSessionId ?? "nil")")
+            print("[SPLIT] Not terminal type")
         }
     }
 
@@ -121,6 +147,15 @@ if isTerminalType, let sessionId = existingSessionId {
         redrawAllTerminals()
     }
 
+    private func terminalCommand(for type: TabType) -> (executable: String, args: [String]) {
+        switch type {
+        case .opencode: return ("/bin/zsh", ["-l", "-c", "opencode"])
+        case .claude: return ("/bin/zsh", ["-l", "-c", "claude"])
+        case .codex: return ("/bin/zsh", ["-l", "-c", "codex"])
+        default: return ("/bin/zsh", ["-l"])
+        }
+    }
+
     private func redrawAllTerminals() {
         for (_, session) in TerminalSessionManager.shared.getAll() {
             session.terminal?.needsDisplay = true
@@ -136,8 +171,12 @@ if isTerminalType, let sessionId = existingSessionId {
 
     public func setActivePaneTab(_ tabId: String?, terminalVM: TerminalViewModel? = nil) {
         let paneId = activePaneId ?? root.allLeafIds.first
-        guard let id = paneId else { return }
+        guard let id = paneId else {
+            print("[PANE-TAB] setActivePaneTab: no paneId found, tabId=\(tabId ?? "nil")")
+            return
+        }
         activePaneId = id
+        var didSetSession = false
         root.mutateLeaf(id: id) { leaf in
             leaf.tabId = tabId
             if let tid = tabId, let vm = terminalVM {
@@ -149,10 +188,13 @@ if isTerminalType, let sessionId = existingSessionId {
                 let isTerminal = tab.type == .terminal || tab.type == .opencode || tab.type == .claude || tab.type == .codex
                 if isTerminal {
                     leaf.sessionId = terminalId
+                    didSetSession = true
                     TerminalSessionManager.shared.registerView(leaf.id, to: terminalId)
                 }
             }
         }
+        let after = root.findLeaf(id: id)
+        print("[PANE-TAB] setActivePaneTab(id:\(id), tabId:\(tabId ?? "nil")) didSetSession=\(didSetSession) after.sessionId=\(after?.sessionId ?? "nil")")
     }
 
     public func setActivePaneSession(_ sessionId: String?, viewId: UUID? = nil) {

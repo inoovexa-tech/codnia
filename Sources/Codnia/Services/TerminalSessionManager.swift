@@ -55,6 +55,10 @@ final class TerminalSessionManager: ObservableObject {
         guard let sessionId = viewToSessionMap[viewId] else { return }
         sessions[sessionId]?.removeView(viewId)
         viewToSessionMap.removeValue(forKey: viewId)
+        if let session = sessions[sessionId], session.viewIds.isEmpty {
+            session.terminal?.terminate()
+            sessions.removeValue(forKey: sessionId)
+        }
     }
 
     func restoreView(_ viewId: UUID, to sessionId: String) {
