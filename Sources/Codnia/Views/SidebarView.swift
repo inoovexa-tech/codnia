@@ -102,7 +102,8 @@ struct SidebarExpandedProjectsList: View {
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
         panel.prompt = "Select"
-        if panel.runModal() == .OK, let url = panel.url {
+        panel.begin { response in
+            guard response == .OK, let url = panel.url else { return }
             workspaceVM.addProject(path: url.path)
         }
     }
@@ -138,7 +139,8 @@ struct SidebarCollapsedProjectsList: View {
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
         panel.prompt = "Select"
-        if panel.runModal() == .OK, let url = panel.url {
+        panel.begin { response in
+            guard response == .OK, let url = panel.url else { return }
             workspaceVM.addProject(path: url.path)
         }
     }

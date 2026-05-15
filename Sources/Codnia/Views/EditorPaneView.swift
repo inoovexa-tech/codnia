@@ -49,6 +49,8 @@ struct EditorPaneView: View {
             case .file:
                 if editorVM.isCurrentTabMarkdown && editorVM.showMarkdownPreview && isActivePane {
                     MarkdownPreviewView(content: editorVM.editorContent)
+                } else if editorVM.isCurrentTabHTML && editorVM.showHTMLPreview && isActivePane {
+                    HTMLPreviewView(content: editorVM.editorContent)
                 } else if isActivePane {
                     CodeEditorView(
                         content: $editorVM.editorContent,

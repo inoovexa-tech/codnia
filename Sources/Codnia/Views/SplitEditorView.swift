@@ -24,11 +24,11 @@ struct SplitEditorView: View {
 
             if let activeTab = editorVM.currentTab,
                activeTab.type == .file,
-               editorVM.isCurrentTabMarkdown {
+               editorVM.isCurrentTabMarkdown || editorVM.isCurrentTabHTML {
                 VStack {
                     HStack {
                         Spacer()
-                        markdownToggleButton
+                        previewToggleButton
                             .padding(.trailing, 20)
                             .padding(.top, 8)
                     }
@@ -63,11 +63,13 @@ struct SplitEditorView: View {
         }
     }
 
-    private var markdownToggleButton: some View {
-        HStack(spacing: 4) {
-            Image(systemName: editorVM.showMarkdownPreview ? "doc.plaintext" : "eye")
+    private var previewToggleButton: some View {
+        let isHTML = editorVM.isCurrentTabHTML
+        let isShowing = isHTML ? editorVM.showHTMLPreview : editorVM.showMarkdownPreview
+        return HStack(spacing: 4) {
+            Image(systemName: isShowing ? "doc.plaintext" : "eye")
                 .font(.system(size: 11, weight: .medium))
-            Text(editorVM.showMarkdownPreview ? "Code" : "Preview")
+            Text(isShowing ? "Code" : "Preview")
                 .font(.system(size: 11, weight: .medium))
         }
         .foregroundColor(.textSecondary)
@@ -85,10 +87,14 @@ struct SplitEditorView: View {
         }
         .onTapGesture {
             withAnimation(.easeInOut(duration: 0.15)) {
-                editorVM.showMarkdownPreview.toggle()
+                if isHTML {
+                    editorVM.showHTMLPreview.toggle()
+                } else {
+                    editorVM.showMarkdownPreview.toggle()
+                }
             }
         }
-        .help(editorVM.showMarkdownPreview ? "Show code editor" : "Show markdown preview")
+        .help(isShowing ? "Show code editor" : "Show \(isHTML ? "HTML" : "markdown") preview")
     }
 
     private var inFileSearchOverlay: some View {

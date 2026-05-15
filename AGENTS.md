@@ -30,15 +30,16 @@
    - **Major** (`0.0.0`): Breaking changes
 
 3. **Build and generate the DMG** with icon and Applications symlink:
-   ```bash
-   swift build --configuration release
-   mkdir -p /tmp/Codnia-v<version>/Codnia.app/Contents/{MacOS,Resources}
-   cp .build/release/Codnia /tmp/Codnia-v<version>/Codnia.app/Contents/MacOS/
-   cp .build/release/Codnia_Codnia.bundle/icon.icns /tmp/Codnia-v<version>/Codnia.app/Contents/Resources/
-   cp Info.plist /tmp/Codnia-v<version>/Codnia.app/Contents/
-   ln -s /Applications /tmp/Codnia-v<version>/Applications
-   hdiutil create -volname "Codnia v<version>" -srcfolder /tmp/Codnia-v<version> -format UDZO Codnia-v<version>.dmg
-   ```
+    ```bash
+    swift build --configuration release
+    mkdir -p /tmp/Codnia-v<version>/Codnia.app/Contents/{MacOS,Resources}
+    cp .build/release/Codnia /tmp/Codnia-v<version>/Codnia.app/Contents/MacOS/
+    cp .build/release/Codnia_Codnia.bundle/icon.icns /tmp/Codnia-v<version>/Codnia.app/Contents/Resources/
+    cp Info.plist /tmp/Codnia-v<version>/Codnia.app/Contents/
+    codesign --force --entitlements Codnia.entitlements --sign - /tmp/Codnia-v<version>/Codnia.app
+    ln -s /Applications /tmp/Codnia-v<version>/Applications
+    hdiutil create -volname "Codnia v<version>" -srcfolder /tmp/Codnia-v<version> -format UDZO Codnia-v<version>.dmg
+    ```
 
 4. **Update README and CHANGELOG**:
    - Update version badge in README.md

@@ -27,10 +27,15 @@ public final class EditorViewModel: ObservableObject {
     @Published public var browserTitles: [String: String] = [:]
     private var autoSaveTimer: AnyCancellable?
     private var markdownPreviewTabs: Set<String> = []
+    private var htmlPreviewTabs: Set<String> = []
     private var autoSaveTabId: String?
 
     public var isCurrentTabMarkdown: Bool {
         currentTab?.language == "Markdown"
+    }
+
+    public var isCurrentTabHTML: Bool {
+        currentTab?.language == "HTML"
     }
 
     public var modifiedFilePaths: Set<String> {
@@ -85,6 +90,17 @@ public final class EditorViewModel: ObservableObject {
             if let id = activeTabId {
                 if newValue { markdownPreviewTabs.insert(id) }
                 else { markdownPreviewTabs.remove(id) }
+                objectWillChange.send()
+            }
+        }
+    }
+
+    public var showHTMLPreview: Bool {
+        get { activeTabId.flatMap { htmlPreviewTabs.contains($0) } ?? false }
+        set {
+            if let id = activeTabId {
+                if newValue { htmlPreviewTabs.insert(id) }
+                else { htmlPreviewTabs.remove(id) }
                 objectWillChange.send()
             }
         }
@@ -278,8 +294,9 @@ public final class EditorViewModel: ObservableObject {
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
         panel.canChooseFiles = true
-        if panel.runModal() == .OK, let url = panel.url {
-            openFile(url.path)
+        panel.begin { [weak self] response in
+            guard response == .OK, let url = panel.url, let self = self else { return }
+            self.openFile(url.path)
         }
     }
 
@@ -569,15 +586,16 @@ public final class EditorViewModel: ObservableObject {
         guard let tab = currentTab, tab.type == .file else { return }
         let panel = NSSavePanel()
         panel.nameFieldStringValue = tab.name
-        if panel.runModal() == .OK, let url = panel.url {
+        panel.begin { [weak self] response in
+            guard response == .OK, let url = panel.url, let self = self else { return }
             do {
-                try fs.writeFile(path: url.path, content: editorContent)
-                fileContents[tab.id] = editorContent
-                if let idx = tabs.firstIndex(where: { $0.id == tab.id }) {
-                    tabs[idx].path = url.path
-                    tabs[idx].name = url.lastPathComponent
-                    tabs[idx].isModified = false
-                    saveTabsToWorktree()
+                try self.fs.writeFile(path: url.path, content: self.editorContent)
+                self.fileContents[tab.id] = self.editorContent
+                if let idx = self.tabs.firstIndex(where: { $0.id == tab.id }) {
+                    self.tabs[idx].path = url.path
+                    self.tabs[idx].name = url.lastPathComponent
+                    self.tabs[idx].isModified = false
+                    self.saveTabsToWorktree()
                 }
             } catch {
                 print("Save As failed: \(error)")

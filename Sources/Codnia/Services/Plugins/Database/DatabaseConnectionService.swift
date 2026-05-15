@@ -10,9 +10,15 @@ public final class DatabaseConnectionService: ObservableObject {
 
     private let fs = FileSystemService.shared
     private let connectionsFileName = "database-connections.json"
+    private var connectionsLoaded = false
 
     public init() {
         registerProvider(PostgreSQLProvider())
+    }
+
+    private func ensureConnectionsLoaded() {
+        guard !connectionsLoaded else { return }
+        connectionsLoaded = true
         loadConnections()
     }
 
@@ -25,11 +31,13 @@ public final class DatabaseConnectionService: ObservableObject {
     // MARK: - Connection Management
 
     public var hasConnections: Bool {
-        !connections.isEmpty
+        ensureConnectionsLoaded()
+        return !connections.isEmpty
     }
 
     public func config(withID id: String) -> ConnectionConfig? {
-        connections.first { $0.id == id }
+        ensureConnectionsLoaded()
+        return connections.first { $0.id == id }
     }
 
     public func state(for configID: String) -> SessionState {
@@ -37,6 +45,7 @@ public final class DatabaseConnectionService: ObservableObject {
     }
 
     public func addConnection(_ config: ConnectionConfig) {
+        ensureConnectionsLoaded()
         if let idx = connections.firstIndex(where: { $0.id == config.id }) {
             connections[idx] = config
         } else {
