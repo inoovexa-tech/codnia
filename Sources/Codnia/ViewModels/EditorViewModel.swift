@@ -373,13 +373,29 @@ public final class EditorViewModel: ObservableObject {
     // MARK: - Browser Tabs
 
     public func openURL(_ urlString: String) {
+        print("[BROWSER DEBUG] openURL called with: \(urlString)")
         let normalized = normalizeURL(urlString)
+        print("[BROWSER DEBUG] normalized URL: \(normalized)")
+        print("[BROWSER DEBUG] current tabs count: \(tabs.count)")
+        for tab in tabs {
+            print("[BROWSER DEBUG] tab id: \(tab.id), type: \(tab.type), url: \(tab.url ?? "nil")")
+        }
 
-        if let existing = tabs.first(where: { $0.url == normalized && $0.type == .browser }) {
+        let existingTab = tabs.first { tab in
+            guard tab.type == .browser else { return false }
+            let tabURL = browserURLs[tab.id] ?? tab.url ?? ""
+            let normalizedTabURL = normalizeURL(tabURL)
+            print("[BROWSER DEBUG] comparing normalized: \(normalized) with tabURL: \(normalizedTabURL)")
+            return normalizedTabURL == normalized
+        }
+
+        if let existing = existingTab {
+            print("[BROWSER DEBUG] found existing tab, activating")
             activateTab(existing.id)
             return
         }
         let displayName = URL(string: normalized)?.host ?? normalized
+        print("[BROWSER DEBUG] creating new tab with name: \(displayName)")
         let tab = Tab(
             name: displayName,
             type: .browser,
@@ -393,9 +409,17 @@ public final class EditorViewModel: ObservableObject {
     }
 
     public func updateBrowserURL(tabId: String, url: String) {
-        browserURLs[tabId] = url
+        print("[BROWSER DEBUG] updateBrowserURL called - tabId: \(tabId), url: \(url)")
+        print("[BROWSER DEBUG] current browserURLs: \(browserURLs)")
+        let normalizedNew = normalizeURL(url)
+        guard browserURLs[tabId] != normalizedNew else {
+            print("[BROWSER DEBUG] URL unchanged, skipping")
+            return
+        }
+        print("[BROWSER DEBUG] URL changed, updating")
+        browserURLs[tabId] = normalizedNew
         if let idx = tabs.firstIndex(where: { $0.id == tabId }) {
-            tabs[idx].url = url
+            tabs[idx].url = normalizedNew
         }
     }
 

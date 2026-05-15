@@ -73,6 +73,13 @@ struct ResizableDivider: NSViewRepresentable {
         override var isFlipped: Bool { true }
         override var mouseDownCanMoveWindow: Bool { false }
 
+        override func hitTest(_ point: NSPoint) -> NSView? {
+            if bounds.contains(point) {
+                return self
+            }
+            return nil
+        }
+
         override func updateTrackingAreas() {
             super.updateTrackingAreas()
             for area in trackingAreas { removeTrackingArea(area) }

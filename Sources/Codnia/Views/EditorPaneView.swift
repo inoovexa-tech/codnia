@@ -94,7 +94,7 @@ struct EditorPaneView: View {
                         set: { editorVM.updateBrowserTitle(tabId: tab.id, title: $0) }
                     ),
                     onNavigate: { url in
-                        editorVM.openURL(url)
+                        editorVM.updateBrowserURL(tabId: tab.id, url: url)
                     },
                     onClose: {
                         editorVM.closeTab(tab.id)

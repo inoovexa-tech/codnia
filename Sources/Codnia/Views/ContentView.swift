@@ -23,29 +23,25 @@ struct ContentView: View {
                         .environmentObject(appState.gitVM)
                         .environmentObject(settings)
 
-                    if appState.leftBrowserExpanded {
+                    if appState.browserExpanded && appState.browserSide == .left {
                         BrowserView(
-                            tabId: "left-panel",
-                            urlString: $appState.leftBrowserURL,
-                            pageTitle: $appState.leftBrowserTitle,
-                            onNavigate: { appState.leftBrowserURL = $0 },
-                            onClose: { appState.leftBrowserExpanded = false },
-                            onPinToLeft: { appState.leftBrowserExpanded = false },
-                            onPinToRight: {
-                                appState.rightBrowserURL = appState.leftBrowserURL
-                                appState.rightBrowserExpanded = true
-                                appState.leftBrowserExpanded = false
-                            },
+                            tabId: "browser-panel",
+                            urlString: $appState.browserURL,
+                            pageTitle: $appState.browserTitle,
+                            onNavigate: { appState.browserURL = $0 },
+                            onClose: { appState.closeBrowser() },
+                            onPinToLeft: { appState.closeBrowser() },
+                            onPinToRight: { appState.browserSide = .right },
                             onPinToTab: {
-                                appState.openURL(appState.leftBrowserURL, in: .tab)
-                                appState.leftBrowserExpanded = false
+                                appState.openURL(appState.browserURL, in: .tab)
+                                appState.closeBrowser()
                             }
                         )
-                        .frame(width: settings.leftBrowserWidth)
+                        .frame(width: appState.browserWidth)
                         .background(Color.bgSecondary)
 
                         ResizableDivider(
-                            width: $settings.leftBrowserWidth,
+                            width: $appState.browserWidth,
                             minWidth: 250,
                             maxWidth: 1200,
                             side: .left
@@ -64,9 +60,9 @@ struct ContentView: View {
                         .environmentObject(settings)
                         .environmentObject(appState.databaseService)
 
-                    if appState.rightBrowserExpanded {
+                    if appState.browserExpanded && appState.browserSide == .right {
                         ResizableDivider(
-                            width: $settings.rightBrowserWidth,
+                            width: $appState.browserWidth,
                             minWidth: 250,
                             maxWidth: 1200,
                             side: .right
@@ -76,23 +72,19 @@ struct ContentView: View {
                         .zIndex(10)
 
                         BrowserView(
-                            tabId: "right-panel",
-                            urlString: $appState.rightBrowserURL,
-                            pageTitle: $appState.rightBrowserTitle,
-                            onNavigate: { appState.rightBrowserURL = $0 },
-                            onClose: { appState.rightBrowserExpanded = false },
-                            onPinToLeft: {
-                                appState.leftBrowserURL = appState.rightBrowserURL
-                                appState.leftBrowserExpanded = true
-                                appState.rightBrowserExpanded = false
-                            },
-                            onPinToRight: { appState.rightBrowserExpanded = false },
+                            tabId: "browser-panel",
+                            urlString: $appState.browserURL,
+                            pageTitle: $appState.browserTitle,
+                            onNavigate: { appState.browserURL = $0 },
+                            onClose: { appState.closeBrowser() },
+                            onPinToLeft: { appState.browserSide = .left },
+                            onPinToRight: { appState.closeBrowser() },
                             onPinToTab: {
-                                appState.openURL(appState.rightBrowserURL, in: .tab)
-                                appState.rightBrowserExpanded = false
+                                appState.openURL(appState.browserURL, in: .tab)
+                                appState.closeBrowser()
                             }
                         )
-                        .frame(width: settings.rightBrowserWidth)
+                        .frame(width: appState.browserWidth)
                         .background(Color.bgSecondary)
                     }
 

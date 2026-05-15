@@ -64,19 +64,23 @@ struct EditorAreaView: View {
                         set: { editorVM.updateBrowserTitle(tabId: activeTab.id, title: $0) }
                     ),
                     onNavigate: { url in
-                        editorVM.openURL(url)
+                        editorVM.updateBrowserURL(tabId: activeTab.id, url: url)
                     },
                     onClose: {
                         editorVM.closeTab(activeTab.id)
                     },
                     onPinToLeft: {
                         let url = editorVM.browserURLs[activeTab.id] ?? activeTab.url ?? "about:blank"
-                        appState.openURL(url, in: .leftPanel)
+                        appState.browserURL = url
+                        appState.browserSide = .left
+                        appState.browserExpanded = true
                         editorVM.closeTab(activeTab.id)
                     },
                     onPinToRight: {
                         let url = editorVM.browserURLs[activeTab.id] ?? activeTab.url ?? "about:blank"
-                        appState.openURL(url, in: .rightPanel)
+                        appState.browserURL = url
+                        appState.browserSide = .right
+                        appState.browserExpanded = true
                         editorVM.closeTab(activeTab.id)
                     }
                 )

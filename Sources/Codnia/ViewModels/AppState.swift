@@ -19,12 +19,41 @@ public final class AppState: ObservableObject {
     @Published var rightSidebarTab: RightSidebarTab = .explorer
     @Published var showGlobalSearchModal: Bool = false
 
-    @Published var leftBrowserExpanded: Bool = false
-    @Published var rightBrowserExpanded: Bool = false
-    @Published var leftBrowserURL: String = ""
-    @Published var rightBrowserURL: String = ""
-    @Published var leftBrowserTitle: String = ""
-    @Published var rightBrowserTitle: String = ""
+    @Published var browserExpanded: Bool = false
+    @Published var browserSide: BrowserSide = .right
+    @Published var browserURL: String = ""
+    @Published var browserTitle: String = ""
+    @Published var browserWidth: CGFloat = 500
+
+    public enum BrowserSide: String {
+        case left
+        case right
+    }
+
+    public func closeBrowser() {
+        browserExpanded = false
+    }
+
+    public func moveBrowserToSide(_ side: BrowserSide) {
+        browserSide = side
+        browserExpanded = true
+    }
+
+    public func openURL(_ urlString: String, in location: BrowserOpenIn) {
+        switch location {
+        case .tab:
+            editorVM.openURL(urlString)
+        case .leftPanel:
+            browserURL = urlString
+            browserSide = .left
+            browserExpanded = true
+        case .rightPanel:
+            browserURL = urlString
+            browserSide = .right
+            browserExpanded = true
+        }
+    }
+
     public init() {
         let ws = WorkspaceService()
         let s = SettingsService()
@@ -77,19 +106,6 @@ public final class AppState: ObservableObject {
         ps.registerSidebarPlugin(notesPlugin)
 
         bs.appState = self
-    }
-
-    public func openURL(_ urlString: String, in location: BrowserOpenIn) {
-        switch location {
-        case .tab:
-            editorVM.openURL(urlString)
-        case .leftPanel:
-            leftBrowserURL = urlString
-            leftBrowserExpanded = true
-        case .rightPanel:
-            rightBrowserURL = urlString
-            rightBrowserExpanded = true
-        }
     }
 }
 
