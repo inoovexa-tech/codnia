@@ -437,6 +437,7 @@ struct TreeNode: View {
 
     private func handleDrop(providers: [NSItemProvider]) -> Bool {
         guard entry.isDirectory else { return false }
+        let entryPath = entry.path
 
         for provider in providers {
             provider.loadItem(forTypeIdentifier: UTType.text.identifier, options: nil) { item, _ in
@@ -451,7 +452,7 @@ struct TreeNode: View {
 
                 let sourceURL = URL(fileURLWithPath: sourcePath)
                 let fileName = sourceURL.lastPathComponent
-                let destination = URL(fileURLWithPath: entry.path).appendingPathComponent(fileName)
+                let destination = URL(fileURLWithPath: entryPath).appendingPathComponent(fileName)
                 guard sourceURL.path != destination.path else { return }
                 try? FileManager.default.moveItem(at: sourceURL, to: destination)
                 DispatchQueue.main.async {

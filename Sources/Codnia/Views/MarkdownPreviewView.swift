@@ -143,6 +143,7 @@ struct MarkdownPreviewView: View {
         .fixedSize(horizontal: false, vertical: true)
     }
 
+    @MainActor
     private func inlineMarkdown(_ text: String, baseSize: CGFloat) -> AttributedString {
         guard let parsed = try? AttributedString(
             markdown: text,

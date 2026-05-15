@@ -88,11 +88,13 @@ public final class WorkspaceService: ObservableObject {
     private func refreshAllChanges() async {
         await withTaskGroup(of: Void.self) { group in
             for project in projects {
-                group.addTask { [weak self] in
-                    guard let worktree = project.activeWorktree else { return }
-                    let result = await GitService.shared.getChangesCount(path: worktree.path)
+                let worktreeId = project.activeWorktree?.id
+                let worktreePath = project.activeWorktree?.path
+                guard let wtId = worktreeId, let wtPath = worktreePath else { continue }
+                group.addTask {
+                    let result = await GitService.shared.getChangesCount(path: wtPath)
                     await MainActor.run {
-                        self?.changesCount[worktree.id] = result
+                        self.changesCount[wtId] = result
                     }
                 }
             }
