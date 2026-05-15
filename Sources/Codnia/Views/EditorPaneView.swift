@@ -6,6 +6,7 @@ struct EditorPaneView: View {
     @EnvironmentObject var terminalVM: TerminalViewModel
     @EnvironmentObject var splitVM: SplitViewModel
     @EnvironmentObject var settings: SettingsService
+    @EnvironmentObject var appState: AppState
 
     @State private var isHovered = false
 
@@ -95,6 +96,16 @@ struct EditorPaneView: View {
                         editorVM.openURL(url)
                     },
                     onClose: {
+                        editorVM.closeTab(tab.id)
+                    },
+                    onPinToLeft: {
+                        let url = editorVM.browserURLs[tab.id] ?? tab.url ?? "about:blank"
+                        appState.openURL(url, in: .leftPanel)
+                        editorVM.closeTab(tab.id)
+                    },
+                    onPinToRight: {
+                        let url = editorVM.browserURLs[tab.id] ?? tab.url ?? "about:blank"
+                        appState.openURL(url, in: .rightPanel)
                         editorVM.closeTab(tab.id)
                     }
                 )

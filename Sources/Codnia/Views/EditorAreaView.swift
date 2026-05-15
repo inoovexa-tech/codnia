@@ -6,6 +6,7 @@ struct EditorAreaView: View {
     @EnvironmentObject var terminalVM: TerminalViewModel
     @EnvironmentObject var settings: SettingsService
     @EnvironmentObject var databaseService: DatabaseConnectionService
+    @EnvironmentObject var appState: AppState
 
     private var isTerminalVisible: Bool {
         guard let activeTab = editorVM.currentTab else { return false }
@@ -66,6 +67,16 @@ struct EditorAreaView: View {
                         editorVM.openURL(url)
                     },
                     onClose: {
+                        editorVM.closeTab(activeTab.id)
+                    },
+                    onPinToLeft: {
+                        let url = editorVM.browserURLs[activeTab.id] ?? activeTab.url ?? "about:blank"
+                        appState.openURL(url, in: .leftPanel)
+                        editorVM.closeTab(activeTab.id)
+                    },
+                    onPinToRight: {
+                        let url = editorVM.browserURLs[activeTab.id] ?? activeTab.url ?? "about:blank"
+                        appState.openURL(url, in: .rightPanel)
                         editorVM.closeTab(activeTab.id)
                     }
                 )

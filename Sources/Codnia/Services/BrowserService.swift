@@ -7,6 +7,7 @@ public final class BrowserService {
 
     public weak var editorVM: EditorViewModel?
     public weak var settings: SettingsService?
+    public weak var appState: AppState?
 
     public init() {
         BrowserService.shared = self
@@ -46,23 +47,30 @@ public final class BrowserService {
         guard let settings = settings else { return }
 
         if settings.browserAutoRedirect {
-            editorVM?.openURL(url)
+            let location = BrowserOpenIn(rawValue: settings.browserDefaultLocation) ?? .tab
+            appState?.openURL(url, in: location)
             return
         }
 
         let alert = NSAlert()
         alert.messageText = "Open in Browser Emulator?"
-        alert.informativeText = "A local/private URL was detected:\n\n\(url)\n\nOpen it in the built-in browser or your system browser?"
-        alert.addButton(withTitle: "Open in Codnia")
+        alert.informativeText = "A local/private URL was detected:\n\n\(url)\n\nChoose where to open it:"
+        alert.addButton(withTitle: "Open in Tab")
+        alert.addButton(withTitle: "Open in Left Panel")
+        alert.addButton(withTitle: "Open in Right Panel")
         alert.addButton(withTitle: "Open Externally")
         alert.addButton(withTitle: "Cancel")
         alert.alertStyle = .informational
 
-        let response = alert.runModal()
+        let response = alert.runModal().rawValue
         switch response {
-        case .alertFirstButtonReturn:
-            editorVM?.openURL(url)
-        case .alertSecondButtonReturn:
+        case 1000:
+            appState?.openURL(url, in: .tab)
+        case 1001:
+            appState?.openURL(url, in: .leftPanel)
+        case 1002:
+            appState?.openURL(url, in: .rightPanel)
+        case 1003:
             if let urlObj = URL(string: url) {
                 NSWorkspace.shared.open(urlObj)
             }

@@ -16,11 +16,10 @@ struct TabBarView: View {
     var onToggleExplorer: () -> Void = {}
     var onToggleSearch: () -> Void = {}
     var onToggleSourceControl: () -> Void = {}
+    var onOpenBrowser: (() -> Void)?
 
     @State private var draggedTabId: String?
     @State private var showTabDropdown = false
-    @State private var showURLSheet = false
-    @State private var urlSheetInput: String = ""
     @ObservedObject private var shortcutsService = KeyboardShortcutsService.shared
 
     private var allTabs: [Tab] {
@@ -105,8 +104,6 @@ struct TabBarView: View {
                 Menu {
                     menuItem("New File", shortcutKey: "newFile") { editorVM.newFile() }
                     menuItem("New Terminal", shortcutKey: "newTerminal") { editorVM.createTerminalTab(type: .terminal) }
-                    Divider()
-                    menuItem("Open URL…", shortcutKey: "openURL") { showURLSheet = true }
                     Divider()
                     if isDatabaseEnabled {
                         menuItem("New SQL Query", shortcutKey: "newSQLQuery") { onNewSQLQuery() }
@@ -217,6 +214,16 @@ struct TabBarView: View {
                         .help("Split top/bottom")
                     }
 
+                    if let onOpenBrowser {
+                        Button(action: onOpenBrowser) {
+                            Image(systemName: "globe")
+                                .font(.system(size: 13))
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .foregroundColor(.textSecondary)
+                        .help("Open browser")
+                    }
+
                     Button(action: onToggleRightSidebar) {
                         Image(systemName: isRightSidebarExpanded ? "sidebar.right" : "sidebar.left")
                             .font(.system(size: 13))
@@ -235,47 +242,6 @@ struct TabBarView: View {
             Rectangle().frame(height: 1).foregroundColor(.borderDefault),
             alignment: .bottom
         )
-        .sheet(isPresented: $showURLSheet) {
-            VStack(spacing: 16) {
-                Text("Open URL")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.textPrimary)
-
-                TextField("http://localhost:3000", text: $urlSheetInput)
-                    .textFieldStyle(PlainTextFieldStyle())
-                    .font(.system(size: 13, design: .monospaced))
-                    .padding(8)
-                    .background(Color.bgTertiary)
-                    .cornerRadius(6)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 6)
-                            .stroke(Color.borderLight, lineWidth: 0.5)
-                    )
-                    .frame(width: 340)
-
-                HStack(spacing: 12) {
-                    Button("Cancel") {
-                        showURLSheet = false
-                        urlSheetInput = ""
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    .foregroundColor(.textSecondary)
-
-                    Button("Open") {
-                        let url = urlSheetInput
-                        showURLSheet = false
-                        urlSheetInput = ""
-                        editorVM.openURL(url)
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    .foregroundColor(.accentBlue)
-                    .disabled(urlSheetInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                }
-            }
-            .padding(24)
-            .frame(width: 400)
-            .background(Color.bgPrimary)
-        }
     }
 
     private func toggleAllWorktrees() {
@@ -313,6 +279,7 @@ struct TabButton: View {
     @Binding var draggedTabId: String?
     var onMoveLeft: (() -> Void)? = nil
     var onMoveRight: (() -> Void)? = nil
+    @EnvironmentObject var appState: AppState
 
     @State private var isHovered = false
 
@@ -379,6 +346,17 @@ struct TabButton: View {
             moveAction: moveAction
         ))
         .contextMenu {
+            if tab.type == .browser {
+                Button("Pin to Left Panel") {
+                    appState.openURL(tab.url ?? "about:blank", in: .leftPanel)
+                    onClose()
+                }
+                Button("Pin to Right Panel") {
+                    appState.openURL(tab.url ?? "about:blank", in: .rightPanel)
+                    onClose()
+                }
+                Divider()
+            }
             Button("Close Tab") { onClose() }
             if onMoveLeft != nil {
                 Button("Move Left") { onMoveLeft?() }

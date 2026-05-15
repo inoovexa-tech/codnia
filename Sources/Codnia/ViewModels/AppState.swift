@@ -19,6 +19,12 @@ public final class AppState: ObservableObject {
     @Published var rightSidebarTab: RightSidebarTab = .explorer
     @Published var showGlobalSearchModal: Bool = false
 
+    @Published var leftBrowserExpanded: Bool = false
+    @Published var rightBrowserExpanded: Bool = false
+    @Published var leftBrowserURL: String = ""
+    @Published var rightBrowserURL: String = ""
+    @Published var leftBrowserTitle: String = ""
+    @Published var rightBrowserTitle: String = ""
     public init() {
         let ws = WorkspaceService()
         let s = SettingsService()
@@ -69,5 +75,35 @@ public final class AppState: ObservableObject {
             nv?.refreshNotes()
         }
         ps.registerSidebarPlugin(notesPlugin)
+
+        bs.appState = self
+    }
+
+    public func openURL(_ urlString: String, in location: BrowserOpenIn) {
+        switch location {
+        case .tab:
+            editorVM.openURL(urlString)
+        case .leftPanel:
+            leftBrowserURL = urlString
+            leftBrowserExpanded = true
+        case .rightPanel:
+            rightBrowserURL = urlString
+            rightBrowserExpanded = true
+        }
+    }
+}
+
+public enum BrowserOpenIn: String, CaseIterable, Identifiable, Codable {
+    case tab = "tab"
+    case leftPanel = "leftPanel"
+    case rightPanel = "rightPanel"
+
+    public var id: String { rawValue }
+    public var displayName: String {
+        switch self {
+        case .tab: return "Tab"
+        case .leftPanel: return "Left Panel"
+        case .rightPanel: return "Right Panel"
+        }
     }
 }

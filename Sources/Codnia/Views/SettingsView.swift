@@ -194,6 +194,7 @@ struct TerminalSettingsSection: View {
 
 struct BrowserSettingsSection: View {
     @EnvironmentObject var settings: SettingsService
+    @State private var defaultLocation: BrowserOpenIn = .tab
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -205,6 +206,28 @@ struct BrowserSettingsSection: View {
                 isOn: $settings.browserEnabled
             )
             .onChange(of: settings.browserEnabled) { _ in settings.save() }
+
+            SettingsRow(label: "Default URL", description: "URL to open when clicking the globe icon") {
+                TextField("about:blank", text: $settings.browserDefaultURL)
+                    .textFieldStyle(PlainTextFieldStyle())
+                    .font(.system(size: 12, design: .monospaced))
+                    .frame(width: 280)
+                    .padding(6)
+                    .background(Color.bgTertiary)
+                    .cornerRadius(4)
+                    .onChange(of: settings.browserDefaultURL) { _ in settings.save() }
+            }
+
+            SettingsRow(label: "Default Location", description: "Where to open the browser by default") {
+                Picker("", selection: $settings.browserDefaultLocation) {
+                    ForEach(BrowserOpenIn.allCases) { loc in
+                        Text(loc.displayName).tag(loc.rawValue)
+                    }
+                }
+                .pickerStyle(MenuPickerStyle())
+                .frame(width: 160)
+                .onChange(of: settings.browserDefaultLocation) { _ in settings.save() }
+            }
 
             SettingsToggleRow(
                 label: "Auto-Redirect",

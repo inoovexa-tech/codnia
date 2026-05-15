@@ -7,6 +7,7 @@ struct SplitEditorView: View {
     @EnvironmentObject var editorVM: EditorViewModel
     @EnvironmentObject var terminalVM: TerminalViewModel
     @EnvironmentObject var settings: SettingsService
+    @EnvironmentObject var appState: AppState
 
     @State private var inFileSearchQuery: String = ""
     @State private var inFileSearchResults: [NSRange] = []

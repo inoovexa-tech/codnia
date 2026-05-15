@@ -7,6 +7,9 @@ struct BrowserView: View {
     @Binding var pageTitle: String
     var onNavigate: (String) -> Void
     var onClose: () -> Void
+    var onPinToLeft: (() -> Void)
+    var onPinToRight: (() -> Void)
+    var onPinToTab: (() -> Void)?
 
     @State private var isLoading: Bool = false
     @State private var estimatedProgress: Double = 0
@@ -24,11 +27,23 @@ struct BrowserView: View {
     }
 
     private var navigationBar: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 3) {
+            Button(action: onClose) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 10, weight: .medium))
+                    .frame(width: 20, height: 20)
+            }
+            .buttonStyle(PlainButtonStyle())
+            .foregroundColor(.textTertiary)
+            .help("Close browser")
+
+            Divider()
+                .frame(height: 14)
+
             Button(action: { webViewCoordinator?.goBack() }) {
                 Image(systemName: "chevron.left")
-                    .font(.system(size: 12, weight: .medium))
-                    .frame(width: 24, height: 24)
+                    .font(.system(size: 11, weight: .medium))
+                    .frame(width: 22, height: 22)
             }
             .buttonStyle(PlainButtonStyle())
             .foregroundColor(canGoBack ? .textPrimary : .textTertiary)
@@ -36,8 +51,8 @@ struct BrowserView: View {
 
             Button(action: { webViewCoordinator?.goForward() }) {
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .medium))
-                    .frame(width: 24, height: 24)
+                    .font(.system(size: 11, weight: .medium))
+                    .frame(width: 22, height: 22)
             }
             .buttonStyle(PlainButtonStyle())
             .foregroundColor(canGoForward ? .textPrimary : .textTertiary)
@@ -51,11 +66,45 @@ struct BrowserView: View {
                 }
             }) {
                 Image(systemName: isLoading ? "xmark" : "arrow.clockwise")
-                    .font(.system(size: 12, weight: .medium))
-                    .frame(width: 24, height: 24)
+                    .font(.system(size: 11, weight: .medium))
+                    .frame(width: 22, height: 22)
             }
             .buttonStyle(PlainButtonStyle())
             .foregroundColor(.textSecondary)
+
+            if let onPinToTab {
+                Divider()
+                    .frame(height: 14)
+                Button(action: onPinToTab) {
+                    Image(systemName: "globe")
+                        .font(.system(size: 10))
+                        .frame(width: 20, height: 20)
+                }
+                .buttonStyle(PlainButtonStyle())
+                .foregroundColor(.textTertiary)
+                .help("Move to tab")
+            }
+
+            Divider()
+                .frame(height: 14)
+
+            Button(action: onPinToLeft) {
+                Image(systemName: "rectangle.lefthalf.inset.filled.arrow.left")
+                    .font(.system(size: 10))
+                    .frame(width: 20, height: 20)
+            }
+            .buttonStyle(PlainButtonStyle())
+            .foregroundColor(.textTertiary)
+            .help("Pin to left panel")
+
+            Button(action: onPinToRight) {
+                Image(systemName: "rectangle.righthalf.inset.filled.arrow.right")
+                    .font(.system(size: 10))
+                    .frame(width: 20, height: 20)
+            }
+            .buttonStyle(PlainButtonStyle())
+            .foregroundColor(.textTertiary)
+            .help("Pin to right panel")
 
             HStack(spacing: 4) {
                 if urlString.contains("https://") {
@@ -64,29 +113,25 @@ struct BrowserView: View {
                         .foregroundColor(.accentGreen)
                 }
                 TextField("Enter URL", text: $urlString)
-                    .font(.system(size: 12, design: .monospaced))
+                    .font(.system(size: 11, design: .monospaced))
                     .textFieldStyle(PlainTextFieldStyle())
                     .foregroundColor(.textPrimary)
                     .focused($urlFieldFocused)
                     .onSubmit {
                         navigateToURL(urlString)
                     }
-                    .onHover { hovering in
-                        if hovering { NSCursor.iBeam.push() }
-                        else { NSCursor.pop() }
-                    }
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 3)
             .background(Color.bgTertiary)
-            .cornerRadius(6)
+            .cornerRadius(5)
             .overlay(
-                RoundedRectangle(cornerRadius: 6)
+                RoundedRectangle(cornerRadius: 5)
                     .stroke(Color.borderLight, lineWidth: 0.5)
             )
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 4)
         .background(Color.bgSecondary)
         .overlay(
             Rectangle().frame(height: 1).foregroundColor(.borderDefault),

@@ -23,13 +23,78 @@ struct ContentView: View {
                         .environmentObject(appState.gitVM)
                         .environmentObject(settings)
 
+                    if appState.leftBrowserExpanded {
+                        BrowserView(
+                            tabId: "left-panel",
+                            urlString: $appState.leftBrowserURL,
+                            pageTitle: $appState.leftBrowserTitle,
+                            onNavigate: { appState.leftBrowserURL = $0 },
+                            onClose: { appState.leftBrowserExpanded = false },
+                            onPinToLeft: { appState.leftBrowserExpanded = false },
+                            onPinToRight: {
+                                appState.rightBrowserURL = appState.leftBrowserURL
+                                appState.rightBrowserExpanded = true
+                                appState.leftBrowserExpanded = false
+                            },
+                            onPinToTab: {
+                                appState.openURL(appState.leftBrowserURL, in: .tab)
+                                appState.leftBrowserExpanded = false
+                            }
+                        )
+                        .frame(width: settings.leftBrowserWidth)
+                        .background(Color.bgSecondary)
+
+                        ResizableDivider(
+                            width: $settings.leftBrowserWidth,
+                            minWidth: 250,
+                            maxWidth: 1200,
+                            side: .left
+                        )
+                        .frame(width: 8)
+                        .background(Color.borderDefault.opacity(0.15))
+                        .zIndex(10)
+                    }
+
                     SplitEditorView()
                         .background(Color.bgPrimary)
+                        .environmentObject(appState)
                         .environmentObject(appState.splitVM)
                         .environmentObject(appState.editorVM)
                         .environmentObject(appState.terminalVM)
                         .environmentObject(settings)
                         .environmentObject(appState.databaseService)
+
+                    if appState.rightBrowserExpanded {
+                        ResizableDivider(
+                            width: $settings.rightBrowserWidth,
+                            minWidth: 250,
+                            maxWidth: 1200,
+                            side: .right
+                        )
+                        .frame(width: 8)
+                        .background(Color.borderDefault.opacity(0.15))
+                        .zIndex(10)
+
+                        BrowserView(
+                            tabId: "right-panel",
+                            urlString: $appState.rightBrowserURL,
+                            pageTitle: $appState.rightBrowserTitle,
+                            onNavigate: { appState.rightBrowserURL = $0 },
+                            onClose: { appState.rightBrowserExpanded = false },
+                            onPinToLeft: {
+                                appState.leftBrowserURL = appState.rightBrowserURL
+                                appState.leftBrowserExpanded = true
+                                appState.rightBrowserExpanded = false
+                            },
+                            onPinToRight: { appState.rightBrowserExpanded = false },
+                            onPinToTab: {
+                                appState.openURL(appState.rightBrowserURL, in: .tab)
+                                appState.rightBrowserExpanded = false
+                            }
+                        )
+                        .frame(width: settings.rightBrowserWidth)
+                        .background(Color.bgSecondary)
+                    }
 
                     if appState.rightSidebarExpanded {
                         ResizableDivider(
@@ -98,6 +163,11 @@ struct ContentView: View {
                         appState.rightSidebarTab = .sourceControl
                         appState.rightSidebarExpanded = true
                     }
+                },
+                onOpenBrowser: {
+                    let url = appState.settings.browserDefaultURL.isEmpty ? "about:blank" : appState.settings.browserDefaultURL
+                    let location = BrowserOpenIn(rawValue: appState.settings.browserDefaultLocation) ?? .tab
+                    appState.openURL(url, in: location)
                 }
             )
             .frame(height: 36)
@@ -120,4 +190,6 @@ struct ContentView: View {
             }
         }
     }
+
+
 }
