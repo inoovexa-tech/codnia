@@ -196,7 +196,7 @@ struct TabBarView: View {
                 }
 
                 HStack(spacing: 4) {
-                    if editorVM.currentTab != nil {
+                    if editorVM.currentTab != nil && editorVM.currentTab?.type != .browser {
                         Button(action: {
                             splitVM.splitActivePane(.horizontal, editorVM: editorVM, terminalVM: terminalVM)
                         }) {
@@ -290,7 +290,8 @@ struct TabButton: View {
     var body: some View {
         ZStack {
             HStack(spacing: 6) {
-                if tab.type == .file {
+                if tab.type == .browser {
+                } else if tab.type == .file {
                     fileIcon(for: tab.name)
                         .foregroundColor(iconColor)
                         .font(.system(size: 13))
@@ -300,10 +301,6 @@ struct TabButton: View {
                         .font(.system(size: 13))
                 } else if tab.type == .queryResult {
                     Image(systemName: "tablecells")
-                        .foregroundColor(iconColor)
-                        .font(.system(size: 13))
-                } else if tab.type == .browser {
-                    Image(systemName: "globe")
                         .foregroundColor(iconColor)
                         .font(.system(size: 13))
                 } else {

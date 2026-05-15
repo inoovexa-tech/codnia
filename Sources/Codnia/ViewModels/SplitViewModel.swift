@@ -14,6 +14,7 @@ public final class SplitViewModel: ObservableObject {
 
         let someTabs = editorVM.tabs + terminalVM.tabs
         guard let tab = someTabs.first(where: { $0.id == tabId }) else { return }
+        if tab.type == .browser { return }
 
         let isTerminalType = tab.type == .terminal || tab.type == .opencode || tab.type == .claude || tab.type == .codex
         let existingSessionId = leaf.sessionId

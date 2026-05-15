@@ -23,7 +23,7 @@ struct EditorPaneView: View {
         ZStack {
             contentView
 
-            if splitVM.root.leafCount > 1 {
+            if splitVM.root.leafCount > 1 && tab?.type != .browser {
                 VStack {
                     HStack {
                         Spacer()
