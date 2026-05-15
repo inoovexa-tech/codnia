@@ -113,10 +113,12 @@ struct IconPickerView: View {
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
         panel.canChooseFiles = true
-        panel.begin { response in
-            guard response == .OK, let url = panel.url else { return }
+        NSApp.activate(ignoringOtherApps: true)
+        NSApp.runModal(for: panel)
+        if let url = panel.url {
             selectedIcon = url.path
         }
+        panel.close()
     }
 
     private func copyIconToAppSupport(originalPath: String) -> String? {

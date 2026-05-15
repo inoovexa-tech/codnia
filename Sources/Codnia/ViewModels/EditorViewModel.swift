@@ -294,10 +294,12 @@ public final class EditorViewModel: ObservableObject {
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
         panel.canChooseFiles = true
-        panel.begin { [weak self] response in
-            guard response == .OK, let url = panel.url, let self = self else { return }
-            self.openFile(url.path)
+        NSApp.activate(ignoringOtherApps: true)
+        NSApp.runModal(for: panel)
+        if panel.url != nil, let url = panel.url {
+            openFile(url.path)
         }
+        panel.close()
     }
 
     public func openFile(_ path: String) {
@@ -586,21 +588,23 @@ public final class EditorViewModel: ObservableObject {
         guard let tab = currentTab, tab.type == .file else { return }
         let panel = NSSavePanel()
         panel.nameFieldStringValue = tab.name
-        panel.begin { [weak self] response in
-            guard response == .OK, let url = panel.url, let self = self else { return }
+        NSApp.activate(ignoringOtherApps: true)
+        NSApp.runModal(for: panel)
+        if panel.url != nil, let url = panel.url {
             do {
-                try self.fs.writeFile(path: url.path, content: self.editorContent)
-                self.fileContents[tab.id] = self.editorContent
-                if let idx = self.tabs.firstIndex(where: { $0.id == tab.id }) {
-                    self.tabs[idx].path = url.path
-                    self.tabs[idx].name = url.lastPathComponent
-                    self.tabs[idx].isModified = false
-                    self.saveTabsToWorktree()
+                try fs.writeFile(path: url.path, content: editorContent)
+                fileContents[tab.id] = editorContent
+                if let idx = tabs.firstIndex(where: { $0.id == tab.id }) {
+                    tabs[idx].path = url.path
+                    tabs[idx].name = url.lastPathComponent
+                    tabs[idx].isModified = false
+                    saveTabsToWorktree()
                 }
             } catch {
                 print("Save As failed: \(error)")
             }
         }
+        panel.close()
     }
 
     public func createTerminalTab(type: TabType = .terminal) {

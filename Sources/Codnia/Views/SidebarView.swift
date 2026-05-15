@@ -70,6 +70,7 @@ struct SidebarView: View {
 
 struct SidebarExpandedProjectsList: View {
     @EnvironmentObject var workspaceVM: WorkspaceService
+    @State private var showAddProjectImporter = false
 
     var body: some View {
         ForEach(workspaceVM.projects) { project in
@@ -77,7 +78,7 @@ struct SidebarExpandedProjectsList: View {
                 .id("\(project.id)-wt-\(project.worktrees.count)")
         }
 
-        Button(action: { addProject() }) {
+        Button(action: { showAddProjectImporter = true }) {
             HStack(spacing: 8) {
                 Image(systemName: "plus")
                     .font(.system(size: 14))
@@ -94,16 +95,8 @@ struct SidebarExpandedProjectsList: View {
         }
         .buttonStyle(PlainButtonStyle())
         .padding(.top, 4)
-    }
-
-    private func addProject() {
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = false
-        panel.canChooseDirectories = true
-        panel.allowsMultipleSelection = false
-        panel.prompt = "Select"
-        panel.begin { response in
-            guard response == .OK, let url = panel.url else { return }
+        .fileImporter(isPresented: $showAddProjectImporter, allowedContentTypes: [.folder]) { result in
+            guard case .success(let url) = result else { return }
             workspaceVM.addProject(path: url.path)
         }
     }
@@ -111,13 +104,14 @@ struct SidebarExpandedProjectsList: View {
 
 struct SidebarCollapsedProjectsList: View {
     @EnvironmentObject var workspaceVM: WorkspaceService
+    @State private var showAddProjectImporter = false
 
     var body: some View {
         ForEach(workspaceVM.projects) { project in
             ProjectRowCollapsed(projectId: project.id)
         }
 
-        Button(action: { addProject() }) {
+        Button(action: { showAddProjectImporter = true }) {
             Image(systemName: "plus")
                 .font(.system(size: 14))
         }
@@ -131,16 +125,8 @@ struct SidebarCollapsedProjectsList: View {
         )
         .contentShape(Rectangle())
         .padding(.top, 4)
-    }
-
-    private func addProject() {
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = false
-        panel.canChooseDirectories = true
-        panel.allowsMultipleSelection = false
-        panel.prompt = "Select"
-        panel.begin { response in
-            guard response == .OK, let url = panel.url else { return }
+        .fileImporter(isPresented: $showAddProjectImporter, allowedContentTypes: [.folder]) { result in
+            guard case .success(let url) = result else { return }
             workspaceVM.addProject(path: url.path)
         }
     }

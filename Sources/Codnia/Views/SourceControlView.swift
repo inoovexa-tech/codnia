@@ -641,7 +641,7 @@ struct SourceControlView: View {
                 Text(entry.filePath)
                     .font(.system(size: 12))
                     .lineLimit(1)
-                    .truncationMode(.middle)
+                    .truncationMode(.head)
                     .foregroundColor(.textPrimary)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
