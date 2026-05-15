@@ -57,6 +57,8 @@ struct SettingsView: View {
                         EditorSettingsSection()
                     case .terminal:
                         TerminalSettingsSection()
+                    case .browser:
+                        BrowserSettingsSection()
                     case .keyboard:
                         KeyboardSettingsSection()
                     case .plugins:
@@ -77,6 +79,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
     case general = "General"
     case editor = "Editor"
     case terminal = "Terminal"
+    case browser = "Browser"
     case keyboard = "Keyboard"
     case plugins = "Plugins"
 
@@ -185,6 +188,69 @@ struct TerminalSettingsSection: View {
                     .onChange(of: settings.terminalScrollback) { _ in settings.save() }
             }
 
+        }
+    }
+}
+
+struct BrowserSettingsSection: View {
+    @EnvironmentObject var settings: SettingsService
+    @State private var defaultLocation: BrowserOpenIn = .tab
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            SettingsSectionHeader("Browser Emulator")
+
+            SettingsToggleRow(
+                label: "Enable Browser Emulator",
+                description: "Show browser tabs in the editor",
+                isOn: $settings.browserEnabled
+            )
+            .onChange(of: settings.browserEnabled) { _ in settings.save() }
+
+            SettingsRow(label: "Default URL", description: "URL to open when clicking the globe icon") {
+                TextField("about:blank", text: $settings.browserDefaultURL)
+                    .textFieldStyle(PlainTextFieldStyle())
+                    .font(.system(size: 12, design: .monospaced))
+                    .frame(width: 280)
+                    .padding(6)
+                    .background(Color.bgTertiary)
+                    .cornerRadius(4)
+                    .onChange(of: settings.browserDefaultURL) { _ in settings.save() }
+            }
+
+            SettingsRow(label: "Default Location", description: "Where to open the browser by default") {
+                Picker("", selection: $settings.browserDefaultLocation) {
+                    ForEach(BrowserOpenIn.allCases) { loc in
+                        Text(loc.displayName).tag(loc.rawValue)
+                    }
+                }
+                .pickerStyle(MenuPickerStyle())
+                .frame(width: 160)
+                .onChange(of: settings.browserDefaultLocation) { _ in settings.save() }
+            }
+
+            SettingsToggleRow(
+                label: "Auto-Redirect",
+                description: "Auto-open localhost/private IP URLs in browser tab (off = show prompt)",
+                isOn: $settings.browserAutoRedirect
+            )
+            .onChange(of: settings.browserAutoRedirect) { _ in settings.save() }
+
+            SettingsSectionHeader("URL Interception")
+
+            SettingsToggleRow(
+                label: "Intercept localhost",
+                description: "Detect http://localhost and http://127.0.0.1 URLs in terminal",
+                isOn: $settings.browserInterceptLocalhost
+            )
+            .onChange(of: settings.browserInterceptLocalhost) { _ in settings.save() }
+
+            SettingsToggleRow(
+                label: "Intercept private IPs",
+                description: "Detect 10.x.x.x, 192.168.x.x, 172.16-31.x.x URLs in terminal",
+                isOn: $settings.browserInterceptPrivateIPs
+            )
+            .onChange(of: settings.browserInterceptPrivateIPs) { _ in settings.save() }
         }
     }
 }

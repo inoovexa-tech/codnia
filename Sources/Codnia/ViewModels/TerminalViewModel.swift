@@ -208,6 +208,7 @@ public final class TerminalViewModel: ObservableObject {
         case .image: return "Image Viewer"
         case .pdf: return "PDF Viewer"
         case .queryResult: return "SQL Query"
+        case .browser: return "Browser"
         }
     }
 

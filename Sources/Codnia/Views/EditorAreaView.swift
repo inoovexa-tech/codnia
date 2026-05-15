@@ -6,6 +6,7 @@ struct EditorAreaView: View {
     @EnvironmentObject var terminalVM: TerminalViewModel
     @EnvironmentObject var settings: SettingsService
     @EnvironmentObject var databaseService: DatabaseConnectionService
+    @EnvironmentObject var appState: AppState
 
     private var isTerminalVisible: Bool {
         guard let activeTab = editorVM.currentTab else { return false }
@@ -48,6 +49,37 @@ struct EditorAreaView: View {
             // Query result tab
             if let activeTab = editorVM.currentTab, activeTab.type == .queryResult {
                 QueryResultTabView(tabId: activeTab.id)
+            }
+
+            // Browser tab
+            if let activeTab = editorVM.currentTab, activeTab.type == .browser {
+                BrowserView(
+                    tabId: activeTab.id,
+                    urlString: Binding(
+                        get: { editorVM.browserURLs[activeTab.id] ?? activeTab.url ?? "about:blank" },
+                        set: { editorVM.updateBrowserURL(tabId: activeTab.id, url: $0) }
+                    ),
+                    pageTitle: Binding(
+                        get: { editorVM.browserTitles[activeTab.id] ?? "" },
+                        set: { editorVM.updateBrowserTitle(tabId: activeTab.id, title: $0) }
+                    ),
+                    onNavigate: { url in
+                        editorVM.openURL(url)
+                    },
+                    onClose: {
+                        editorVM.closeTab(activeTab.id)
+                    },
+                    onPinToLeft: {
+                        let url = editorVM.browserURLs[activeTab.id] ?? activeTab.url ?? "about:blank"
+                        appState.openURL(url, in: .leftPanel)
+                        editorVM.closeTab(activeTab.id)
+                    },
+                    onPinToRight: {
+                        let url = editorVM.browserURLs[activeTab.id] ?? activeTab.url ?? "about:blank"
+                        appState.openURL(url, in: .rightPanel)
+                        editorVM.closeTab(activeTab.id)
+                    }
+                )
             }
 
             // File editor

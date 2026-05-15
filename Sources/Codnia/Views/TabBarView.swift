@@ -16,6 +16,7 @@ struct TabBarView: View {
     var onToggleExplorer: () -> Void = {}
     var onToggleSearch: () -> Void = {}
     var onToggleSourceControl: () -> Void = {}
+    var onOpenBrowser: (() -> Void)?
 
     @State private var draggedTabId: String?
     @State private var showTabDropdown = false
@@ -213,6 +214,16 @@ struct TabBarView: View {
                         .help("Split top/bottom")
                     }
 
+                    if let onOpenBrowser {
+                        Button(action: onOpenBrowser) {
+                            Image(systemName: "globe")
+                                .font(.system(size: 13))
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .foregroundColor(.textSecondary)
+                        .help("Open browser")
+                    }
+
                     Button(action: onToggleRightSidebar) {
                         Image(systemName: isRightSidebarExpanded ? "sidebar.right" : "sidebar.left")
                             .font(.system(size: 13))
@@ -268,6 +279,7 @@ struct TabButton: View {
     @Binding var draggedTabId: String?
     var onMoveLeft: (() -> Void)? = nil
     var onMoveRight: (() -> Void)? = nil
+    @EnvironmentObject var appState: AppState
 
     @State private var isHovered = false
 
@@ -284,6 +296,10 @@ struct TabButton: View {
                         .font(.system(size: 13))
                 } else if tab.type == .queryResult {
                     Image(systemName: "tablecells")
+                        .foregroundColor(iconColor)
+                        .font(.system(size: 13))
+                } else if tab.type == .browser {
+                    Image(systemName: "globe")
                         .foregroundColor(iconColor)
                         .font(.system(size: 13))
                 } else {
@@ -330,6 +346,17 @@ struct TabButton: View {
             moveAction: moveAction
         ))
         .contextMenu {
+            if tab.type == .browser {
+                Button("Pin to Left Panel") {
+                    appState.openURL(tab.url ?? "about:blank", in: .leftPanel)
+                    onClose()
+                }
+                Button("Pin to Right Panel") {
+                    appState.openURL(tab.url ?? "about:blank", in: .rightPanel)
+                    onClose()
+                }
+                Divider()
+            }
             Button("Close Tab") { onClose() }
             if onMoveLeft != nil {
                 Button("Move Left") { onMoveLeft?() }
@@ -351,6 +378,7 @@ struct TabButton: View {
         case .image: return .accentBlue
         case .pdf: return .accentRed
         case .queryResult: return .accentBlue
+        case .browser: return .accentBlue
         }
     }
 
