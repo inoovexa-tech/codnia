@@ -80,13 +80,8 @@ public final class SplitViewModel: ObservableObject {
 
             if let sessionId = existingSessionId {
                 TerminalSessionManager.shared.registerView(leaf.id, to: sessionId)
-                print("[SPLIT] Original leaf \(leaf.id) kept session \(sessionId)")
-            } else {
-                print("[SPLIT] Original leaf \(leaf.id) has no sessionId (will keep its current session)")
             }
-            print("[SPLIT] New leaf \(newLeaf.id) created \(tab.type) session \(newSession.id)")
         } else {
-            print("[SPLIT] Not terminal type")
         }
     }
 

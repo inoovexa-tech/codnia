@@ -126,7 +126,6 @@ struct BrowserView: View {
                             finalURL = "http://" + finalURL
                         }
                         urlFieldFocused = false
-                        print("[WEBVIEW DEBUG] onSubmit sending to onNavigate: \(finalURL)")
                         onNavigate(finalURL)
                     }
             }
@@ -188,18 +187,14 @@ struct BrowserView: View {
     @State private var webViewCoordinator: WebViewCoordinator?
 
     private func navigateToURL(_ urlString: String) {
-        print("[WEBVIEW DEBUG] navigateToURL called with: \(urlString)")
-        print("[WEBVIEW DEBUG] caller thread: \(Thread.current.isMainThread ? "main" : "background")")
         urlFieldFocused = false
         var finalURL = urlString.trimmingCharacters(in: .whitespacesAndNewlines)
         if finalURL.isEmpty {
-            print("[WEBVIEW DEBUG] empty URL, skipping")
             return
         }
         if !finalURL.hasPrefix("http://") && !finalURL.hasPrefix("https://") {
             finalURL = "http://" + finalURL
         }
-        print("[WEBVIEW DEBUG] navigateToURL sending: \(finalURL)")
         onNavigate(finalURL)
     }
 }
@@ -219,7 +214,6 @@ struct WebViewRepresentable: NSViewRepresentable {
     }
 
     func makeNSView(context: Context) -> WKWebView {
-        print("[WEBVIEW DEBUG] makeNSView called with urlString: \(urlString)")
         let config = WKWebViewConfiguration()
         config.preferences.javaScriptCanOpenWindowsAutomatically = true
         let webView = WKWebView(frame: .zero, configuration: config)
@@ -232,7 +226,6 @@ struct WebViewRepresentable: NSViewRepresentable {
         coordinator = context.coordinator
 
         if let url = URL(string: urlString), url.scheme != nil {
-            print("[WEBVIEW DEBUG] makeNSView loading initial URL: \(urlString)")
             webView.load(URLRequest(url: url))
         }
 
@@ -240,25 +233,20 @@ struct WebViewRepresentable: NSViewRepresentable {
     }
 
     func updateNSView(_ webView: WKWebView, context: Context) {
-        print("[WEBVIEW DEBUG] updateNSView called with urlString: \(urlString), current webView URL: \(webView.url?.absoluteString ?? "nil")")
         context.coordinator.parent = self
 
         guard urlString.hasPrefix("http://") || urlString.hasPrefix("https://") else {
-            print("[WEBVIEW DEBUG] URL missing scheme, skipping")
             return
         }
 
         guard !context.coordinator.navigating else {
-            print("[WEBVIEW DEBUG] skipping - isNavigating = true")
             return
         }
         if let url = URL(string: urlString), url.scheme != nil {
             let webViewURL = webView.url?.absoluteString
             let isInitialLoad = webViewURL == nil || webViewURL == "about:blank" || webViewURL == "http://about:blank"
             let needsReload = isInitialLoad || (webViewURL != urlString && !urlString.isEmpty)
-            print("[WEBVIEW DEBUG] isInitialLoad: \(isInitialLoad), needsReload: \(needsReload)")
             if needsReload && !urlString.hasPrefix("about:") {
-                print("[WEBVIEW DEBUG] loading URL: \(urlString)")
                 webView.load(URLRequest(url: url))
             }
         }
@@ -293,13 +281,11 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate {
     }
 
     func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
-        print("[WEBVIEW DEBUG] didCommit")
         parent.isLoading = true
         isNavigating = true
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-        print("[WEBVIEW DEBUG] didFinish - url: \(webView.url?.absoluteString ?? "nil")")
         parent.isLoading = false
         parent.estimatedProgress = 1.0
         parent.canGoBack = webView.canGoBack
@@ -309,19 +295,16 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate {
             parent.pageTitle = title
         }
         if let url = webView.url?.absoluteString {
-            print("[WEBVIEW DEBUG] didFinish updating urlString to: \(url)")
             parent.urlString = url
         }
     }
 
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-        print("[WEBVIEW DEBUG] didFail")
         parent.isLoading = false
         isNavigating = false
     }
 
     func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
-        print("[WEBVIEW DEBUG] didStartProvisionalNavigation")
         parent.isLoading = true
         isNavigating = true
     }
@@ -334,10 +317,7 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate {
 
     @MainActor
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping @MainActor @Sendable (WKNavigationActionPolicy) -> Void) {
-        print("[WEBVIEW DEBUG] decidePolicyFor - navigationType: \(navigationAction.navigationType.rawValue), targetFrame: \(navigationAction.targetFrame?.description ?? "nil")")
-
         if navigationAction.navigationType == .linkActivated && navigationAction.targetFrame == nil {
-            print("[WEBVIEW DEBUG] Popup link detected, loading in current view")
             webView.load(navigationAction.request)
             decisionHandler(.cancel)
             return
