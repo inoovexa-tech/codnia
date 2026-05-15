@@ -1,3 +1,22 @@
+## [0.11.0] — 2026-05-15
+
+### Added
+- Editor split pane functionality
+- Terminal shared session split views with improved divider dragging
+- Built-in Notes plugin with scoped .codnia/notes directory
+- File and task drag-and-drop to terminal
+- Swift 6 concurrency warning resolution
+
+### Changed
+- Remove explorer, search, source control icons from topbar; keep only split icons and expand sidebar toggle
+
+### Fixed
+- Replace blue active pane border with light gray
+- Preserve original pane scrollback/history on split, create fresh sessions for restored tabs
+- Use send(txt:) instead of feed(byteArray:) for terminal paste
+- Properly detect merge conflicts in git sidebar
+- Handle already-deleted worktree gracefully when branch also deleted
+
 ## [0.10.3] — 2026-05-14
 
 ### Fixed
