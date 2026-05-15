@@ -43,7 +43,7 @@ struct ContentView: View {
                         ResizableDivider(
                             width: $appState.browserWidth,
                             minWidth: 250,
-                            maxWidth: 1200,
+                            maxWidth: 1800,
                             side: .left
                         )
                         .frame(width: 8)
@@ -64,7 +64,7 @@ struct ContentView: View {
                         ResizableDivider(
                             width: $appState.browserWidth,
                             minWidth: 250,
-                            maxWidth: 1200,
+                            maxWidth: 1800,
                             side: .right
                         )
                         .frame(width: 8)
