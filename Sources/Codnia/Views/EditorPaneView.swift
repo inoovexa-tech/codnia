@@ -37,7 +37,7 @@ struct EditorPaneView: View {
         .background(Color.bgPrimary)
         .overlay(
             Rectangle()
-                .stroke(isActivePane ? Color.accentBlue.opacity(0.5) : Color.borderLight, lineWidth: isActivePane ? 1 : 0.5)
+                .stroke(isActivePane ? Color(hex: "#3a3a3a") : Color.borderLight, lineWidth: isActivePane ? 1 : 0.5)
         )
     }
 
