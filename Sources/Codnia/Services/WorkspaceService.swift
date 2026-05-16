@@ -223,7 +223,7 @@ public final class WorkspaceService: ObservableObject {
                     try FileManager.default.moveItem(atPath: oldPath, toPath: newPath)
                     projects[idx].path = newPath
                 } catch {
-                    print("Failed to rename directory: \(error)")
+                    
                 }
             }
 
@@ -364,7 +364,7 @@ public final class WorkspaceService: ObservableObject {
             )
 
             guard success else {
-                print("Failed to remove worktree")
+                
                 return
             }
 

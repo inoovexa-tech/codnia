@@ -108,34 +108,27 @@ class SessionViewportView: NSView {
     }
 
     override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
-        print("[SESSION-DRAG] performDragOperation")
         let pasteboard = sender.draggingPasteboard
 
         var textToPaste: String?
 
         if let fileURLs = pasteboard.readObjects(forClasses: [NSURL.self], options: nil) as? [URL], let first = fileURLs.first {
-            print("[SESSION-DRAG] fileURL: \(first.path)")
             textToPaste = first.path
         } else if let strings = pasteboard.readObjects(forClasses: [NSString.self], options: nil) as? [String], let first = strings.first {
-            print("[SESSION-DRAG] string: \(first)")
             textToPaste = first
         }
 
         guard let text = textToPaste, !text.isEmpty else {
-            print("[SESSION-DRAG] no text to paste")
             return false
         }
 
-        print("[SESSION-DRAG] sessionId=\(self.sessionId ?? "nil")")
         if let sessionId = self.sessionId {
-            print("[SESSION-DRAG] calling paste")
             TerminalManager.shared.paste(id: sessionId, text: text)
         }
         return true
     }
 
     override func concludeDragOperation(_ sender: NSDraggingInfo?) {
-        print("[SESSION-DRAG] concludeDragOperation - no first responder manipulation")
     }
 }
 

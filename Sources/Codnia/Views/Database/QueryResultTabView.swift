@@ -240,11 +240,9 @@ struct QueryResultTabView: View {
         }
 
         isExecuting = true
-        print("[QueryResultTabView] executeQuery page=\(page) pageSize=\(pageSize) orderBy=\(orderBy ?? "nil")")
 
         Task { @MainActor in
             let result = await databaseService.execute(configID: connectionId, sql: query, page: page, pageSize: pageSize, orderBy: orderBy)
-            print("[QueryResultTabView] result received page=\(result.page) rows=\(result.rows.count) totalCount=\(result.totalCount) error=\(result.error ?? "nil")")
             editorVM.setQueryResult(result, forTab: tabId)
             editorVM.activeTabId = tabId
 

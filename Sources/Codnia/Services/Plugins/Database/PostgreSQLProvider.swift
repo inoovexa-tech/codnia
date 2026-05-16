@@ -56,26 +56,26 @@ func close(handle: String) async throws {
     func fetchDatabases(handle: String) async throws -> [DatabaseInfo] {
         let rows = try await runQuery(handle: handle, sql: "SELECT datname FROM pg_database WHERE datistemplate = false ORDER BY datname")
         let dbs = rows.map { DatabaseInfo(name: $0[0] ?? "?") }
-        print("[PG] fetchDatabases → \(dbs.map(\.name))")
+        
         return dbs
     }
 
     func fetchSchemas(handle: String) async throws -> [SchemaInfo] {
         let rows = try await runQuery(handle: handle, sql: "SELECT schema_name FROM information_schema.schemata WHERE schema_name NOT IN ('pg_catalog', 'information_schema', 'pg_toast', 'pg_temp_1') AND schema_name NOT LIKE 'pg_toast_%' AND schema_name NOT LIKE 'pg_temp_%' ORDER BY schema_name")
         let schemas = rows.map { SchemaInfo(name: $0[0] ?? "?") }
-        print("[PG] fetchSchemas → \(schemas.map(\.name))")
+        
         return schemas
     }
 
     func fetchTables(handle: String, schema: String) async throws -> [TableInfo] {
         let sql = "SELECT table_name, table_type FROM information_schema.tables WHERE table_schema = '\(escape(schema))' ORDER BY table_name"
-        print("[PG] fetchTables SQL: \(sql)")
+        
         let rows = try await runQuery(handle: handle, sql: sql)
         let tables = rows.map { row in
             let type: TableInfo.TableType = row[1] == "VIEW" ? .view : .table
             return TableInfo(schema: schema, name: row[0] ?? "?", tableType: type)
         }
-        print("[PG] fetchTables('\(schema)') → \(tables.map { "\($0.name) (\($0.tableType))" })")
+        
         return tables
     }
 
@@ -86,7 +86,7 @@ func close(handle: String) async throws {
         WHERE table_schema = '\(escape(table.schema))' AND table_name = '\(escape(table.table))'
         ORDER BY ordinal_position
         """
-        print("[PG] fetchColumns SQL: \(sql)")
+        
         let rows = try await runQuery(handle: handle, sql: sql)
         let cols = rows.map { row in
             ColumnInfo(
@@ -96,7 +96,7 @@ func close(handle: String) async throws {
                 defaultValue: row[3]
             )
         }
-        print("[PG] fetchColumns('\(table.schema).\(table.table)') → \(cols.map(\.name))")
+        
         return cols
     }
 
@@ -167,8 +167,7 @@ func close(handle: String) async throws {
         let offset = page * pageSize
         let orderClause = orderBy.map { " ORDER BY \($0)" } ?? ""
         let pageSQL = "\(trimmed)\(orderClause) LIMIT \(pageSize) OFFSET \(offset)"
-        print("[PG] execute page=\(page) pageSize=\(pageSize) offset=\(offset) totalCount=\(totalCount)")
-        print("[PG] pageSQL: \(pageSQL)")
+        
 
         var columns: [String] = []
         var columnTypes: [String] = []
@@ -208,7 +207,7 @@ func close(handle: String) async throws {
         }
 
         let elapsed = Date().timeIntervalSince(start)
-        print("[PG] execute done: page=\(page) rows=\(rows.count) columns=\(columns)")
+        
         return QueryPageResult(
             columns: columns,
             columnTypes: columnTypes,

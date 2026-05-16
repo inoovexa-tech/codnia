@@ -622,7 +622,7 @@ struct NotesView: View {
             notesVM.showNewNoteSheet = false
             newNoteName = ""
         } catch {
-            print("Error creating note: \(error)")
+            
         }
     }
 

@@ -98,7 +98,7 @@ public final class DatabaseConnectionService: ObservableObject {
         do {
             try await provider.close(handle: handle)
         } catch {
-            print("Disconnect error: \(error)")
+            
         }
         sessions[configID] = .disconnected
         objectWillChange.send()
@@ -111,7 +111,7 @@ public final class DatabaseConnectionService: ObservableObject {
     // MARK: - Query Execution
 
     public func execute(configID: String, sql: String, page: Int = 0, pageSize: Int = 100, orderBy: String? = nil) async -> QueryPageResult {
-        print("[DBService] execute configID=\(configID) page=\(page) pageSize=\(pageSize) orderBy=\(orderBy ?? "nil")")
+        
         guard let config = config(withID: configID),
               let provider = providers[config.type],
               let handle = sessions[configID]?.handleID
@@ -124,7 +124,7 @@ public final class DatabaseConnectionService: ObservableObject {
         }
         do {
             let result = try await provider.execute(handle: handle, query: sql, page: page, pageSize: pageSize, orderBy: orderBy)
-            print("[DBService] result page=\(result.page) rows=\(result.rows.count) totalCount=\(result.totalCount)")
+            
             return result
         } catch {
             return QueryPageResult(

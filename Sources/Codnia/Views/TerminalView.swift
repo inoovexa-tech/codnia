@@ -96,14 +96,10 @@ class TerminalManager {
     }
 
     func paste(id: String, text: String) {
-        print("[PASTE] paste called id=\(id) text=\(text)")
         guard let terminal = terminals[id] else {
-            print("[PASTE] terminal not found for id=\(id)")
             return
         }
-        print("[PASTE] sending text to terminal process")
         terminal.send(txt: text)
-        print("[PASTE] send complete")
     }
 
     private func recordBytes(for id: String, bytes: Int) {
@@ -241,29 +237,23 @@ class TerminalContainerView: NSView {
     }
 
     override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
-        print("[CONTAINER-DRAG] performDragOperation")
         isDraggingOver = false
         let pasteboard = sender.draggingPasteboard
 
         var textToPaste: String?
 
         if let fileURLs = pasteboard.readObjects(forClasses: [NSURL.self], options: nil) as? [URL], let first = fileURLs.first {
-            print("[CONTAINER-DRAG] fileURL: \(first.path)")
             textToPaste = first.path
         } else if let strings = pasteboard.readObjects(forClasses: [NSString.self], options: nil) as? [String], let first = strings.first {
-            print("[CONTAINER-DRAG] string: \(first)")
             textToPaste = first
         }
 
         guard let text = textToPaste, !text.isEmpty else {
-            print("[CONTAINER-DRAG] no text to paste")
             return false
         }
 
-        print("[CONTAINER-DRAG] pasting to all visible terminals")
         for (id, terminal) in TerminalManager.shared.getAll() {
             if !terminal.isHidden {
-                print("[CONTAINER-DRAG] calling paste for id=\(id)")
                 TerminalManager.shared.paste(id: id, text: text)
                 break
             }
@@ -272,7 +262,6 @@ class TerminalContainerView: NSView {
     }
 
     override func concludeDragOperation(_ sender: NSDraggingInfo?) {
-        print("[CONTAINER-DRAG] concludeDragOperation - no first responder manipulation")
         isDraggingOver = false
     }
 }

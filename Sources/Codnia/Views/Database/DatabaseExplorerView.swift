@@ -348,7 +348,6 @@ struct DatabaseExplorerView: View {
 
     private func loadDatabases(_ config: ConnectionConfig, connId: String) async {
         let databases = await databaseService.fetchDatabases(configID: config.id)
-        print("[DB] Connection '\(config.name)' — databases: \(databases.map(\.name))")
         let entries = databases.map { DBTreeEntry.database($0.name) }
         cachedChildren[connId] = entries
         loadingItems.remove(connId)
@@ -366,7 +365,6 @@ struct DatabaseExplorerView: View {
 
         if case .database(let name) = entry {
             Task {
-                print("[DB] Switching to database: \(name)")
                 let config = databaseService.config(withID: configID)
                 if let config = config {
                     let needsReconnect = config.database != name
@@ -384,9 +382,7 @@ struct DatabaseExplorerView: View {
             }
         } else {
             Task {
-                print("[DB] toggleExpand: '\(entry.name)' id=\(entry.id)")
                 let children = await loadChildren(for: entry, configID: configID)
-                print("[DB] toggleExpand done: '\(entry.name)' → \(children.count) children")
                 cachedChildren[entry.id] = children
                 loadingItems.remove(entry.id)
             }
@@ -399,11 +395,9 @@ struct DatabaseExplorerView: View {
         switch entry {
         case .database:
             let schemas = await databaseService.fetchSchemas(configID: configID)
-            print("[DB] Database '\(entry.name)' — schemas: \(schemas.map(\.name))")
             result = schemas.map { DBTreeEntry.schema($0) }
 
         case .schema(let s):
-            print("[DB] Schema '\(s.name)' — showing sections")
             result = [
                 DBTreeEntry.schemaSection(SchemaSection(sectionType: .tables, schema: s.name)),
                 DBTreeEntry.schemaSection(SchemaSection(sectionType: .views, schema: s.name)),

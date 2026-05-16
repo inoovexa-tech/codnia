@@ -77,7 +77,6 @@ struct PaginatedDataGridView: View {
                             .monospacedDigit()
 
                         Button(action: {
-                            print("[Pagination] Previous clicked: page=\(page) pageSize=\(pageSize)")
                             onPageChange(page - 1, pageSize)
                         }) {
                             Image(systemName: "chevron.left")
@@ -88,7 +87,6 @@ struct PaginatedDataGridView: View {
                         .disabled(page <= 0)
 
                         Button(action: {
-                            print("[Pagination] Next clicked: page=\(page) pageSize=\(pageSize) pageCount=\(pageCount)")
                             onPageChange(page + 1, pageSize)
                         }) {
                             Image(systemName: "chevron.right")
