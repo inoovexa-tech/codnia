@@ -429,9 +429,9 @@ struct WorktreeRow: View {
 
                     if changes.added > 0 || changes.deleted > 0 {
                         HStack(spacing: 2) {
-                            Text("+\(changes.added)")
+                            Text("+\(formatCount(changes.added))")
                                 .foregroundColor(.green)
-                            Text("-\(changes.deleted)")
+                            Text("-\(formatCount(changes.deleted))")
                                 .foregroundColor(.red)
                         }
                         .font(.system(size: 10, weight: .medium))
@@ -459,6 +459,13 @@ struct WorktreeRow: View {
         .padding(.vertical, 4)
         .background(isActive ? Color.textSecondary.opacity(0.2) : Color.clear)
         .cornerRadius(4)
+    }
+
+    private func formatCount(_ count: Int) -> String {
+        if count >= 1000 {
+            return "\(count / 1000)k"
+        }
+        return "\(count)"
     }
 }
 

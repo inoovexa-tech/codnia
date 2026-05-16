@@ -77,9 +77,9 @@ struct StatusBarView: View {
             let changes = workspaceVM.getChangesCount(forProjectId: project.id)
             if changes.added > 0 || changes.deleted > 0 {
                 HStack(spacing: 2) {
-                    Text("+\(changes.added)")
+                    Text("+\(formatCount(changes.added))")
                         .foregroundColor(.green)
-                    Text("-\(changes.deleted)")
+                    Text("-\(formatCount(changes.deleted))")
                         .foregroundColor(.red)
                 }
             }
@@ -91,5 +91,12 @@ struct StatusBarView: View {
             return workspaceVM.getBranch(forProjectId: project.id)
         }
         return "main"
+    }
+
+    private func formatCount(_ count: Int) -> String {
+        if count >= 1000 {
+            return "\(count / 1000)k"
+        }
+        return "\(count)"
     }
 }
