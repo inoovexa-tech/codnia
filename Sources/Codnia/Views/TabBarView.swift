@@ -123,7 +123,7 @@ struct TabBarView: View {
 
                 GeometryReader { geometry in
                     let availableWidth = geometry.size.width
-                    let tabWidth: CGFloat = 150
+                    let tabWidth: CGFloat = 200
                     let maxVisibleTabs = max(1, Int(availableWidth / tabWidth))
                     let hasOverflow = allTabs.count > maxVisibleTabs
 
@@ -312,6 +312,7 @@ struct TabButton: View {
                 Text(tab.isModified ? "\(tab.name) \u{25CF}" : tab.name)
                     .font(.system(size: 12))
                     .lineLimit(1)
+                    .truncationMode(.tail)
 
                 Image(systemName: "xmark")
                     .font(.system(size: 10, weight: .medium))
@@ -321,7 +322,7 @@ struct TabButton: View {
             }
             .frame(maxHeight: .infinity)
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, 28)
         .frame(height: 36)
         .background(
             isActive ? Color.bgActive :
