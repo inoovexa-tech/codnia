@@ -1,3 +1,24 @@
+## [0.12.0] — 2026-05-16
+
+### Added
+- Format git changes count display with k suffix for numbers >= 1000
+- Confirmation dialog before discarding git changes
+- Increased tab width and title truncation with ellipsis
+- Custom directory/image browser modals replacing NSOpenPanel
+- HTML file preview with WKWebView
+- Markdown preview toggle in sidebar
+
+### Fixed
+- Disable wantsLayer on NSHostingView to fix NSOpenPanel sheet rendering
+- Disable split and hide icon for browser tabs
+- Resolve directory expand/collapse in file explorer
+- Prevent autosave from saving wrong content when switching tabs
+- Re-enable tab drag-and-drop reordering
+- Fix unstage all and individual unstage in source control sidebar
+
+### Changed
+- Remove all print debug statements
+
 ## [0.11.1] — 2026-05-15
 
 ### Fixed
