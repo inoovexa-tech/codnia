@@ -99,10 +99,12 @@ struct SidebarExpandedProjectsList: View {
     private func addProject() {
         Log.write("[expanded] button tapped")
         let wMain = NSApp.mainWindow
-        let wKey = NSApp.keyWindow
-        let wVis = NSApp.windows.first(where: { $0.isVisible })
-        Log.write("[expanded] main=\(wMain?.title ?? "nil") key=\(wKey?.title ?? "nil") visible=\(wVis?.title ?? "nil")")
-        Log.write("[expanded] all windows: \(NSApp.windows.map { "\($0.title)(visible=\($0.isVisible) main=\($0.isMainWindow) key=\($0.isKeyWindow))" })")
+        Log.write("[expanded] main=\(wMain?.title ?? "nil")")
+
+        guard let window = wMain else {
+            Log.write("[expanded] NO MAIN WINDOW")
+            return
+        }
 
         let panel = NSOpenPanel()
         panel.canChooseFiles = false
@@ -110,21 +112,16 @@ struct SidebarExpandedProjectsList: View {
         panel.allowsMultipleSelection = false
         panel.prompt = "Select"
 
-        let activeWindow = wMain ?? wKey ?? wVis
-        if let window = activeWindow {
-            Log.write("[expanded] presenting sheet on \(window.title)")
-            panel.beginSheetModal(for: window) { response in
-                Log.write("[expanded] sheet dismissed response=\(response.rawValue)")
-                if response == .OK, let url = panel.url {
-                    Log.write("[expanded] selected url=\(url.path)")
-                    Task { @MainActor in
-                        Log.write("[expanded] calling workspaceVM.addProject")
-                        workspaceVM.addProject(path: url.path)
-                    }
-                }
+        let vm = workspaceVM
+
+        Log.write("[expanded] beginSheetModal")
+        panel.beginSheetModal(for: window) { response in
+            Log.write("[expanded] sheet dismissed response=\(response.rawValue)")
+            if response == .OK, let url = panel.url {
+                Log.write("[expanded] selected url=\(url.path)")
+                vm.addProject(path: url.path)
+                Log.write("[expanded] addProject called")
             }
-        } else {
-            Log.write("[expanded] FATAL: no window found!")
         }
     }
 }
@@ -156,9 +153,12 @@ struct SidebarCollapsedProjectsList: View {
     private func addProject() {
         Log.write("[collapsed] button tapped")
         let wMain = NSApp.mainWindow
-        let wKey = NSApp.keyWindow
-        let wVis = NSApp.windows.first(where: { $0.isVisible })
-        Log.write("[collapsed] main=\(wMain?.title ?? "nil") key=\(wKey?.title ?? "nil") visible=\(wVis?.title ?? "nil")")
+        Log.write("[collapsed] main=\(wMain?.title ?? "nil")")
+
+        guard let window = wMain else {
+            Log.write("[collapsed] NO MAIN WINDOW")
+            return
+        }
 
         let panel = NSOpenPanel()
         panel.canChooseFiles = false
@@ -166,21 +166,16 @@ struct SidebarCollapsedProjectsList: View {
         panel.allowsMultipleSelection = false
         panel.prompt = "Select"
 
-        let activeWindow = wMain ?? wKey ?? wVis
-        if let window = activeWindow {
-            Log.write("[collapsed] presenting sheet on \(window.title)")
-            panel.beginSheetModal(for: window) { response in
-                Log.write("[collapsed] sheet dismissed response=\(response.rawValue)")
-                if response == .OK, let url = panel.url {
-                    Log.write("[collapsed] selected url=\(url.path)")
-                    Task { @MainActor in
-                        Log.write("[collapsed] calling workspaceVM.addProject")
-                        workspaceVM.addProject(path: url.path)
-                    }
-                }
+        let vm = workspaceVM
+
+        Log.write("[collapsed] beginSheetModal")
+        panel.beginSheetModal(for: window) { response in
+            Log.write("[collapsed] sheet dismissed response=\(response.rawValue)")
+            if response == .OK, let url = panel.url {
+                Log.write("[collapsed] selected url=\(url.path)")
+                vm.addProject(path: url.path)
+                Log.write("[collapsed] addProject called")
             }
-        } else {
-            Log.write("[collapsed] FATAL: no window found!")
         }
     }
 }
