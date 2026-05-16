@@ -13,6 +13,8 @@ struct SourceControlView: View {
     @State private var hoveredFileId: String? = nil
     @State private var selectedForDiscard: Set<String> = []
     @State private var copiedCommitId: String? = nil
+    @State private var showDiscardConfirmation: Bool = false
+    @State private var discardConfirmationFiles: [String] = []
 
     var body: some View {
         VStack(spacing: 0) {
@@ -100,6 +102,21 @@ struct SourceControlView: View {
         }
         .animation(.easeInOut(duration: 0.3), value: gitVM.actionMessage)
         .animation(.easeInOut(duration: 0.3), value: gitVM.actionError)
+        .confirmationDialog("Discard Changes", isPresented: $showDiscardConfirmation, titleVisibility: .visible) {
+            Button("Discard \(discardConfirmationFiles.count) File(s)", role: .destructive) {
+                for filePath in discardConfirmationFiles {
+                    gitVM.discardFile(filePath)
+                }
+                selectedForDiscard.removeAll()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            if discardConfirmationFiles.count == 1 {
+                Text("This will permanently discard all changes to '\(discardConfirmationFiles[0])'. This action cannot be undone.")
+            } else {
+                Text("This will permanently discard all changes to \(discardConfirmationFiles.count) files. This action cannot be undone.")
+            }
+        }
     }
 
     // MARK: - Empty State
@@ -565,10 +582,11 @@ struct SourceControlView: View {
         HStack(spacing: 8) {
             Button {
                 if selectedForDiscard.isEmpty {
-                    discardAll()
+                    discardConfirmationFiles = gitVM.unstagedEntries.map { $0.filePath }
                 } else {
-                    discardSelected()
+                    discardConfirmationFiles = Array(selectedForDiscard)
                 }
+                showDiscardConfirmation = true
             } label: {
                 HStack(spacing: 4) {
                     Image(systemName: "trash")
@@ -668,7 +686,10 @@ struct SourceControlView: View {
                 .opacity(hoveredFileId == entry.id ? 0.8 : 0)
                 .help("Unstage")
             } else {
-                Button { gitVM.discardFile(entry.filePath) } label: {
+                Button {
+                    discardConfirmationFiles = [entry.filePath]
+                    showDiscardConfirmation = true
+                } label: {
                     Image(systemName: "trash")
                         .font(.system(size: 10))
                 }
