@@ -36,7 +36,7 @@
     cp .build/release/Codnia /tmp/Codnia-v<version>/Codnia.app/Contents/MacOS/
     cp .build/release/Codnia_Codnia.bundle/icon.icns /tmp/Codnia-v<version>/Codnia.app/Contents/Resources/
     cp Info.plist /tmp/Codnia-v<version>/Codnia.app/Contents/
-    codesign --force --entitlements Codnia.entitlements --sign - /tmp/Codnia-v<version>/Codnia.app
+    codesign --force --deep --entitlements Codnia.entitlements --sign - /tmp/Codnia-v<version>/Codnia.app
     ln -s /Applications /tmp/Codnia-v<version>/Applications
     hdiutil create -volname "Codnia v<version>" -srcfolder /tmp/Codnia-v<version> -format UDZO Codnia-v<version>.dmg
     ```

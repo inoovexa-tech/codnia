@@ -70,7 +70,6 @@ struct SidebarView: View {
 
 struct SidebarExpandedProjectsList: View {
     @EnvironmentObject var workspaceVM: WorkspaceService
-    @State private var showAddProjectImporter = false
 
     var body: some View {
         ForEach(workspaceVM.projects) { project in
@@ -78,7 +77,7 @@ struct SidebarExpandedProjectsList: View {
                 .id("\(project.id)-wt-\(project.worktrees.count)")
         }
 
-        Button(action: { showAddProjectImporter = true }) {
+        Button(action: addProject) {
             HStack(spacing: 8) {
                 Image(systemName: "plus")
                     .font(.system(size: 14))
@@ -95,23 +94,37 @@ struct SidebarExpandedProjectsList: View {
         }
         .buttonStyle(PlainButtonStyle())
         .padding(.top, 4)
-        .fileImporter(isPresented: $showAddProjectImporter, allowedContentTypes: [.folder]) { result in
-            guard case .success(let url) = result else { return }
-            workspaceVM.addProject(path: url.path)
+    }
+
+    private func addProject() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.prompt = "Select"
+        if let window = NSApp.keyWindow {
+            panel.beginSheetModal(for: window) { response in
+                if response == .OK, let url = panel.url {
+                    workspaceVM.addProject(path: url.path)
+                }
+            }
+        } else {
+            if panel.runModal() == .OK, let url = panel.url {
+                workspaceVM.addProject(path: url.path)
+            }
         }
     }
 }
 
 struct SidebarCollapsedProjectsList: View {
     @EnvironmentObject var workspaceVM: WorkspaceService
-    @State private var showAddProjectImporter = false
 
     var body: some View {
         ForEach(workspaceVM.projects) { project in
             ProjectRowCollapsed(projectId: project.id)
         }
 
-        Button(action: { showAddProjectImporter = true }) {
+        Button(action: addProject) {
             Image(systemName: "plus")
                 .font(.system(size: 14))
         }
@@ -125,9 +138,24 @@ struct SidebarCollapsedProjectsList: View {
         )
         .contentShape(Rectangle())
         .padding(.top, 4)
-        .fileImporter(isPresented: $showAddProjectImporter, allowedContentTypes: [.folder]) { result in
-            guard case .success(let url) = result else { return }
-            workspaceVM.addProject(path: url.path)
+    }
+
+    private func addProject() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.prompt = "Select"
+        if let window = NSApp.keyWindow {
+            panel.beginSheetModal(for: window) { response in
+                if response == .OK, let url = panel.url {
+                    workspaceVM.addProject(path: url.path)
+                }
+            }
+        } else {
+            if panel.runModal() == .OK, let url = panel.url {
+                workspaceVM.addProject(path: url.path)
+            }
         }
     }
 }
