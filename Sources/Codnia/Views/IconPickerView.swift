@@ -1,5 +1,4 @@
 import SwiftUI
-import AppKit
 
 struct IconPickerView: View {
     let project: Project
@@ -8,73 +7,85 @@ struct IconPickerView: View {
 
     @State private var selectedIcon: String? = nil
     @State private var detectedIcons: [String] = []
+    @State private var showImageBrowser = false
 
     var body: some View {
-        VStack(spacing: 16) {
-            Text("Select Project Icon")
-                .font(.headline)
+        ZStack {
+            VStack(spacing: 16) {
+                Text("Select Project Icon")
+                    .font(.headline)
 
-            if !detectedIcons.isEmpty {
-                Text("Detected icons in project:")
-                    .font(.subheadline)
-                    .foregroundColor(.textSecondary)
+                if !detectedIcons.isEmpty {
+                    Text("Detected icons in project:")
+                        .font(.subheadline)
+                        .foregroundColor(.textSecondary)
 
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 12) {
-                        ForEach(detectedIcons, id: \.self) { iconPath in
-                            if let nsImage = NSImage(contentsOfFile: iconPath) {
-                                Button(action: {
-                                    selectedIcon = iconPath
-                                }) {
-                                    Image(nsImage: nsImage)
-                                        .resizable()
-                                        .frame(width: 48, height: 48)
-                                        .cornerRadius(8)
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 8)
-                                                .stroke(selectedIcon == iconPath ? Color.accentBlue : Color.clear, lineWidth: 2)
-                                        )
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 12) {
+                            ForEach(detectedIcons, id: \.self) { iconPath in
+                                if let nsImage = NSImage(contentsOfFile: iconPath) {
+                                    Button(action: {
+                                        selectedIcon = iconPath
+                                    }) {
+                                        Image(nsImage: nsImage)
+                                            .resizable()
+                                            .frame(width: 48, height: 48)
+                                            .cornerRadius(8)
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 8)
+                                                    .stroke(selectedIcon == iconPath ? Color.accentBlue : Color.clear, lineWidth: 2)
+                                            )
+                                    }
+                                    .buttonStyle(PlainButtonStyle())
                                 }
-                                .buttonStyle(PlainButtonStyle())
                             }
                         }
+                        .padding(.horizontal, 8)
                     }
-                    .padding(.horizontal, 8)
                 }
-            }
 
-            Button("Choose Custom Image...") {
-                chooseCustomImage()
-            }
-
-            if selectedIcon != nil && project.customIconPath != nil {
-                Button("Remove Custom Icon") {
-                    workspaceVM.updateProjectIcon(id: project.id, iconPath: nil)
-                    presentationMode.wrappedValue.dismiss()
+                Button("Choose Custom Image...") {
+                    showImageBrowser = true
                 }
-                .foregroundColor(.red)
-            }
 
-            HStack(spacing: 12) {
-                Button("Cancel") {
-                    presentationMode.wrappedValue.dismiss()
-                }
-                .keyboardShortcut(.cancelAction)
-
-                Button("Apply") {
-                    if let iconPath = selectedIcon {
-                        let persistedPath = copyIconToAppSupport(originalPath: iconPath)
-                        workspaceVM.updateProjectIcon(id: project.id, iconPath: persistedPath ?? iconPath)
-                    } else {
+                if selectedIcon != nil && project.customIconPath != nil {
+                    Button("Remove Custom Icon") {
                         workspaceVM.updateProjectIcon(id: project.id, iconPath: nil)
+                        presentationMode.wrappedValue.dismiss()
                     }
-                    presentationMode.wrappedValue.dismiss()
+                    .foregroundColor(.red)
                 }
-                .keyboardShortcut(.defaultAction)
+
+                HStack(spacing: 12) {
+                    Button("Cancel") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                    .keyboardShortcut(.cancelAction)
+
+                    Button("Apply") {
+                        if let iconPath = selectedIcon {
+                            let persistedPath = copyIconToAppSupport(originalPath: iconPath)
+                            workspaceVM.updateProjectIcon(id: project.id, iconPath: persistedPath ?? iconPath)
+                        } else {
+                            workspaceVM.updateProjectIcon(id: project.id, iconPath: nil)
+                        }
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                    .keyboardShortcut(.defaultAction)
+                }
+            }
+            .padding(24)
+            .frame(width: 400, height: 300)
+
+            if showImageBrowser {
+                ImagePickerModalView(
+                    isPresented: $showImageBrowser,
+                    onSelect: { path in
+                        selectedIcon = path
+                    }
+                )
             }
         }
-        .padding(24)
-        .frame(width: 400, height: 300)
         .onAppear {
             detectedIcons = findIconsInProject()
         }
@@ -107,27 +118,12 @@ struct IconPickerView: View {
         }
     }
 
-    private func chooseCustomImage() {
-        let panel = NSOpenPanel()
-        panel.allowedContentTypes = [.png, .jpeg, .ico, .svg]
-        panel.allowsMultipleSelection = false
-        panel.canChooseDirectories = false
-        panel.canChooseFiles = true
-        NSApp.activate(ignoringOtherApps: true)
-        NSApp.runModal(for: panel)
-        if let url = panel.url {
-            selectedIcon = url.path
-        }
-        panel.close()
-    }
-
     private func copyIconToAppSupport(originalPath: String) -> String? {
         let fm = FileManager.default
         guard let appSupport = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask).first?
             .appendingPathComponent("Codnia", isDirectory: true) else { return nil }
         try? fm.createDirectory(at: appSupport, withIntermediateDirectories: true)
         let dest = appSupport.appendingPathComponent("\(project.id)_icon.png")
-        // Remove existing file if any
         try? fm.removeItem(at: dest)
         do {
             try fm.copyItem(atPath: originalPath, toPath: dest.path)

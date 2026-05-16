@@ -18,6 +18,7 @@ public final class AppState: ObservableObject {
     @Published var rightSidebarExpanded: Bool = false
     @Published var rightSidebarTab: RightSidebarTab = .explorer
     @Published var showGlobalSearchModal: Bool = false
+    @Published var showAddProjectModal: Bool = false
 
     @Published var browserExpanded: Bool = false
     @Published var browserSide: BrowserSide = .right

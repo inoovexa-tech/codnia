@@ -174,6 +174,15 @@ struct ContentView: View {
                         .environmentObject(appState.workspaceVM)
                         .environmentObject(appState.editorVM)
                 }
+
+                if appState.showAddProjectModal {
+                    AddProjectModalView(
+                        isPresented: $appState.showAddProjectModal,
+                        onSelect: { path in
+                            appState.workspaceVM.addProject(path: path)
+                        }
+                    )
+                }
             }
         )
         .onAppear {

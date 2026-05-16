@@ -69,6 +69,7 @@ struct SidebarView: View {
 }
 
 struct SidebarExpandedProjectsList: View {
+    @EnvironmentObject var appState: AppState
     @EnvironmentObject var workspaceVM: WorkspaceService
 
     var body: some View {
@@ -97,36 +98,12 @@ struct SidebarExpandedProjectsList: View {
     }
 
     private func addProject() {
-        Log.write("[expanded] button tapped")
-        let wMain = NSApp.mainWindow
-        Log.write("[expanded] main=\(wMain?.title ?? "nil")")
-
-        guard let window = wMain else {
-            Log.write("[expanded] NO MAIN WINDOW")
-            return
-        }
-
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = false
-        panel.canChooseDirectories = true
-        panel.allowsMultipleSelection = false
-        panel.prompt = "Select"
-
-        let vm = workspaceVM
-
-        Log.write("[expanded] beginSheetModal")
-        panel.beginSheetModal(for: window) { response in
-            Log.write("[expanded] sheet dismissed response=\(response.rawValue)")
-            if response == .OK, let url = panel.url {
-                Log.write("[expanded] selected url=\(url.path)")
-                vm.addProject(path: url.path)
-                Log.write("[expanded] addProject called")
-            }
-        }
+        appState.showAddProjectModal = true
     }
 }
 
 struct SidebarCollapsedProjectsList: View {
+    @EnvironmentObject var appState: AppState
     @EnvironmentObject var workspaceVM: WorkspaceService
 
     var body: some View {
@@ -151,32 +128,7 @@ struct SidebarCollapsedProjectsList: View {
     }
 
     private func addProject() {
-        Log.write("[collapsed] button tapped")
-        let wMain = NSApp.mainWindow
-        Log.write("[collapsed] main=\(wMain?.title ?? "nil")")
-
-        guard let window = wMain else {
-            Log.write("[collapsed] NO MAIN WINDOW")
-            return
-        }
-
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = false
-        panel.canChooseDirectories = true
-        panel.allowsMultipleSelection = false
-        panel.prompt = "Select"
-
-        let vm = workspaceVM
-
-        Log.write("[collapsed] beginSheetModal")
-        panel.beginSheetModal(for: window) { response in
-            Log.write("[collapsed] sheet dismissed response=\(response.rawValue)")
-            if response == .OK, let url = panel.url {
-                Log.write("[collapsed] selected url=\(url.path)")
-                vm.addProject(path: url.path)
-                Log.write("[collapsed] addProject called")
-            }
-        }
+        appState.showAddProjectModal = true
     }
 }
 
