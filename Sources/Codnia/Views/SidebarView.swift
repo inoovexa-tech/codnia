@@ -97,21 +97,34 @@ struct SidebarExpandedProjectsList: View {
     }
 
     private func addProject() {
+        Log.write("[expanded] button tapped")
+        let wMain = NSApp.mainWindow
+        let wKey = NSApp.keyWindow
+        let wVis = NSApp.windows.first(where: { $0.isVisible })
+        Log.write("[expanded] main=\(wMain?.title ?? "nil") key=\(wKey?.title ?? "nil") visible=\(wVis?.title ?? "nil")")
+        Log.write("[expanded] all windows: \(NSApp.windows.map { "\($0.title)(visible=\($0.isVisible) main=\($0.isMainWindow) key=\($0.isKeyWindow))" })")
+
         let panel = NSOpenPanel()
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
         panel.prompt = "Select"
-        if let window = NSApp.keyWindow {
+
+        let activeWindow = wMain ?? wKey ?? wVis
+        if let window = activeWindow {
+            Log.write("[expanded] presenting sheet on \(window.title)")
             panel.beginSheetModal(for: window) { response in
+                Log.write("[expanded] sheet dismissed response=\(response.rawValue)")
                 if response == .OK, let url = panel.url {
-                    workspaceVM.addProject(path: url.path)
+                    Log.write("[expanded] selected url=\(url.path)")
+                    Task { @MainActor in
+                        Log.write("[expanded] calling workspaceVM.addProject")
+                        workspaceVM.addProject(path: url.path)
+                    }
                 }
             }
         } else {
-            if panel.runModal() == .OK, let url = panel.url {
-                workspaceVM.addProject(path: url.path)
-            }
+            Log.write("[expanded] FATAL: no window found!")
         }
     }
 }
@@ -141,21 +154,33 @@ struct SidebarCollapsedProjectsList: View {
     }
 
     private func addProject() {
+        Log.write("[collapsed] button tapped")
+        let wMain = NSApp.mainWindow
+        let wKey = NSApp.keyWindow
+        let wVis = NSApp.windows.first(where: { $0.isVisible })
+        Log.write("[collapsed] main=\(wMain?.title ?? "nil") key=\(wKey?.title ?? "nil") visible=\(wVis?.title ?? "nil")")
+
         let panel = NSOpenPanel()
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
         panel.prompt = "Select"
-        if let window = NSApp.keyWindow {
+
+        let activeWindow = wMain ?? wKey ?? wVis
+        if let window = activeWindow {
+            Log.write("[collapsed] presenting sheet on \(window.title)")
             panel.beginSheetModal(for: window) { response in
+                Log.write("[collapsed] sheet dismissed response=\(response.rawValue)")
                 if response == .OK, let url = panel.url {
-                    workspaceVM.addProject(path: url.path)
+                    Log.write("[collapsed] selected url=\(url.path)")
+                    Task { @MainActor in
+                        Log.write("[collapsed] calling workspaceVM.addProject")
+                        workspaceVM.addProject(path: url.path)
+                    }
                 }
             }
         } else {
-            if panel.runModal() == .OK, let url = panel.url {
-                workspaceVM.addProject(path: url.path)
-            }
+            Log.write("[collapsed] FATAL: no window found!")
         }
     }
 }

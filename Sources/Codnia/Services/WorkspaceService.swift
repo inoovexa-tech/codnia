@@ -159,9 +159,11 @@ public final class WorkspaceService: ObservableObject {
     }
 
     public func addProject(path: String) {
+        Log.write("[WorkspaceService] addProject path=\(path)")
         let name = URL(fileURLWithPath: path).lastPathComponent
 
         if let existing = projects.first(where: { $0.path == path }) {
+            Log.write("[WorkspaceService] project already exists, activating")
             activeProject = existing
             saveProjects()
             refreshFileTree()
@@ -183,6 +185,7 @@ public final class WorkspaceService: ObservableObject {
             activeWorktreeId: mainWorktree.id
         )
 
+        Log.write("[WorkspaceService] creating project id=\(project.id)")
         projects.append(project)
         activeProject = project
         saveProjects()
@@ -191,6 +194,7 @@ public final class WorkspaceService: ObservableObject {
         loadBranch(for: project)
         setupFileObserver(for: project)
         refreshChanges(for: project)
+        Log.write("[WorkspaceService] addProject done, count=\(projects.count)")
     }
 
     public func removeProject(id: String) {

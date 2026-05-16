@@ -6,6 +6,9 @@ class CodniaApplicationDelegate: NSObject, NSApplicationDelegate {
     lazy var appState = AppState()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        Log.write("[AppDelegate] applicationDidFinishLaunching started")
+        Log.write("[AppDelegate] isAppBundle=\(Bundle.main.bundlePath.hasSuffix(".app"))")
+        Log.write("[AppDelegate] bundlePath=\(Bundle.main.bundlePath)")
         NSApp.setActivationPolicy(.regular)
 
         TerminalEventMonitor.shared.install()
@@ -60,6 +63,8 @@ class CodniaApplicationDelegate: NSObject, NSApplicationDelegate {
         self.window = window
 
         NSApp.activate(ignoringOtherApps: true)
+
+        Log.write("[AppDelegate] window created title=\(window.title) isMain=\(window.isMainWindow) isKey=\(window.isKeyWindow) isVisible=\(window.isVisible)")
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
