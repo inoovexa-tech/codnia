@@ -109,7 +109,7 @@ public final class PluginService: ObservableObject {
         if let data = defaults.array(forKey: activeIdsKey) as? [String] {
             activePluginIds = Set(data)
         } else {
-            activePluginIds = Set(["tasks", "database", "notes"])
+            activePluginIds = Set(["tasks", "database", "notes", "restapi"])
             saveActiveIds()
         }
     }

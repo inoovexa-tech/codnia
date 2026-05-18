@@ -11,6 +11,7 @@ public enum TabType: String, Codable, Equatable, Sendable {
     case pdf
     case queryResult
     case browser
+    case restApi
 
     public var isAI: Bool {
         switch self {
@@ -37,6 +38,7 @@ public struct Tab: Identifiable, Codable, Equatable, Sendable {
     public var queryConnectionId: String?
     public var querySql: String?
     public var url: String?
+    public var restApiRequestId: String?
 
     public init(
         id: String = UUID().uuidString,
@@ -48,7 +50,8 @@ public struct Tab: Identifiable, Codable, Equatable, Sendable {
         terminalId: String? = nil,
         queryConnectionId: String? = nil,
         querySql: String? = nil,
-        url: String? = nil
+        url: String? = nil,
+        restApiRequestId: String? = nil
     ) {
         self.id = id
         self.path = path
@@ -60,6 +63,7 @@ public struct Tab: Identifiable, Codable, Equatable, Sendable {
         self.queryConnectionId = queryConnectionId
         self.querySql = querySql
         self.url = url
+        self.restApiRequestId = restApiRequestId
     }
 
     public static func == (lhs: Tab, rhs: Tab) -> Bool {
@@ -73,5 +77,6 @@ public struct Tab: Identifiable, Codable, Equatable, Sendable {
             && lhs.queryConnectionId == rhs.queryConnectionId
             && lhs.querySql == rhs.querySql
             && lhs.url == rhs.url
+            && lhs.restApiRequestId == rhs.restApiRequestId
     }
 }

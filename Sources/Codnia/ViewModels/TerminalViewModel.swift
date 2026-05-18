@@ -209,6 +209,7 @@ public final class TerminalViewModel: ObservableObject {
         case .pdf: return "PDF Viewer"
         case .queryResult: return "SQL Query"
         case .browser: return "Browser"
+        case .restApi: return "REST API"
         }
     }
 
@@ -225,10 +226,10 @@ public final class TerminalViewModel: ObservableObject {
     }
 
     public func moveTab(from source: Int, to destination: Int) {
-        guard source < tabs.count, destination < tabs.count, source != destination else { return }
+        guard source < tabs.count, source != destination else { return }
         let tab = tabs.remove(at: source)
-        let adjustedDestination = source < destination ? destination - 1 : destination
-        tabs.insert(tab, at: adjustedDestination)
+        let insertAt = max(0, min(destination, tabs.count))
+        tabs.insert(tab, at: insertAt)
         saveTabsToProject()
     }
 

@@ -86,6 +86,7 @@ struct EditorPaneView: View {
 
             case .restApi:
                 RESTApiTabView(tabId: tab.id, restApiRequestId: tab.restApiRequestId)
+                    .id(tab.id)
 
             case .browser:
                 BrowserView(
