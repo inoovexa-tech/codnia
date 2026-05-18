@@ -429,10 +429,11 @@ struct TasksView: View {
                     updated.description = newVal
                     tasksVM.updateTask(updated)
                 }
-            ))
+            ), axis: .vertical)
                 .textFieldStyle(PlainTextFieldStyle())
                 .font(.system(size: 11))
                 .foregroundColor(.textSecondary)
+                .lineLimit(1...5)
 
             Divider()
                 .background(Color.borderLight)
