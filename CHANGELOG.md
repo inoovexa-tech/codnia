@@ -1,3 +1,10 @@
+## [0.12.1] — 2026-05-18
+
+### Fixed
+- Detect worktree already removed from git when deleting
+- Make split state per-tab instead of global (SwitchToTab)
+- Use index as destination for tab reordering drag & drop
+
 ## [0.12.0] — 2026-05-16
 
 ### Added
