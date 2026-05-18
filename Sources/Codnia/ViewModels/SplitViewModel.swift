@@ -6,7 +6,99 @@ public final class SplitViewModel: ObservableObject {
     @Published public var root: SplitPane = .leaf(SplitLeaf())
     @Published public var activePaneId: UUID?
 
+    private var tabSplitRoots: [String: SplitPane] = [:]
+    private var tabActivePaneIds: [String: UUID] = [:]
+    private var currentTabId: String?
+
     public init() {}
+
+    // MARK: - Tab Switching
+
+    public func switchToTab(_ tabId: String?, terminalVM: TerminalViewModel) {
+        guard tabId != currentTabId else { return }
+
+        if let currentId = currentTabId {
+            tabSplitRoots[currentId] = root
+            tabActivePaneIds[currentId] = activePaneId
+        }
+
+        currentTabId = tabId
+
+        if let tabId = tabId, let savedRoot = tabSplitRoots[tabId] {
+            root = savedRoot
+            activePaneId = tabActivePaneIds[tabId]
+            if activePaneId == nil || !root.allLeafIds.contains(activePaneId!) {
+                activePaneId = root.allLeafIds.first
+            }
+            root = root.mapLeafTabIds(to: tabId)
+
+            // For terminal tabs, refresh session IDs from terminalVM (survives app restarts)
+            if let tab = terminalVM.tabs.first(where: { $0.id == tabId }),
+               (tab.type == .terminal || tab.type == .opencode || tab.type == .claude || tab.type == .codex),
+               let terminalId = tab.terminalId {
+                for leafId in root.allLeafIds {
+                    root.mutateLeaf(id: leafId) { leaf in
+                        leaf.terminalId = terminalId
+                        leaf.sessionId = terminalId
+                    }
+                    TerminalSessionManager.shared.registerView(leafId, to: terminalId)
+                }
+            }
+        } else if let tabId = tabId {
+            root = .leaf(SplitLeaf(tabId: tabId))
+            activePaneId = root.allLeafIds.first
+
+            // Initialize terminal session for terminal tabs
+            if let tab = terminalVM.tabs.first(where: { $0.id == tabId }),
+               (tab.type == .terminal || tab.type == .opencode || tab.type == .claude || tab.type == .codex),
+               let terminalId = tab.terminalId,
+               let paneId = activePaneId {
+                root.mutateLeaf(id: paneId) { leaf in
+                    leaf.terminalId = terminalId
+                    leaf.sessionId = terminalId
+                }
+                TerminalSessionManager.shared.registerView(paneId, to: terminalId)
+            }
+        } else {
+            root = .leaf(SplitLeaf())
+            activePaneId = nil
+        }
+    }
+
+    public func removeTabState(_ tabId: String) {
+        tabSplitRoots.removeValue(forKey: tabId)
+        tabActivePaneIds.removeValue(forKey: tabId)
+        if currentTabId == tabId {
+            currentTabId = nil
+        }
+    }
+
+    // MARK: - Worktree Persistence
+
+    public func saveToWorktree(_ worktree: inout Worktree) {
+        if let currentId = currentTabId {
+            tabSplitRoots[currentId] = root
+            tabActivePaneIds[currentId] = activePaneId
+        }
+        worktree.tabSplitRoots = tabSplitRoots
+        worktree.tabActivePaneIds = tabActivePaneIds
+    }
+
+    public func loadFromWorktree(_ worktree: Worktree) {
+        tabSplitRoots = worktree.tabSplitRoots
+        tabActivePaneIds = worktree.tabActivePaneIds
+        currentTabId = nil
+    }
+
+    public func resetState() {
+        root = .leaf(SplitLeaf())
+        activePaneId = nil
+        tabSplitRoots = [:]
+        tabActivePaneIds = [:]
+        currentTabId = nil
+    }
+
+    // MARK: - Split Operations
 
     public func splitPane(_ paneId: UUID, direction: SplitDirection,
                           editorVM: EditorViewModel, terminalVM: TerminalViewModel) {
@@ -81,7 +173,6 @@ public final class SplitViewModel: ObservableObject {
             if let sessionId = existingSessionId {
                 TerminalSessionManager.shared.registerView(leaf.id, to: sessionId)
             }
-        } else {
         }
     }
 
@@ -168,24 +259,20 @@ public final class SplitViewModel: ObservableObject {
         let paneId = activePaneId ?? root.allLeafIds.first
         guard let id = paneId else { return }
         activePaneId = id
-        var didSetSession = false
         root.mutateLeaf(id: id) { leaf in
             leaf.tabId = tabId
             if let tid = tabId, let vm = terminalVM {
                 leaf.terminalId = vm.tabs.first { $0.id == tid }?.terminalId
             }
-            // For terminal tabs, set sessionId from tab.terminalId (which IS the session id)
             if let tid = tabId, let vm = terminalVM, let tab = vm.tabs.first(where: { $0.id == tid }),
                let terminalId = tab.terminalId {
                 let isTerminal = tab.type == .terminal || tab.type == .opencode || tab.type == .claude || tab.type == .codex
                 if isTerminal {
                     leaf.sessionId = terminalId
-                    didSetSession = true
                     TerminalSessionManager.shared.registerView(leaf.id, to: terminalId)
                 }
             }
         }
-        root.findLeaf(id: id)
     }
 
     public func setActivePaneSession(_ sessionId: String?, viewId: UUID? = nil) {

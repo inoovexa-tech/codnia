@@ -39,15 +39,11 @@ struct SplitEditorView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.bgPrimary)
         .onChange(of: editorVM.activeTabId) { newTabId in
-            splitVM.setActivePaneTab(newTabId, terminalVM: terminalVM)
+            splitVM.switchToTab(newTabId, terminalVM: terminalVM)
         }
         .onAppear {
-            let ids = splitVM.root.allLeafIds
-            if let firstId = ids.first {
-                splitVM.activePaneId = firstId
-                if let tabId = editorVM.activeTabId {
-                    splitVM.setActivePaneTab(tabId, terminalVM: terminalVM)
-                }
+            if let tabId = editorVM.activeTabId {
+                splitVM.switchToTab(tabId, terminalVM: terminalVM)
             }
         }
     }

@@ -84,6 +84,9 @@ struct EditorPaneView: View {
             case .queryResult:
                 QueryResultTabView(tabId: tab.id)
 
+            case .restApi:
+                RESTApiTabView(tabId: tab.id, restApiRequestId: tab.restApiRequestId)
+
             case .browser:
                 BrowserView(
                     tabId: tab.id,
@@ -187,12 +190,7 @@ struct EditorPaneView: View {
     }
 
     private func activatePane() {
-        guard let tabId = leaf.tabId, leaf.id != splitVM.activePaneId else { return }
+        guard leaf.id != splitVM.activePaneId else { return }
         splitVM.activePaneId = leaf.id
-        if editorVM.tabs.contains(where: { $0.id == tabId }) {
-            editorVM.activateTab(tabId)
-        } else {
-            editorVM.activeTabId = tabId
-        }
     }
 }

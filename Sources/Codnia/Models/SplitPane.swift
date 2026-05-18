@@ -114,6 +114,22 @@ public indirect enum SplitPane: Codable, Equatable {
         }
     }
 
+    public func mapLeafTabIds(to tabId: String) -> SplitPane {
+        switch self {
+        case .leaf(var leaf):
+            leaf.tabId = tabId
+            return .leaf(leaf)
+        case .split(let c):
+            return .split(SplitContainer(
+                id: c.id,
+                direction: c.direction,
+                first: c.first.mapLeafTabIds(to: tabId),
+                second: c.second.mapLeafTabIds(to: tabId),
+                proportion: c.proportion
+            ))
+        }
+    }
+
     @discardableResult
     public mutating func mutateContainer(id: UUID, mutation: (inout SplitContainer) -> Void) -> Bool {
         switch self {

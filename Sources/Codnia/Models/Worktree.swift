@@ -9,6 +9,8 @@ public struct Worktree: Identifiable, Codable, Equatable, Sendable {
     public var fileTabs: [Tab]
     public var terminalTabs: [Tab]
     public var activeTabId: String?
+    public var tabSplitRoots: [String: SplitPane] = [:]
+    public var tabActivePaneIds: [String: UUID] = [:]
 
     public var displayName: String {
         let cleaned = branch
@@ -25,7 +27,9 @@ public struct Worktree: Identifiable, Codable, Equatable, Sendable {
         isMain: Bool = false,
         fileTabs: [Tab] = [],
         terminalTabs: [Tab] = [],
-        activeTabId: String? = nil
+        activeTabId: String? = nil,
+        tabSplitRoots: [String: SplitPane] = [:],
+        tabActivePaneIds: [String: UUID] = [:]
     ) {
         self.id = id
         self.name = name
@@ -35,6 +39,8 @@ public struct Worktree: Identifiable, Codable, Equatable, Sendable {
         self.fileTabs = fileTabs
         self.terminalTabs = terminalTabs
         self.activeTabId = activeTabId
+        self.tabSplitRoots = tabSplitRoots
+        self.tabActivePaneIds = tabActivePaneIds
     }
 
     public static func == (lhs: Worktree, rhs: Worktree) -> Bool {

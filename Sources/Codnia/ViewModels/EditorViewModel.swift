@@ -19,6 +19,7 @@ public final class EditorViewModel: ObservableObject {
     private let terminal: TerminalViewModel
     private let fs = FileSystemService.shared
     private var cancellables = Set<AnyCancellable>()
+    public var splitVM: SplitViewModel?
     public var fileContents: [String: String] = [:]
     @Published public var diffData: [String: [DiffLine]] = [:]
     @Published public var queryResults: [String: QueryPageResult] = [:]
@@ -155,6 +156,7 @@ public final class EditorViewModel: ObservableObject {
     }
 
     private func loadTabs(from worktree: Worktree) {
+        splitVM?.loadFromWorktree(worktree)
         tabs = worktree.fileTabs
         terminal.tabs = worktree.terminalTabs
         terminal.setWorktreeMapping(tabs: worktree.terminalTabs, worktreeId: worktree.id)
@@ -235,6 +237,7 @@ public final class EditorViewModel: ObservableObject {
             tabs[i].querySql = querySql[tabs[i].id]
         }
 
+        splitVM?.saveToWorktree(&workspace.projects[projIdx].worktrees[wtIdx])
         workspace.projects[projIdx].worktrees[wtIdx].fileTabs = tabs
         workspace.projects[projIdx].worktrees[wtIdx].terminalTabs = terminal.tabs
         workspace.projects[projIdx].worktrees[wtIdx].activeTabId = activeTabId
@@ -668,10 +671,10 @@ public final class EditorViewModel: ObservableObject {
     }
 
     public func moveTab(from source: Int, to destination: Int) {
-        guard source < tabs.count, destination < tabs.count, source != destination else { return }
+        guard source < tabs.count, source != destination else { return }
         let tab = tabs.remove(at: source)
-        let adjustedDestination = source < destination ? destination - 1 : destination
-        tabs.insert(tab, at: adjustedDestination)
+        let insertAt = max(0, min(destination, tabs.count))
+        tabs.insert(tab, at: insertAt)
         saveTabsToWorktree()
     }
 }

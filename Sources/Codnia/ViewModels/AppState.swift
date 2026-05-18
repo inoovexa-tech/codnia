@@ -64,6 +64,7 @@ public final class AppState: ObservableObject {
         let ed = EditorViewModel(workspace: ws, settings: s, terminal: tm)
         let gv = GitViewModel(workspace: ws, editorVM: ed)
         let sp = SplitViewModel()
+        ed.splitVM = sp
         let tv = TasksViewModel(workspace: ws)
         let db = DatabaseConnectionService()
         let nv = NotesViewModel()
@@ -105,6 +106,9 @@ public final class AppState: ObservableObject {
             nv?.refreshNotes()
         }
         ps.registerSidebarPlugin(notesPlugin)
+
+        let restApiPlugin = RESTApiPlugin()
+        ps.registerSidebarPlugin(restApiPlugin)
 
         bs.appState = self
     }
