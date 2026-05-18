@@ -20,6 +20,7 @@ struct TabBarView: View {
 
     @State private var draggedTabId: String?
     @State private var showTabDropdown = false
+    @State private var interactiveFrames: [CGRect] = []
     @ObservedObject private var shortcutsService = KeyboardShortcutsService.shared
 
     private var allTabs: [Tab] {
@@ -53,6 +54,7 @@ struct TabBarView: View {
             .buttonStyle(PlainButtonStyle())
             .foregroundColor(.textSecondary)
             .disabled(workspaceVM.projects.count <= 1)
+            .trackInteractiveFrame()
 
             Button(action: { workspaceVM.nextProject() }) {
                 Image(systemName: "chevron.right")
@@ -62,6 +64,7 @@ struct TabBarView: View {
             .buttonStyle(PlainButtonStyle())
             .foregroundColor(.textSecondary)
             .disabled(workspaceVM.projects.count <= 1)
+            .trackInteractiveFrame()
         }
     }
 
@@ -69,7 +72,7 @@ struct TabBarView: View {
         ZStack {
             HStack(spacing: 0) {
                 HStack(spacing: 0) {
-                    WindowDragView()
+                    Color.clear
                         .frame(width: 90)
 
                     if !workspaceVM.projects.isEmpty {
@@ -84,6 +87,7 @@ struct TabBarView: View {
                                     }
                                     .buttonStyle(PlainButtonStyle())
                                     .foregroundColor(.textSecondary)
+                                    .trackInteractiveFrame()
 
                                     navButtons
                                 }
@@ -120,6 +124,7 @@ struct TabBarView: View {
                 .menuStyle(BorderlessButtonMenuStyle())
                 .buttonStyle(PlainButtonStyle())
                 .foregroundColor(.textSecondary)
+                .trackInteractiveFrame()
 
                 GeometryReader { geometry in
                     let availableWidth = geometry.size.width
@@ -143,6 +148,7 @@ struct TabBarView: View {
                                         onMoveLeft: index > 0 ? { editorVM.moveTab(from: index, to: index - 1) } : nil,
                                         onMoveRight: index < editorVM.tabs.count - 1 ? { editorVM.moveTab(from: index, to: index + 1) } : nil
                                     )
+                                    .trackInteractiveFrame()
                                 }
                                 ForEach(Array(terminalVM.tabs.enumerated()), id: \.element.id) { index, tab in
                                     TabButton(
@@ -157,6 +163,7 @@ struct TabBarView: View {
                                         onMoveLeft: index > 0 ? { terminalVM.moveTab(from: index, to: index - 1) } : nil,
                                         onMoveRight: index < terminalVM.tabs.count - 1 ? { terminalVM.moveTab(from: index, to: index + 1) } : nil
                                     )
+                                    .trackInteractiveFrame()
                                 }
                             }
                         }
@@ -191,6 +198,7 @@ struct TabBarView: View {
                                 onSelect: { editorVM.activateTab($0) },
                                 onClose: { editorVM.closeTab($0) }
                             )
+                            .trackInteractiveFrame()
                         }
                     }
                 }
@@ -206,6 +214,7 @@ struct TabBarView: View {
                         .buttonStyle(PlainButtonStyle())
                         .foregroundColor(.textSecondary)
                         .help("Split left/right")
+                        .trackInteractiveFrame()
 
                         Button(action: {
                             splitVM.splitActivePane(.vertical, editorVM: editorVM, terminalVM: terminalVM)
@@ -216,6 +225,7 @@ struct TabBarView: View {
                         .buttonStyle(PlainButtonStyle())
                         .foregroundColor(.textSecondary)
                         .help("Split top/bottom")
+                        .trackInteractiveFrame()
                     }
 
                     if let onOpenBrowser {
@@ -226,6 +236,7 @@ struct TabBarView: View {
                         .buttonStyle(PlainButtonStyle())
                         .foregroundColor(.textSecondary)
                         .help("Open browser")
+                        .trackInteractiveFrame()
                     }
 
                     Button(action: onToggleRightSidebar) {
@@ -235,10 +246,18 @@ struct TabBarView: View {
                     }
                     .buttonStyle(PlainButtonStyle())
                     .padding(.trailing, 8)
+                    .trackInteractiveFrame()
                 }
                 .buttonStyle(PlainButtonStyle())
             }
             .frame(height: 36)
+
+            TitlebarBackgroundView(interactiveFrames: $interactiveFrames)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .coordinateSpace(name: "topbar")
+        .onPreferenceChange(InteractiveFrameKey.self) { frames in
+            interactiveFrames = frames
         }
         .frame(height: 36)
         .background(Color.bgPrimary)
@@ -423,29 +442,6 @@ struct TabButton: View {
         case .codex: return Image(systemName: "square.stack.3d.up")
         default: return Image(systemName: "terminal")
         }
-    }
-}
-
-struct WindowDragView: View {
-    var body: some View {
-        Color.clear
-            .contentShape(Rectangle())
-            .gesture(
-                DragGesture(minimumDistance: 1)
-                    .onChanged { _ in
-                        guard let window = NSApp.mainWindow,
-                              let event = NSApp.currentEvent else { return }
-                        window.isMovable = true
-                        window.performDrag(with: event)
-                        window.isMovable = false
-                    }
-            )
-            .simultaneousGesture(
-                TapGesture(count: 2)
-                    .onEnded {
-                        NSApp.mainWindow?.performZoom(nil)
-                    }
-            )
     }
 }
 
