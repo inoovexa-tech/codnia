@@ -42,7 +42,7 @@ public final class SettingsService: ObservableObject {
         terminalScrollback = defaults.integer(forKey: prefix + "terminalScrollback")
         if terminalScrollback == 0 { terminalScrollback = 10000 }
         defaultTabOnProjectOpen = defaults.string(forKey: prefix + "defaultTabOnProjectOpen") ?? "terminal"
-        editorTheme = defaults.string(forKey: prefix + "editorTheme") ?? "dark-pure"
+        editorTheme = defaults.string(forKey: prefix + "editorTheme") ?? "Codnia Dark"
         autoSave = defaults.bool(forKey: prefix + "autoSave")
         showLineNumbers = defaults.object(forKey: prefix + "showLineNumbers") as? Bool ?? true
         tabSize = defaults.integer(forKey: prefix + "tabSize")

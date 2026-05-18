@@ -7,70 +7,73 @@ struct SettingsView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Header
-            HStack {
-                Text("Settings")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundColor(.textPrimary)
-                Spacer()
-            }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 16)
-            .background(Color.bgPrimary)
-            .overlay(
-                Rectangle()
-                    .frame(height: 1)
-                    .foregroundColor(.borderDefault),
-                alignment: .bottom
-            )
-
-            // Tabs
-            HStack(spacing: 0) {
-                ForEach(SettingsTab.allCases) { tab in
-                    Button(action: { selectedTab = tab }) {
-                        Text(tab.rawValue)
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundColor(selectedTab == tab ? .textPrimary : .textSecondary)
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 6)
-                            .background(selectedTab == tab ? Color.bgSecondary : Color.clear)
-                            .cornerRadius(6)
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                }
-                Spacer()
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(Color.bgPrimary)
-
-            Divider()
-                .background(Color.borderDefault)
-
-            // Content
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    switch selectedTab {
-                    case .general:
-                        GeneralSettingsSection()
-                    case .editor:
-                        EditorSettingsSection()
-                    case .terminal:
-                        TerminalSettingsSection()
-                    case .browser:
-                        BrowserSettingsSection()
-                    case .keyboard:
-                        KeyboardSettingsSection()
-                    case .plugins:
-                        PluginsSettingsSection()
-                            .environmentObject(pluginService)
-                    }
-                }
-                .padding(20)
-            }
-            .background(Color.bgPrimary)
+            Header
+            Tabs
+            Divider().background(Color.borderDefault)
+            ContentArea
         }
-        .frame(minWidth: 700, minHeight: 540)
+        .frame(width: 700, height: 540)
+        .background(Color.bgPrimary)
+    }
+
+    private var Header: some View {
+        HStack {
+            Text("Settings")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(.textPrimary)
+            Spacer()
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
+        .background(Color.bgPrimary)
+        .overlay(Rectangle().frame(height: 1).foregroundColor(.borderDefault), alignment: .bottom)
+    }
+
+    private var Tabs: some View {
+        HStack(spacing: 0) {
+            ForEach(SettingsTab.allCases) { tab in
+                Button(action: { selectedTab = tab }) {
+                    Text(tab.rawValue)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(selectedTab == tab ? .textPrimary : .textSecondary)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 6)
+                        .background(selectedTab == tab ? Color.bgSecondary : Color.clear)
+                        .cornerRadius(6)
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(Color.bgPrimary)
+    }
+
+    private var ContentArea: some View {
+        List {
+            Group {
+                switch selectedTab {
+                case .general:
+                    GeneralSettingsSection()
+                case .editor:
+                    EditorSettingsSection()
+                case .terminal:
+                    TerminalSettingsSection()
+                case .browser:
+                    BrowserSettingsSection()
+                case .keyboard:
+                    KeyboardSettingsSection()
+                case .plugins:
+                    PluginsSettingsSection()
+                        .environmentObject(pluginService)
+                }
+            }
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
+        }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
         .background(Color.bgPrimary)
     }
 }
@@ -88,18 +91,55 @@ enum SettingsTab: String, CaseIterable, Identifiable {
 
 struct GeneralSettingsSection: View {
     @EnvironmentObject var settings: SettingsService
+    @State private var showUploadAlert = false
+    @State private var uploadMessage = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             SettingsSectionHeader("Appearance")
             SettingsRow(label: "Theme", description: "Editor color theme") {
-                Picker("", selection: $settings.editorTheme) {
-                    Text("Dark Pure").tag("dark-pure")
+                HStack(spacing: 8) {
+                    Button {
+                        let panel = NSOpenPanel()
+                        panel.allowedContentTypes = [.json]
+                        panel.canChooseFiles = true
+                        panel.canChooseDirectories = false
+                        panel.allowsMultipleSelection = false
+                        panel.message = "Select a Codnia theme JSON file"
+                        panel.begin { response in
+                            if response == .OK, let url = panel.url {
+                                do {
+                                    let data = try Data(contentsOf: url)
+                                    let theme = try JSONDecoder().decode(CodTheme.self, from: data)
+                                    ThemeManager.shared.saveCustomTheme(theme)
+                                    settings.editorTheme = theme.name
+                                    ThemeManager.shared.applyCustom(theme)
+                                    settings.save()
+                                } catch {
+                                    uploadMessage = "Error: \(error.localizedDescription)"
+                                    showUploadAlert = true
+                                }
+                            }
+                        }
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.system(size: 12))
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .help("Upload custom theme JSON")
                 }
-                .pickerStyle(MenuPickerStyle())
-                .frame(width: 200)
-                .onChange(of: settings.editorTheme) { _ in settings.save() }
             }
+            .alert("Upload Theme", isPresented: $showUploadAlert) {
+                Button("OK") { showUploadAlert = false }
+            } message: {
+                Text(uploadMessage)
+            }
+
+            ThemeSelectorGrid(selected: $settings.editorTheme, onSelect: { name in
+                settings.editorTheme = name
+                ThemeManager.shared.apply(name)
+                settings.save()
+            })
 
             SettingsSectionHeader("Behavior")
             SettingsToggleRow(label: "Auto Save", description: "Automatically save files", isOn: $settings.autoSave)
@@ -415,5 +455,65 @@ struct SettingsToggleRow: View {
                 .toggleStyle(SwitchToggleStyle(tint: Color.accentBlue))
                 .labelsHidden()
         }
+    }
+}
+
+struct ThemeSelectorGrid: View {
+    @Binding var selected: String
+    let onSelect: (String) -> Void
+
+    private let columns = [
+        GridItem(.adaptive(minimum: 180, maximum: 220), spacing: 10)
+    ]
+
+    var body: some View {
+        LazyVGrid(columns: columns, spacing: 10) {
+            ForEach(ThemeManager.shared.allThemes) { theme in
+                themeCard(theme)
+                    .onTapGesture { onSelect(theme.name) }
+            }
+        }
+        .padding(.vertical, 4)
+        .background(Color.bgTertiary.opacity(0.3))
+        .cornerRadius(8)
+    }
+
+    func themeCard(_ theme: CodTheme) -> some View {
+        let isSelected = selected == theme.name
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 4) {
+                paletteSwatch(theme.palette.bg)
+                paletteSwatch(theme.palette.surface)
+                paletteSwatch(theme.palette.accent)
+                paletteSwatch(theme.palette.fg)
+                paletteSwatch(theme.palette.syntax)
+            }
+            .padding(.horizontal, 8)
+            .padding(.top, 8)
+
+            Text(theme.name)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(.textPrimary)
+                .lineLimit(1)
+                .padding(.horizontal, 8)
+                .padding(.bottom, 8)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.bgSecondary)
+        .cornerRadius(6)
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .stroke(isSelected ? Color.accentBlue : Color.clear, lineWidth: 2)
+        )
+    }
+
+    func paletteSwatch(_ hex: String) -> some View {
+        RoundedRectangle(cornerRadius: 3)
+            .fill(Color(hex: hex))
+            .frame(width: 18, height: 18)
+            .overlay(
+                RoundedRectangle(cornerRadius: 3)
+                    .stroke(Color.borderLight, lineWidth: 0.5)
+            )
     }
 }

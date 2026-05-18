@@ -3,6 +3,7 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var settings: SettingsService
+    @EnvironmentObject var themeManager: ThemeManager
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -165,6 +166,7 @@ struct ContentView: View {
             .frame(height: 36)
         }
         .background(Color.bgPrimary)
+        .id(themeManager.theme.id)
         .edgesIgnoringSafeArea(.top)
         .overlay(
             Group {
