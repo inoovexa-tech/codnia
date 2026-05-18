@@ -51,7 +51,7 @@ struct SettingsView: View {
     }
 
     private var ContentArea: some View {
-        List {
+        ScrollView {
             Group {
                 switch selectedTab {
                 case .general:
@@ -69,11 +69,8 @@ struct SettingsView: View {
                         .environmentObject(pluginService)
                 }
             }
-            .listRowSeparator(.hidden)
-            .listRowBackground(Color.clear)
+            .padding(20)
         }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
         .background(Color.bgPrimary)
     }
 }
