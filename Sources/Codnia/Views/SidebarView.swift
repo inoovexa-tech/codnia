@@ -28,6 +28,14 @@ struct SidebarView: View {
             SidebarBottomBar(expanded: $expanded, onOpenSettings: openSettingsWindow)
         }
         .background(Color.clear)
+        .alert("Error Removing Worktree", isPresented: .init(
+            get: { workspaceVM.worktreeRemoveError != nil },
+            set: { if !$0 { workspaceVM.worktreeRemoveError = nil } }
+        )) {
+            Button("OK") { workspaceVM.worktreeRemoveError = nil }
+        } message: {
+            Text(workspaceVM.worktreeRemoveError ?? "")
+        }
     }
 
     private static var settingsWindowController: NSWindowController?

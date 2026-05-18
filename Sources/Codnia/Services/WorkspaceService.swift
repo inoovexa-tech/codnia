@@ -9,6 +9,7 @@ public final class WorkspaceService: ObservableObject {
     @Published public var branches: [String: String] = [:]
     @Published public var changesCount: [String: (added: Int, deleted: Int)] = [:]
     @Published public var worktreeRunningStates: [String: Int] = [:]
+    @Published public var worktreeRemoveError: String?
 
     private var refreshTask: Task<Void, Never>?
     private var gitTasks: [String: Task<Void, Never>] = [:]
@@ -356,7 +357,7 @@ public final class WorkspaceService: ObservableObject {
         let project = projects[projIdx]
 
         Task {
-            let success = await GitService.shared.removeWorktree(
+            let (success, errorMsg) = await GitService.shared.removeWorktree(
                 projectPath: project.path,
                 worktreePath: worktree.path,
                 worktreeBranch: worktree.branch,
@@ -364,8 +365,14 @@ public final class WorkspaceService: ObservableObject {
             )
 
             guard success else {
-                
+                await MainActor.run {
+                    self.worktreeRemoveError = errorMsg
+                }
                 return
+            }
+
+            await MainActor.run {
+                self.worktreeRemoveError = nil
             }
 
             await MainActor.run {

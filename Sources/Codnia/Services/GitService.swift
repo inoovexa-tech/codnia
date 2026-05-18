@@ -398,7 +398,7 @@ public final class GitService {
         return result.success
     }
 
-    public func removeWorktree(projectPath: String, worktreePath: String, worktreeBranch: String, deleteBranch: Bool) async -> Bool {
+    public func removeWorktree(projectPath: String, worktreePath: String, worktreeBranch: String, deleteBranch: Bool) async -> (Bool, String) {
         let result = await runGitWithResult(args: ["worktree", "remove", worktreePath], in: projectPath)
 
         let isRemovedFromGit: Bool
@@ -410,12 +410,12 @@ public final class GitService {
             isRemovedFromGit = !dirExists || notTracked
         }
 
-        guard isRemovedFromGit else { return false }
+        guard isRemovedFromGit else { return (false, result.output) }
 
         if deleteBranch {
             _ = await runGitWithResult(args: ["branch", "-D", worktreeBranch], in: projectPath)
         }
-        return true
+        return (true, "")
     }
 
     // MARK: - Remote operations
