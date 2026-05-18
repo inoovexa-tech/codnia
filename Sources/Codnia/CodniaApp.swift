@@ -1,9 +1,15 @@
 import SwiftUI
+import Sparkle
 
 @MainActor
 class CodniaApplicationDelegate: NSObject, NSApplicationDelegate {
     var window: NSWindow?
     lazy var appState = AppState()
+    lazy var updaterController = SPUStandardUpdaterController(
+        startingUpdater: true,
+        updaterDelegate: nil,
+        userDriverDelegate: nil
+    )
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         Log.write("[AppDelegate] applicationDidFinishLaunching started")
@@ -28,9 +34,13 @@ class CodniaApplicationDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
+        ThemeManager.shared.discoverCustomThemes()
+        ThemeManager.shared.apply(appState.settings.editorTheme)
+
         let contentView = ContentView()
             .environmentObject(appState)
             .environmentObject(appState.settings)
+            .environmentObject(ThemeManager.shared)
             .frame(minWidth: 900, minHeight: 600)
 
         let hostingView = NSHostingView(rootView: contentView)
@@ -83,6 +93,7 @@ struct CodniaApp: App {
         Settings {
             SettingsView()
                 .environmentObject(appDelegate.appState.settings)
+                .environmentObject(ThemeManager.shared)
                 .environmentObject(appDelegate.appState.pluginService)
                 .frame(minWidth: 700, minHeight: 540)
         }
@@ -135,6 +146,12 @@ struct CodniaApp: App {
                     appDelegate.appState.editorVM.showInFileSearch.toggle()
                 }
                 .keyboardShortcut("f", modifiers: .command)
+            }
+
+            CommandGroup(after: .appInfo) {
+                Button("Check for Updates...") {
+                    appDelegate.updaterController.checkForUpdates(nil)
+                }
             }
 
             CommandMenu("Window") {

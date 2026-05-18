@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>Codnia Changelog</title>
+    <description>Most recent changes to Codnia</description>
+    <language>en</language>
+
+    <item>
+      <title>Version 0.12.0</title>
+      <sparkle:version>11</sparkle:version>
+      <sparkle:shortVersionString>0.12.0</sparkle:shortVersionString>
+      <pubDate>Sat, 16 May 2026 00:00:00 +0000</pubDate>
+      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+      <enclosure
+        url="https://github.com/inoovexa-tech/codnia/releases/download/v0.12.0/Codnia-v0.12.0.dmg"
+        length="9820810"
+        type="application/octet-stream"
+        sparkle:edSignature="pQDFIJOMuWkrl3eGMSPAKk8eWp32xBZFBGOikWXqJic5d7pXwu8MzrNRNN/sVBTtyj8QknP+B2MMrPXDv0yRAA=="
+      />
+    </item>
+
+  </channel>
+</rss>
