@@ -381,6 +381,7 @@ struct TabButton: View {
         case .pdf: return .accentRed
         case .queryResult: return .accentBlue
         case .browser: return .accentBlue
+        case .restApi: return .accentGreen
         }
     }
 
@@ -465,7 +466,9 @@ struct TabDropDelegate: DropDelegate {
               let sourceIndex = allTabs.firstIndex(where: { $0.id == draggedId }),
               sourceIndex != index
         else { return false }
-        moveAction(sourceIndex, index)
+
+        let destinationIndex = index
+        moveAction(sourceIndex, destinationIndex)
         return true
     }
 }
