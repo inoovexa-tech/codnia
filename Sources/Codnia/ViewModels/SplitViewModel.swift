@@ -32,16 +32,21 @@ public final class SplitViewModel: ObservableObject {
             }
             root = root.mapLeafTabIds(to: tabId)
 
-            // For terminal tabs, refresh session IDs from terminalVM (survives app restarts)
+            // Restore terminal session bindings for each split leaf
             if let tab = terminalVM.tabs.first(where: { $0.id == tabId }),
-               (tab.type == .terminal || tab.type == .opencode || tab.type == .claude || tab.type == .codex),
-               let terminalId = tab.terminalId {
+               (tab.type == .terminal || tab.type == .opencode || tab.type == .claude || tab.type == .codex) {
                 for leafId in root.allLeafIds {
-                    root.mutateLeaf(id: leafId) { leaf in
-                        leaf.terminalId = terminalId
-                        leaf.sessionId = terminalId
+                    guard let leaf = root.findLeaf(id: leafId) else { continue }
+                    if let sessionId = leaf.sessionId,
+                       TerminalSessionManager.shared.getSession(by: sessionId) != nil {
+                        TerminalSessionManager.shared.registerView(leafId, to: sessionId)
+                    } else if let terminalId = tab.terminalId {
+                        root.mutateLeaf(id: leafId) { leaf in
+                            leaf.terminalId = terminalId
+                            leaf.sessionId = terminalId
+                        }
+                        TerminalSessionManager.shared.registerView(leafId, to: terminalId)
                     }
-                    TerminalSessionManager.shared.registerView(leafId, to: terminalId)
                 }
             }
         } else if let tabId = tabId {
