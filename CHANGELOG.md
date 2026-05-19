@@ -1,3 +1,16 @@
+## [0.15.0] — 2026-05-19
+
+### Added
+- Right-click Clear context menu on terminal
+- Scope REST API collections and environments per project
+
+### Fixed
+- Terminate split pane sessions when closing terminal tab or pane
+- Terminal loading indicator not showing due to onDataReceived closure override
+- Make tabs fixed-width (160px) with leading icon and trailing close button
+- Preserve split pane state when switching projects
+- Preserve per-leaf terminal session IDs when switching back to a split tab
+
 ## [0.14.0] — 2026-05-18
 
 ### Added
