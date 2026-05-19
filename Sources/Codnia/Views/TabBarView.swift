@@ -23,6 +23,8 @@ struct TabBarView: View {
     @State private var interactiveFrames: [CGRect] = []
     @ObservedObject private var shortcutsService = KeyboardShortcutsService.shared
 
+    private static let tabWidth: CGFloat = 160
+
     private var allTabs: [Tab] {
         editorVM.tabs + terminalVM.tabs
     }
@@ -128,7 +130,7 @@ struct TabBarView: View {
 
                 GeometryReader { geometry in
                     let availableWidth = geometry.size.width
-                    let tabWidth: CGFloat = 200
+                    let tabWidth = Self.tabWidth
                     let maxVisibleTabs = max(1, Int(availableWidth / tabWidth))
                     let hasOverflow = allTabs.count > maxVisibleTabs
 
@@ -307,8 +309,8 @@ struct TabButton: View {
     @State private var isHovered = false
 
     var body: some View {
-        ZStack {
-            HStack(spacing: 6) {
+        HStack(spacing: 4) {
+            Group {
                 if tab.type == .browser {
                 } else if tab.type == .file {
                     fileIcon(for: tab.name)
@@ -327,22 +329,24 @@ struct TabButton: View {
                         .foregroundColor(iconColor)
                         .font(.system(size: 13))
                 }
-
-                Text(tab.isModified ? "\(tab.name) \u{25CF}" : tab.name)
-                    .font(.system(size: 12))
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-
-                Image(systemName: "xmark")
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundColor(.textSecondary)
-                    .opacity(isHovered ? 0.6 : 0)
-                    .onTapGesture { onClose() }
             }
-            .frame(maxHeight: .infinity)
+            .padding(.leading, 6)
+
+            Text(tab.isModified ? "\(tab.name) \u{25CF}" : tab.name)
+                .font(.system(size: 12))
+                .lineLimit(1)
+                .truncationMode(.tail)
+
+            Spacer(minLength: 0)
+
+            Image(systemName: "xmark")
+                .font(.system(size: 10, weight: .medium))
+                .foregroundColor(.textSecondary)
+                .opacity(isHovered ? 0.6 : 0)
+                .padding(.trailing, 6)
+                .onTapGesture { onClose() }
         }
-        .padding(.horizontal, 28)
-        .frame(height: 36)
+        .frame(width: 160, height: 36)
         .background(
             isActive ? Color.bgActive :
             draggedTabId == tab.id ? Color.bgActive.opacity(0.5) : Color.clear
