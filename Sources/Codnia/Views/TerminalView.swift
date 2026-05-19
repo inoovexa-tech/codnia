@@ -338,6 +338,7 @@ struct TerminalHostView: NSViewRepresentable {
     private func createTerminal(cwd: String, fontSize: Double, type: TabType, terminalId: String, in container: NSView) {
         let terminal = CodniaTerminalView(frame: container.bounds)
         TerminalManager.shared.set(terminal, for: terminalId)
+        TerminalSessionManager.shared.attachTerminal(terminal, to: terminalId)
         terminal.autoresizingMask = [.width, .height]
         terminal.nativeBackgroundColor = NSColor(Color.bgPrimary)
         terminal.nativeForegroundColor = NSColor(Color.textPrimary)

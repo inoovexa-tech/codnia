@@ -222,7 +222,7 @@ struct ProjectRowExpanded: View {
                                     .lineLimit(1)
 
                                 if hasRunningProcess {
-                                    DashedBorderLoading()
+                                    SpinnerLoading()
                                 }
 
                                 Spacer()
@@ -432,7 +432,7 @@ struct WorktreeRow: View {
                         .frame(maxWidth: 100, alignment: .leading)
 
                     if hasRunningProcess {
-                        DashedBorderLoading()
+                        SpinnerLoading()
                     }
 
                     if changes.added > 0 || changes.deleted > 0 {
@@ -580,7 +580,7 @@ struct ProjectRowCollapsed: View {
                     .cornerRadius(8)
 
                 if hasLoading {
-                    DashedBorderLoading()
+                    SpinnerLoading()
                 }
             }
         }
@@ -606,20 +606,11 @@ struct ProjectRowCollapsed: View {
     }
 }
 
-struct DashedBorderLoading: View {
-    @State private var phase: CGFloat = 0
-
+struct SpinnerLoading: View {
     var body: some View {
-        RoundedRectangle(cornerRadius: 2)
-            .stroke(
-                Color.gray,
-                style: StrokeStyle(lineWidth: 1.5, dash: [2, 3], dashPhase: phase)
-            )
+        ProgressView()
+            .progressViewStyle(CircularProgressViewStyle(tint: .gray))
+            .scaleEffect(0.5)
             .frame(width: 10, height: 10)
-            .onAppear {
-                withAnimation(.linear(duration: 0.6).repeatForever(autoreverses: false)) {
-                    phase -= 5
-                }
-            }
     }
 }

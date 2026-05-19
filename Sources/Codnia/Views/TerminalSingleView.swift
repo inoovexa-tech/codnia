@@ -70,8 +70,8 @@ class SessionViewportView: NSView {
         terminal.font = NSFont.monospacedSystemFont(ofSize: CGFloat(fontSize), weight: .regular)
         terminal.isHidden = false
 
-        TerminalSessionManager.shared.attachTerminal(terminal, to: session.id)
         TerminalManager.shared.set(terminal, for: session.id)
+        TerminalSessionManager.shared.attachTerminal(terminal, to: session.id)
 
         terminal.startProcess(
             executable: session.executable,
