@@ -130,10 +130,12 @@ public final class EditorViewModel: ObservableObject {
                    let prevWtIdx = prevProject.worktrees.firstIndex(where: { $0.id == prevId }),
                    let projIdx = self.workspace.projects.firstIndex(where: { $0.id == prevProject.id }) {
                     self.splitVM?.saveToWorktree(&self.workspace.projects[projIdx].worktrees[prevWtIdx])
-                    self.workspace.projects[projIdx].worktrees[prevWtIdx].fileTabs = self.tabs
-                    self.workspace.projects[projIdx].worktrees[prevWtIdx].terminalTabs = self.terminal.tabs
-                    self.workspace.projects[projIdx].worktrees[prevWtIdx].activeTabId = self.activeTabId
-                    self.workspace.saveProjects()
+                     self.workspace.projects[projIdx].worktrees[prevWtIdx].fileTabs = self.tabs
+                     self.workspace.projects[projIdx].worktrees[prevWtIdx].terminalTabs = self.terminal.tabs
+                     self.workspace.projects[projIdx].worktrees[prevWtIdx].activeTabId = self.activeTabId
+                     self.workspace.projects[projIdx].worktrees[prevWtIdx].browserURLs = self.browserURLs
+                     self.workspace.projects[projIdx].worktrees[prevWtIdx].browserTitles = self.browserTitles
+                     self.workspace.saveProjects()
                 }
 
                     if let activeProject = project, let worktree = activeProject.activeWorktree {
@@ -163,6 +165,8 @@ public final class EditorViewModel: ObservableObject {
         terminal.setWorktreeMapping(tabs: worktree.terminalTabs, worktreeId: worktree.id)
         terminal.refreshSessionsForRestoredTabs(workspace: workspace)
         activeTabId = worktree.activeTabId
+        browserURLs = worktree.browserURLs
+        browserTitles = worktree.browserTitles
 
         if tabs.isEmpty && terminal.tabs.isEmpty,
            let tabType = TabType(rawValue: settings.defaultTabOnProjectOpen) {
@@ -184,15 +188,6 @@ public final class EditorViewModel: ObservableObject {
         for tab in worktree.fileTabs where tab.type == .queryResult {
             if querySql[tab.id] == nil {
                 querySql[tab.id] = tab.querySql ?? ""
-            }
-        }
-
-        for tab in worktree.fileTabs where tab.type == .browser {
-            if browserURLs[tab.id] == nil {
-                browserURLs[tab.id] = tab.url ?? "about:blank"
-            }
-            if browserTitles[tab.id] == nil {
-                browserTitles[tab.id] = tab.name
             }
         }
 
@@ -242,6 +237,8 @@ public final class EditorViewModel: ObservableObject {
         workspace.projects[projIdx].worktrees[wtIdx].fileTabs = tabs
         workspace.projects[projIdx].worktrees[wtIdx].terminalTabs = terminal.tabs
         workspace.projects[projIdx].worktrees[wtIdx].activeTabId = activeTabId
+        workspace.projects[projIdx].worktrees[wtIdx].browserURLs = browserURLs
+        workspace.projects[projIdx].worktrees[wtIdx].browserTitles = browserTitles
         workspace.saveProjects()
     }
 

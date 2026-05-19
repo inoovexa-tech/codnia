@@ -26,6 +26,7 @@ public final class AppState: ObservableObject {
     @Published var browserURL: String = ""
     @Published var browserTitle: String = ""
     @Published var browserWidth: CGFloat = 500
+    private var previousWorktreeId: String?
 
     public enum BrowserSide: String {
         case left
@@ -117,7 +118,31 @@ public final class AppState: ObservableObject {
         bs.appState = self
 
         ws.$activeProject.receive(on: DispatchQueue.main).sink { [weak self] project in
-            self?.restApiVM.reloadForProject(projectPath: project?.activeWorktree?.path)
+            guard let self = self else { return }
+            self.restApiVM.reloadForProject(projectPath: project?.activeWorktree?.path)
+
+            if let prevId = self.previousWorktreeId,
+               let prevProject = self.workspaceVM.projects.first(where: { $0.worktrees.contains { $0.id == prevId } }),
+               let prevWtIdx = prevProject.worktrees.firstIndex(where: { $0.id == prevId }),
+               let projIdx = self.workspaceVM.projects.firstIndex(where: { $0.id == prevProject.id }) {
+                self.workspaceVM.projects[projIdx].worktrees[prevWtIdx].sideBrowserURL = self.browserURL
+                self.workspaceVM.projects[projIdx].worktrees[prevWtIdx].sideBrowserTitle = self.browserTitle
+                self.workspaceVM.projects[projIdx].worktrees[prevWtIdx].sideBrowserSide = self.browserSide.rawValue
+                self.workspaceVM.projects[projIdx].worktrees[prevWtIdx].sideBrowserExpanded = self.browserExpanded
+                self.workspaceVM.saveProjects()
+            }
+
+            if let worktree = project?.activeWorktree {
+                self.previousWorktreeId = worktree.id
+                self.browserURL = worktree.sideBrowserURL
+                self.browserTitle = worktree.sideBrowserTitle
+                if let side = BrowserSide(rawValue: worktree.sideBrowserSide) {
+                    self.browserSide = side
+                }
+                self.browserExpanded = worktree.sideBrowserExpanded
+            } else {
+                self.browserExpanded = false
+            }
         }.store(in: &cancellables)
     }
 
