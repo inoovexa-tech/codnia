@@ -1,3 +1,16 @@
+## [0.14.0] — 2026-05-18
+
+### Added
+- Theme system with 27 built-in themes (5-color palette) + visual selector in settings
+- Sparkle auto-update framework integration
+- REST API client plugin with collections, history, and context menu
+
+### Fixed
+- Replace List with ScrollView in settings to restore mouse scroll wheel
+- Propagate worktree removal errors to UI alert
+- Replace WindowDragView with frame-tracking TitlebarBackgroundView for native window operations
+- Make task description field multi-line in expanded section
+
 ## [0.12.1] — 2026-05-18
 
 ### Fixed
