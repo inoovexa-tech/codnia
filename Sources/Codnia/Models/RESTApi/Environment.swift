@@ -42,17 +42,13 @@ public struct APIEnvironment: Codable, Identifiable, Equatable {
 }
 
 public final class EnvironmentStore: ObservableObject {
-    @MainActor public static let shared = EnvironmentStore()
-
     @Published public var environments: [APIEnvironment] = []
 
     private let fileURL: URL
 
-    public init() {
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        let codniaDir = appSupport.appendingPathComponent("Codnia", isDirectory: true)
-        try? FileManager.default.createDirectory(at: codniaDir, withIntermediateDirectories: true)
-        self.fileURL = codniaDir.appendingPathComponent("environments.json")
+    public init(directoryURL: URL) {
+        try? FileManager.default.createDirectory(at: directoryURL, withIntermediateDirectories: true)
+        self.fileURL = directoryURL.appendingPathComponent("environments.json")
         load()
     }
 

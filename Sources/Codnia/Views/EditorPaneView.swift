@@ -85,8 +85,13 @@ struct EditorPaneView: View {
                 QueryResultTabView(tabId: tab.id)
 
             case .restApi:
-                RESTApiTabView(tabId: tab.id, restApiRequestId: tab.restApiRequestId)
-                    .id(tab.id)
+                RESTApiTabView(
+                    tabId: tab.id,
+                    restApiRequestId: tab.restApiRequestId,
+                    endpointStore: appState.restApiVM.endpointStore,
+                    environmentStore: appState.restApiVM.environmentStore
+                )
+                .id(tab.id)
 
             case .browser:
                 BrowserView(

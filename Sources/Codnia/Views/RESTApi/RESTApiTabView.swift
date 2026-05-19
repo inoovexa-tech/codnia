@@ -3,6 +3,8 @@ import SwiftUI
 struct RESTApiTabView: View {
     let tabId: String
     let restApiRequestId: String?
+    let endpointStore: EndpointStore
+    let environmentStore: EnvironmentStore
     @EnvironmentObject var editorVM: EditorViewModel
 
     @State private var request: HTTPRequest = HTTPRequest()
@@ -57,8 +59,7 @@ struct RESTApiTabView: View {
 
     private func loadEndpointIfNeeded() {
         guard let requestId = restApiRequestId else { return }
-        let store = EndpointStore.shared
-        for collection in store.collections {
+        for collection in endpointStore.collections {
             if let endpoint = collection.endpoints.first(where: { $0.id == requestId }) {
                 request = endpoint.request
                 requestName = endpoint.name
@@ -66,7 +67,7 @@ struct RESTApiTabView: View {
                 return
             }
         }
-        if let endpoint = store.history.first(where: { $0.id == requestId }) {
+        if let endpoint = endpointStore.history.first(where: { $0.id == requestId }) {
             request = endpoint.request
             requestName = endpoint.name
             currentEndpointId = endpoint.id
@@ -119,14 +120,13 @@ struct RESTApiTabView: View {
     }
 
     private func saveRequest() {
-        selectedCollectionId = EndpointStore.shared.collections.first?.id
+        selectedCollectionId = endpointStore.collections.first?.id
         DispatchQueue.main.async {
             self.showSaveSheet = true
         }
     }
 
     private func saveToCollection(_ collectionId: String) {
-        let store = EndpointStore.shared
         let endpointId = currentEndpointId ?? restApiRequestId
         if let endpointId {
             let updated = HTTPEndpoint(
@@ -134,16 +134,16 @@ struct RESTApiTabView: View {
                 name: requestName,
                 request: request
             )
-            store.updateEndpoint(updated)
+            endpointStore.updateEndpoint(updated)
         } else {
             let endpoint = HTTPEndpoint(
                 name: requestName,
                 request: request
             )
-            store.addEndpoint(endpoint, to: collectionId)
+            endpointStore.addEndpoint(endpoint, to: collectionId)
             currentEndpointId = endpoint.id
         }
-        store.addToHistory(HTTPEndpoint(name: requestName, request: request))
+        endpointStore.addToHistory(HTTPEndpoint(name: requestName, request: request))
         showSaveSheet = false
     }
 
@@ -162,7 +162,7 @@ struct RESTApiTabView: View {
                     .font(.system(size: 12))
                     .foregroundColor(.textSecondary)
 
-                ForEach(EndpointStore.shared.collections) { collection in
+                ForEach(endpointStore.collections) { collection in
                     HStack {
                         Image(systemName: "folder.fill")
                             .foregroundColor(.textTertiary)
@@ -204,7 +204,7 @@ struct RESTApiTabView: View {
         .background(Color.bgSecondary)
         .onAppear {
             if selectedCollectionId == nil {
-                selectedCollectionId = EndpointStore.shared.collections.first?.id
+                selectedCollectionId = endpointStore.collections.first?.id
             }
         }
     }
@@ -647,7 +647,7 @@ struct RESTApiTabView: View {
     }
 
     private func executeRequest() {
-        guard let url = request.buildURL(env: EnvironmentStore.shared.activeEnvironment) else {
+        guard let url = request.buildURL(env: environmentStore.activeEnvironment) else {
             errorMessage = "Invalid URL"
             return
         }
@@ -659,12 +659,12 @@ struct RESTApiTabView: View {
         var urlRequest = URLRequest(url: url)
         urlRequest.httpMethod = request.method.rawValue
 
-        let headers = request.buildHeaders(env: EnvironmentStore.shared.activeEnvironment)
+        let headers = request.buildHeaders(env: environmentStore.activeEnvironment)
         for (key, value) in headers {
             urlRequest.setValue(value, forHTTPHeaderField: key)
         }
 
-        if let bodyData = request.buildBody(env: EnvironmentStore.shared.activeEnvironment) {
+        if let bodyData = request.buildBody(env: environmentStore.activeEnvironment) {
             urlRequest.httpBody = bodyData
             if request.body.type == .json && headers["Content-Type"] == nil {
                 urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -717,7 +717,7 @@ struct RESTApiTabView: View {
             isLoading = false
 
             let historyEndpoint = HTTPEndpoint(name: requestName, request: request)
-            EndpointStore.shared.addToHistory(historyEndpoint)
+            endpointStore.addToHistory(historyEndpoint)
         }
     }
 }

@@ -44,14 +44,10 @@ public final class EndpointStore: ObservableObject {
     private let fileURL: URL
     private let historyFileURL: URL
 
-    public static let shared = EndpointStore()
-
-    public init() {
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        let codniaDir = appSupport.appendingPathComponent("Codnia", isDirectory: true)
-        try? FileManager.default.createDirectory(at: codniaDir, withIntermediateDirectories: true)
-        self.fileURL = codniaDir.appendingPathComponent("endpoints.json")
-        self.historyFileURL = codniaDir.appendingPathComponent("history.json")
+    public init(directoryURL: URL) {
+        try? FileManager.default.createDirectory(at: directoryURL, withIntermediateDirectories: true)
+        self.fileURL = directoryURL.appendingPathComponent("endpoints.json")
+        self.historyFileURL = directoryURL.appendingPathComponent("history.json")
         load()
         loadHistory()
     }

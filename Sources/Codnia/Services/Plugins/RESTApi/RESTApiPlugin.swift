@@ -8,7 +8,7 @@ public final class RESTApiPlugin: SidebarPlugin {
     public let author = "Codnia"
     public let version = "1.0.0"
 
-    private let viewModel: RESTApiViewModel
+    public var viewModel: RESTApiViewModel?
 
     public var commands: [PluginCommand] {
         [
@@ -20,14 +20,15 @@ public final class RESTApiPlugin: SidebarPlugin {
 
     var onNewRequest: (() -> Void)?
 
-    public init() {
-        self.viewModel = RESTApiViewModel()
-    }
+    public init() {}
 
     public func makeView() -> AnyView {
-        AnyView(
-            RESTApiView()
-                .environmentObject(viewModel)
-        )
+        if let vm = viewModel {
+            return AnyView(
+                RESTApiView()
+                    .environmentObject(vm)
+            )
+        }
+        return AnyView(EmptyView())
     }
 }

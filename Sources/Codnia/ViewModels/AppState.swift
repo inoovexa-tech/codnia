@@ -15,6 +15,7 @@ public final class AppState: ObservableObject {
     public let databaseService: DatabaseConnectionService
     public let notesVM: NotesViewModel
     public let browserService: BrowserService
+    public var restApiVM: RESTApiViewModel
     @Published var rightSidebarExpanded: Bool = false
     @Published var rightSidebarTab: RightSidebarTab = .explorer
     @Published var showGlobalSearchModal: Bool = false
@@ -69,6 +70,7 @@ public final class AppState: ObservableObject {
         let db = DatabaseConnectionService()
         let nv = NotesViewModel()
         let bs = BrowserService()
+        let rest = RESTApiViewModel(projectPath: ws.activeProject?.activeWorktree?.path)
         self.workspaceVM = ws
         self.settings = s
         self.searchVM = sr
@@ -81,6 +83,7 @@ public final class AppState: ObservableObject {
         self.databaseService = db
         self.notesVM = nv
         self.browserService = bs
+        self.restApiVM = rest
 
         bs.editorVM = ed
         bs.settings = s
@@ -108,10 +111,17 @@ public final class AppState: ObservableObject {
         ps.registerSidebarPlugin(notesPlugin)
 
         let restApiPlugin = RESTApiPlugin()
+        restApiPlugin.viewModel = rest
         ps.registerSidebarPlugin(restApiPlugin)
 
         bs.appState = self
+
+        ws.$activeProject.receive(on: DispatchQueue.main).sink { [weak self] project in
+            self?.restApiVM.reloadForProject(projectPath: project?.activeWorktree?.path)
+        }.store(in: &cancellables)
     }
+
+    private var cancellables = Set<AnyCancellable>()
 }
 
 public enum BrowserOpenIn: String, CaseIterable, Identifiable, Codable {

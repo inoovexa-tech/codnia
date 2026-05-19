@@ -3,9 +3,9 @@ import Combine
 
 @MainActor
 public final class RESTApiViewModel: ObservableObject {
-    public let environmentStore: EnvironmentStore
-    public let endpointStore: EndpointStore
-    public let service: RESTApiService
+    @Published public var environmentStore: EnvironmentStore
+    @Published public var endpointStore: EndpointStore
+    public var service: RESTApiService
 
     @Published public var collections: [EndpointCollection] = []
     @Published public var history: [HTTPEndpoint] = []
@@ -20,14 +20,44 @@ public final class RESTApiViewModel: ObservableObject {
 
     private var cancellables = Set<AnyCancellable>()
 
-    public init() {
-        self.environmentStore = EnvironmentStore.shared
-        self.endpointStore = EndpointStore.shared
-        self.service = RESTApiService(environmentStore: environmentStore, endpointStore: endpointStore)
+    public static func directoryURL(for projectPath: String?) -> URL {
+        if let projectPath {
+            return URL(fileURLWithPath: projectPath).appendingPathComponent(".codnia/restapi")
+        }
+        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        return appSupport.appendingPathComponent("Codnia/restapi")
+    }
 
-        self.collections = endpointStore.collections
-        self.history = endpointStore.history
+    public init(projectPath: String?) {
+        let dir = Self.directoryURL(for: projectPath)
+        Self.migrateGlobalDataIfNeeded(to: dir)
+        let envStore = EnvironmentStore(directoryURL: dir)
+        let epStore = EndpointStore(directoryURL: dir)
+        self.environmentStore = envStore
+        self.endpointStore = epStore
+        self.service = RESTApiService(environmentStore: envStore, endpointStore: epStore)
 
+        self.collections = epStore.collections
+        self.history = epStore.history
+
+        subscribeToStores()
+    }
+
+    public func reloadForProject(projectPath: String?) {
+        cancellables.removeAll()
+        let dir = Self.directoryURL(for: projectPath)
+        Self.migrateGlobalDataIfNeeded(to: dir)
+        let envStore = EnvironmentStore(directoryURL: dir)
+        let epStore = EndpointStore(directoryURL: dir)
+        environmentStore = envStore
+        endpointStore = epStore
+        service = RESTApiService(environmentStore: envStore, endpointStore: epStore)
+        collections = epStore.collections
+        history = epStore.history
+        subscribeToStores()
+    }
+
+    private func subscribeToStores() {
         endpointStore.$collections.receive(on: DispatchQueue.main).sink { [weak self] cols in
             self?.collections = cols
         }.store(in: &cancellables)
@@ -35,6 +65,21 @@ public final class RESTApiViewModel: ObservableObject {
         endpointStore.$history.receive(on: DispatchQueue.main).sink { [weak self] hist in
             self?.history = hist
         }.store(in: &cancellables)
+    }
+
+    private static func migrateGlobalDataIfNeeded(to directoryURL: URL) {
+        guard !FileManager.default.fileExists(atPath: directoryURL.path) else { return }
+        let fm = FileManager.default
+        let appSupport = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        let oldDir = appSupport.appendingPathComponent("Codnia")
+        guard fm.fileExists(atPath: oldDir.path) else { return }
+        try? fm.createDirectory(at: directoryURL, withIntermediateDirectories: true)
+        for file in ["endpoints.json", "history.json", "environments.json"] {
+            let src = oldDir.appendingPathComponent(file)
+            if fm.fileExists(atPath: src.path) {
+                try? fm.copyItem(at: src, to: directoryURL.appendingPathComponent(file))
+            }
+        }
     }
 
     public var activeEnvironment: APIEnvironment? {
