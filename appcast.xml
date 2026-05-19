@@ -13,9 +13,9 @@
       <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
       <enclosure
         url="https://github.com/inoovexa-tech/codnia/releases/download/v0.15.0/Codnia-v0.15.0.dmg"
-        length="11250533"
+        length="11250548"
         type="application/octet-stream"
-        sparkle:edSignature="dNypFYETIzRa4ocFmPToXnbW+4uRq+F8CAMreH4s6TzM6Aqla/PSs1wXV3YPLzBVkOAXP2+R9QIMCJ1yUmy/BQ=="
+        sparkle:edSignature="5/fIaKA5YBs9KbNsW1FXirlzZiCB1qP9R8Rj00Qj1GdRNN+6BbE+DbLxBQL2FrMCPpIkXUi3n2jkPbXXC4hpDA=="
       />
     </item>
 
