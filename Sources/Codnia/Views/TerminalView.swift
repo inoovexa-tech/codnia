@@ -15,6 +15,25 @@ class CodniaTerminalView: LocalProcessTerminalView {
             BrowserService.handleTerminalURLClick(url)
         }
     }
+
+    override func menu(for event: NSEvent) -> NSMenu? {
+        let menu = NSMenu(title: "Terminal")
+        let clearItem = NSMenuItem(title: "Clear", action: #selector(clearTerminal), keyEquivalent: "")
+        clearItem.target = self
+        menu.addItem(clearItem)
+        return menu
+    }
+
+    override func validateUserInterfaceItem(_ item: NSValidatedUserInterfaceItem) -> Bool {
+        if item.action == #selector(clearTerminal) {
+            return true
+        }
+        return super.validateUserInterfaceItem(item)
+    }
+
+    @objc func clearTerminal() {
+        feed(text: "\u{001b}[2J\u{001b}[3J\u{001b}[H")
+    }
 }
 
 @MainActor
