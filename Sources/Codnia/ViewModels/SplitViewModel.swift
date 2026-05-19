@@ -78,6 +78,15 @@ public final class SplitViewModel: ObservableObject {
         }
     }
 
+    func destroyTerminalSessions(for tabId: String) {
+        guard let root = tabSplitRoots[tabId] else { return }
+        for leafId in root.allLeafIds {
+            guard let leaf = root.findLeaf(id: leafId), let sessionId = leaf.sessionId else { continue }
+            TerminalSessionManager.shared.destroySession(id: sessionId)
+        }
+        removeTabState(tabId)
+    }
+
     // MARK: - Worktree Persistence
 
     public func saveToWorktree(_ worktree: inout Worktree) {
@@ -225,6 +234,7 @@ public final class SplitViewModel: ObservableObject {
             } else if terminalVM.tabs.contains(where: { $0.id == tid }) {
                 terminalVM.closeTab(tab)
             }
+            removeTabState(tid)
         }
 
         if let firstId = ids.first, let firstLeaf = root.findLeaf(id: firstId), let tid = firstLeaf.tabId {

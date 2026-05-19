@@ -533,6 +533,7 @@ public final class EditorViewModel: ObservableObject {
             }
             saveTabsToWorktree()
         } else if terminal.tabs.firstIndex(where: { $0.id == id }) != nil {
+            splitVM?.destroyTerminalSessions(for: id)
             terminal.closeTab(byId: id)
             if activeTabId == id {
                 activeTabId = allTabs.last?.id
