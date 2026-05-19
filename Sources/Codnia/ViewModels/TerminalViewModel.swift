@@ -43,10 +43,14 @@ public final class TerminalViewModel: ObservableObject {
         for (termId, worktreeId) in terminalWorktreeMap {
             guard let session = TerminalSessionManager.shared.getSession(by: termId), let terminal = session.terminal else { continue }
 
+            let isAITab = tabs.contains { $0.terminalId == termId && $0.type.isAI }
+
             if !terminal.process.running {
                 service.setProcessRunning(id: termId, running: false)
                 if terminalProcessingStates[termId] == true {
-                    workspace?.updateRunningState(for: worktreeId, isRunning: false)
+                    if isAITab {
+                        workspace?.updateRunningState(for: worktreeId, isRunning: false)
+                    }
                 }
                 terminalProcessingStates.removeValue(forKey: termId)
                 terminalWorktreeMap.removeValue(forKey: termId)
@@ -56,7 +60,9 @@ public final class TerminalViewModel: ObservableObject {
 
                 if isActive != wasActive {
                     service.setProcessRunning(id: termId, running: isActive)
-                    workspace?.updateRunningState(for: worktreeId, isRunning: isActive)
+                    if isAITab {
+                        workspace?.updateRunningState(for: worktreeId, isRunning: isActive)
+                    }
                     terminalProcessingStates[termId] = isActive
                 }
             }
@@ -134,7 +140,9 @@ public final class TerminalViewModel: ObservableObject {
         if let termId = tab.terminalId {
             if let worktreeId = terminalWorktreeMap[termId] {
                 if terminalProcessingStates[termId] == true {
-                    workspace?.updateRunningState(for: worktreeId, isRunning: false)
+                    if tab.type.isAI {
+                        workspace?.updateRunningState(for: worktreeId, isRunning: false)
+                    }
                 }
                 terminalProcessingStates.removeValue(forKey: termId)
                 terminalWorktreeMap.removeValue(forKey: termId)
