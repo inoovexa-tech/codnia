@@ -129,6 +129,7 @@ public final class EditorViewModel: ObservableObject {
                    let prevProject = self.workspace.projects.first(where: { $0.worktrees.contains { $0.id == prevId } }),
                    let prevWtIdx = prevProject.worktrees.firstIndex(where: { $0.id == prevId }),
                    let projIdx = self.workspace.projects.firstIndex(where: { $0.id == prevProject.id }) {
+                    self.splitVM?.saveToWorktree(&self.workspace.projects[projIdx].worktrees[prevWtIdx])
                     self.workspace.projects[projIdx].worktrees[prevWtIdx].fileTabs = self.tabs
                     self.workspace.projects[projIdx].worktrees[prevWtIdx].terminalTabs = self.terminal.tabs
                     self.workspace.projects[projIdx].worktrees[prevWtIdx].activeTabId = self.activeTabId
