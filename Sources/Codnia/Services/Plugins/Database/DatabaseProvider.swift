@@ -20,8 +20,46 @@ public protocol DatabaseProvider: AnyObject, Sendable {
     func insertRow(handle: String, table: TableID, columns: [String], values: [String?]) async throws -> [String: String?]?
     func deleteRow(handle: String, table: TableID, primaryKeyValues: [(column: String, value: String?)]) async throws -> Int
 
+    // MARK: - DDL
+
+    func fetchTableDDL(handle: String, table: TableID) async throws -> String
+    func createTable(handle: String, schema: String, name: String, columns: [NewColumnInfo]) async throws
+    func dropTable(handle: String, table: TableID, cascade: Bool) async throws
+    func addColumn(handle: String, table: TableID, column: NewColumnInfo) async throws
+    func dropColumn(handle: String, table: TableID, column: String) async throws
+    func alterColumn(handle: String, table: TableID, column: String, newName: String?, newType: String?, nullable: Bool?, defaultValue: String?) async throws
+    func fetchIndexes(handle: String, table: TableID) async throws -> [IndexInfo]
+    func createIndex(handle: String, table: TableID, name: String, columns: [String], unique: Bool) async throws
+    func dropIndex(handle: String, indexName: String, table: TableID) async throws
+
     // MARK: - Cancellation
 
     func cancel(handle: String) async throws
     func setBackendPID(handle: String, pid: Int)
+}
+
+public struct NewColumnInfo: Sendable {
+    public let name: String
+    public let type: String
+    public let isNullable: Bool
+    public let defaultValue: String?
+    public let isPrimaryKey: Bool
+
+    public init(name: String, type: String, isNullable: Bool, defaultValue: String?, isPrimaryKey: Bool) {
+        self.name = name
+        self.type = type
+        self.isNullable = isNullable
+        self.defaultValue = defaultValue
+        self.isPrimaryKey = isPrimaryKey
+    }
+}
+
+public enum DDLMethodError: LocalizedError {
+    case notImplemented(String)
+
+    public var errorDescription: String? {
+        switch self {
+        case .notImplemented(let method): return "DDL method not implemented for this provider: \(method)"
+        }
+    }
 }

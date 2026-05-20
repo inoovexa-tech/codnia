@@ -265,6 +265,173 @@ final class PostgreSQLProvider: DatabaseProvider, @unchecked Sendable {
         )
     }
 
+    // MARK: - DDL
+
+    func fetchTableDDL(handle: String, table: TableID) async throws -> String {
+        let sql = """
+        SELECT pg_catalog.pg_get_tabledef(
+            '\(escape(table.schema))',
+            '\(escape(table.table))'
+        )
+        """
+        do {
+            return try await runQuery(handle: handle, sql: sql)
+                .compactMap { $0.first ?? nil }
+                .joined(separator: "\n")
+        } catch {
+            let fallbackSQL = """
+            SELECT column_name, data_type, is_nullable, column_default, ordinal_position
+            FROM information_schema.columns
+            WHERE table_schema = '\(escape(table.schema))' AND table_name = '\(escape(table.table))'
+            ORDER BY ordinal_position
+            """
+            let cols = try await runQueryWithColumns(handle: handle, sql: fallbackSQL)
+            var ddl = "CREATE TABLE \"\(escapeIdentifier(table.schema))\".\"\(escapeIdentifier(table.table))\" (\n"
+            var colDefs: [String] = []
+            for row in cols.rows {
+                guard row.count >= 4 else { continue }
+                let colName = row[0] ?? "?"
+                let dataType = row[1] ?? "text"
+                let nullable = row[2] == "YES"
+                let defaultVal = row[3]
+                var def = "    \"\(escapeIdentifier(colName))\" \(dataType)"
+                if !nullable { def += " NOT NULL" }
+                if let dv = defaultVal, !dv.isEmpty { def += " DEFAULT \(dv)" }
+                colDefs.append(def)
+            }
+
+            let pkSQL = """
+            SELECT kcu.column_name
+            FROM information_schema.table_constraints tc
+            JOIN information_schema.key_column_usage kcu
+                ON tc.constraint_name = kcu.constraint_name
+                AND tc.table_schema = kcu.table_schema
+            WHERE tc.table_schema = '\(escape(table.schema))'
+                AND tc.table_name = '\(escape(table.table))'
+                AND tc.constraint_type = 'PRIMARY KEY'
+            ORDER BY kcu.ordinal_position
+            """
+            let pkRows = try await runQuery(handle: handle, sql: pkSQL)
+            let pkCols = pkRows.compactMap { $0.first ?? nil }
+            if !pkCols.isEmpty {
+                let pkList = pkCols.map { "\"\(escapeIdentifier($0))\"" }.joined(separator: ", ")
+                colDefs.append("    PRIMARY KEY (\(pkList))")
+            }
+
+            ddl += colDefs.joined(separator: ",\n")
+            ddl += "\n)"
+            return ddl
+        }
+    }
+
+    func createTable(handle: String, schema: String, name: String, columns: [NewColumnInfo]) async throws {
+        var colDefs: [String] = []
+        var pkCols: [String] = []
+
+        for col in columns {
+            var def = "\"\(escapeIdentifier(col.name))\" \(col.type)"
+            if !col.isNullable { def += " NOT NULL" }
+            if let dv = col.defaultValue, !dv.isEmpty { def += " DEFAULT \(dv)" }
+            if col.isPrimaryKey { pkCols.append("\"\(escapeIdentifier(col.name))\"") }
+            colDefs.append(def)
+        }
+
+        if !pkCols.isEmpty {
+            colDefs.append("PRIMARY KEY (\(pkCols.joined(separator: ", ")))")
+        }
+
+        let sql = "CREATE TABLE \"\(escapeIdentifier(schema))\".\"\(escapeIdentifier(name))\" (\n  \(colDefs.joined(separator: ",\n  "))\n)"
+        try await runMutation(handle: handle, sql: sql)
+    }
+
+    func dropTable(handle: String, table: TableID, cascade: Bool) async throws {
+        let cascadeSQL = cascade ? " CASCADE" : ""
+        let sql = "DROP TABLE \"\(escapeIdentifier(table.schema))\".\"\(escapeIdentifier(table.table))\"\(cascadeSQL)"
+        try await runMutation(handle: handle, sql: sql)
+    }
+
+    func addColumn(handle: String, table: TableID, column: NewColumnInfo) async throws {
+        var def = "\"\(escapeIdentifier(column.name))\" \(column.type)"
+        if !column.isNullable { def += " NOT NULL" }
+        if let dv = column.defaultValue, !dv.isEmpty { def += " DEFAULT \(dv)" }
+        let sql = "ALTER TABLE \"\(escapeIdentifier(table.schema))\".\"\(escapeIdentifier(table.table))\" ADD COLUMN \(def)"
+        try await runMutation(handle: handle, sql: sql)
+    }
+
+    func dropColumn(handle: String, table: TableID, column: String) async throws {
+        let sql = "ALTER TABLE \"\(escapeIdentifier(table.schema))\".\"\(escapeIdentifier(table.table))\" DROP COLUMN \"\(escapeIdentifier(column))\""
+        try await runMutation(handle: handle, sql: sql)
+    }
+
+    func alterColumn(handle: String, table: TableID, column: String, newName: String?, newType: String?, nullable: Bool?, defaultValue: String?) async throws {
+        if let name = newName {
+            let sql = "ALTER TABLE \"\(escapeIdentifier(table.schema))\".\"\(escapeIdentifier(table.table))\" RENAME COLUMN \"\(escapeIdentifier(column))\" TO \"\(escapeIdentifier(name))\""
+            try await runMutation(handle: handle, sql: sql)
+        }
+        if let type = newType {
+            let sql = "ALTER TABLE \"\(escapeIdentifier(table.schema))\".\"\(escapeIdentifier(table.table))\" ALTER COLUMN \"\(escapeIdentifier(column))\" TYPE \(type)"
+            try await runMutation(handle: handle, sql: sql)
+        }
+        if let nullable = nullable {
+            if nullable {
+                let sql = "ALTER TABLE \"\(escapeIdentifier(table.schema))\".\"\(escapeIdentifier(table.table))\" ALTER COLUMN \"\(escapeIdentifier(column))\" DROP NOT NULL"
+                try await runMutation(handle: handle, sql: sql)
+            } else {
+                let sql = "ALTER TABLE \"\(escapeIdentifier(table.schema))\".\"\(escapeIdentifier(table.table))\" ALTER COLUMN \"\(escapeIdentifier(column))\" SET NOT NULL"
+                try await runMutation(handle: handle, sql: sql)
+            }
+        }
+        if let dv = defaultValue {
+            if dv.isEmpty || dv == "NULL" {
+                let sql = "ALTER TABLE \"\(escapeIdentifier(table.schema))\".\"\(escapeIdentifier(table.table))\" ALTER COLUMN \"\(escapeIdentifier(column))\" DROP DEFAULT"
+                try await runMutation(handle: handle, sql: sql)
+            } else {
+                let sql = "ALTER TABLE \"\(escapeIdentifier(table.schema))\".\"\(escapeIdentifier(table.table))\" ALTER COLUMN \"\(escapeIdentifier(column))\" SET DEFAULT \(dv)"
+                try await runMutation(handle: handle, sql: sql)
+            }
+        }
+    }
+
+    func fetchIndexes(handle: String, table: TableID) async throws -> [IndexInfo] {
+        let sql = """
+        SELECT indexname, indexdef
+        FROM pg_indexes
+        WHERE schemaname = '\(escape(table.schema))'
+          AND tablename = '\(escape(table.table))'
+        ORDER BY indexname
+        """
+        let rows = try await runQuery(handle: handle, sql: sql)
+        return rows.map { row in
+            let name = row[0] ?? "?"
+            let def = row[1] ?? ""
+            let isUnique = def.uppercased().contains("UNIQUE")
+            let cols = parseIndexColumns(from: def)
+            return IndexInfo(name: name, columns: cols, isUnique: isUnique, table: table.table, schema: table.schema)
+        }
+    }
+
+    func createIndex(handle: String, table: TableID, name: String, columns: [String], unique: Bool) async throws {
+        let uniqueSQL = unique ? "UNIQUE " : ""
+        let colList = columns.map { "\"\(escapeIdentifier($0))\"" }.joined(separator: ", ")
+        let sql = "CREATE \(uniqueSQL)INDEX \"\(escapeIdentifier(name))\" ON \"\(escapeIdentifier(table.schema))\".\"\(escapeIdentifier(table.table))\" (\(colList))"
+        try await runMutation(handle: handle, sql: sql)
+    }
+
+    func dropIndex(handle: String, indexName: String, table: TableID) async throws {
+        let sql = "DROP INDEX \"\(escapeIdentifier(table.schema))\".\"\(escapeIdentifier(indexName))\""
+        try await runMutation(handle: handle, sql: sql)
+    }
+
+    private func parseIndexColumns(from def: String) -> [String] {
+        guard let parenStart = def.lastIndex(of: "("),
+              let parenEnd = def.lastIndex(of: ")"),
+              parenStart < parenEnd else { return [] }
+        let inner = def[def.index(after: parenStart)..<parenEnd]
+        return inner
+            .split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: "\"", with: "") }
+    }
+
     // MARK: - DML
 
     func fetchPrimaryKeyColumns(handle: String, table: TableID) async throws -> [String] {
@@ -368,6 +535,7 @@ final class PostgreSQLProvider: DatabaseProvider, @unchecked Sendable {
         return (columns, columnTypes, rows)
     }
 
+    @discardableResult
     private func runMutation(handle: String, sql: String) async throws -> Int {
         let conn = try connection(for: handle)
         let result = try await conn.query(PostgresQuery(unsafeSQL: sql), logger: logger)

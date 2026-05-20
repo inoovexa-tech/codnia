@@ -114,6 +114,24 @@ public struct TableID: Sendable {
     }
 }
 
+public struct IndexInfo: Identifiable, Sendable {
+    public let id: String
+    public let name: String
+    public let columns: [String]
+    public let isUnique: Bool
+    public let table: String
+    public let schema: String
+
+    public init(name: String, columns: [String], isUnique: Bool, table: String, schema: String) {
+        self.id = "\(schema).\(table).\(name)"
+        self.name = name
+        self.columns = columns
+        self.isUnique = isUnique
+        self.table = table
+        self.schema = schema
+    }
+}
+
 public enum DBTreeEntry: Identifiable, Sendable {
     case connection(ConnectionConfig, state: SessionState)
     case database(String)

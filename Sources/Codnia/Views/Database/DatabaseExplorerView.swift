@@ -9,6 +9,24 @@ struct DatabaseExplorerView: View {
     @State private var cachedChildren: [String: [DBTreeEntry]] = [:]
     @State private var showConnectionSheet = false
     @State private var hoveredId: String?
+    @State private var showCreateTable = false
+    @State private var createTableConfigID = ""
+    @State private var createTableSchema = ""
+    @State private var showAlterColumn = false
+    @State private var alterColumnConfigID = ""
+    @State private var alterColumnTable = TableID(schema: "", table: "")
+    @State private var alterColumnInfo: ColumnInfo?
+    @State private var alterColumnMode: AlterColumnSheet.AlterMode = .add
+    @State private var showIndexManagement = false
+    @State private var indexManagementConfigID = ""
+    @State private var indexManagementTable = TableID(schema: "", table: "")
+    @State private var showDropAlert = false
+    @State private var dropConfigID = ""
+    @State private var dropTarget = ""
+    @State private var dropType = ""
+    @State private var dropTableID = TableID(schema: "", table: "")
+    @State private var dropCascade = false
+    @State private var dropErrorMessage: String?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -30,6 +48,45 @@ struct DatabaseExplorerView: View {
         .sheet(isPresented: $showConnectionSheet) {
             ConnectionEditSheet()
                 .environmentObject(databaseService)
+        }
+        .sheet(isPresented: $showCreateTable) {
+            CreateTableSheet(configID: createTableConfigID, schema: createTableSchema)
+                .environmentObject(databaseService)
+        }
+        .sheet(isPresented: $showAlterColumn) {
+            AlterColumnSheet(
+                configID: alterColumnConfigID,
+                table: alterColumnTable,
+                column: alterColumnInfo,
+                mode: alterColumnMode
+            )
+            .environmentObject(databaseService)
+        }
+        .sheet(isPresented: $showIndexManagement) {
+            IndexManagementView(configID: indexManagementConfigID, table: indexManagementTable)
+                .environmentObject(databaseService)
+        }
+        .alert("Drop \(dropType)", isPresented: $showDropAlert, actions: {
+            if dropType == "Table" {
+                Toggle("CASCADE (drop dependent objects)", isOn: $dropCascade)
+                    .toggleStyle(.checkbox)
+            }
+            Button("Cancel", role: .cancel) {
+                dropCascade = false
+                dropErrorMessage = nil
+            }
+            Button("Drop", role: .destructive) {
+                performDrop()
+            }
+        }, message: {
+            Text("Are you sure you want to drop \(dropType.lowercased()) \"\(dropTarget)\"?")
+            if let error = dropErrorMessage {
+                Text(error)
+                    .foregroundColor(.red)
+            }
+        })
+        .onChange(of: databaseService.schemaVersion) { _ in
+            refreshAllCaches()
         }
     }
 
@@ -247,19 +304,95 @@ struct DatabaseExplorerView: View {
                     Button("Select Top 100") {
                         selectTop100(schema: t.schema, table: t.name, configID: configID)
                     }
+                    Divider()
+                    Button("View DDL") {
+                        viewDDL(configID: configID, table: TableID(schema: t.schema, table: t.name), name: t.name)
+                    }
+                    Divider()
+                    Button("Add Column") {
+                        alterColumnConfigID = configID
+                        alterColumnTable = TableID(schema: t.schema, table: t.name)
+                        alterColumnInfo = nil
+                        alterColumnMode = .add
+                        showAlterColumn = true
+                    }
+                    Button("Manage Indexes") {
+                        indexManagementConfigID = configID
+                        indexManagementTable = TableID(schema: t.schema, table: t.name)
+                        showIndexManagement = true
+                    }
+                    Divider()
                     Button("Copy Name") {
                         NSPasteboard.general.clearContents()
                         NSPasteboard.general.setString("\(t.schema).\(t.name)", forType: .string)
+                    }
+                    Divider()
+                    Button("Drop Table...", role: .destructive) {
+                        dropConfigID = configID
+                        dropTarget = "\(t.schema).\(t.name)"
+                        dropType = "Table"
+                        dropTableID = TableID(schema: t.schema, table: t.name)
+                        dropCascade = false
+                        dropErrorMessage = nil
+                        showDropAlert = true
                     }
                 case .function(let f):
                     Button("Copy Name") {
                         NSPasteboard.general.clearContents()
                         NSPasteboard.general.setString(f.name, forType: .string)
                     }
+                    Divider()
+                    Button("Drop Function...", role: .destructive) {
+                        dropConfigID = configID
+                        dropTarget = f.name
+                        dropType = "Function"
+                        dropTableID = TableID(schema: f.schema, table: f.name)
+                        dropCascade = false
+                        dropErrorMessage = nil
+                        showDropAlert = true
+                    }
                 case .procedure(let p):
                     Button("Copy Name") {
                         NSPasteboard.general.clearContents()
                         NSPasteboard.general.setString(p.name, forType: .string)
+                    }
+                    Divider()
+                    Button("Drop Procedure...", role: .destructive) {
+                        dropConfigID = configID
+                        dropTarget = p.name
+                        dropType = "Procedure"
+                        dropTableID = TableID(schema: p.schema, table: p.name)
+                        dropCascade = false
+                        dropErrorMessage = nil
+                        showDropAlert = true
+                    }
+                case .schemaSection(let sec):
+                    if sec.sectionType == .tables {
+                        Button("New Table") {
+                            createTableConfigID = configID
+                            createTableSchema = sec.schema
+                            showCreateTable = true
+                        }
+                    }
+                case .column(let col, let tableName):
+                    if let schema = findSchema(for: entry, configID: configID) {
+                        Button("Alter Column...") {
+                            alterColumnConfigID = configID
+                            alterColumnTable = TableID(schema: schema, table: tableName)
+                            alterColumnInfo = col
+                            alterColumnMode = .alter
+                            showAlterColumn = true
+                        }
+                        Divider()
+                        Button("Drop Column...", role: .destructive) {
+                            dropConfigID = configID
+                            dropTarget = col.name
+                            dropType = "Column"
+                            dropTableID = TableID(schema: schema, table: tableName)
+                            dropCascade = false
+                            dropErrorMessage = nil
+                            showDropAlert = true
+                        }
                     }
                 default:
                     EmptyView()
@@ -460,6 +593,157 @@ struct DatabaseExplorerView: View {
         }
     }
 
+    private func viewDDL(configID: String, table: TableID, name: String) {
+        Task { @MainActor in
+            let ddl = await databaseService.fetchTableDDL(configID: configID, table: table)
+            let tab = Tab(
+                name: "DDL: \(name)",
+                type: .queryResult,
+                queryConnectionId: configID,
+                querySql: ddl
+            )
+            editorVM.tabs.append(tab)
+            editorVM.querySql[tab.id] = ddl
+            editorVM.activeTabId = tab.id
+            editorVM.saveTabsToWorktree()
+
+            let result = QueryPageResult(
+                columns: [name],
+                columnTypes: ["text"],
+                rows: ddl.split(separator: "\n").map { [String($0)] },
+                totalCount: 1,
+                page: 0,
+                pageSize: 1,
+                executionTime: 0
+            )
+            editorVM.queryResults[tab.id] = result
+        }
+    }
+
+    private func performDrop() {
+        let configID = dropConfigID
+        let tableID = dropTableID
+        let isCascade = dropCascade
+
+        Task { @MainActor in
+            do {
+                switch dropType {
+                case "Table":
+                    try await databaseService.dropTable(configID: configID, table: tableID, cascade: isCascade)
+                default:
+                    let sql: String
+                    if dropType == "Function" {
+                        sql = "DROP FUNCTION \"\(dropTarget)\" CASCADE"
+                    } else if dropType == "Procedure" {
+                        sql = "DROP PROCEDURE \"\(dropTarget)\" CASCADE"
+                    } else {
+                        sql = "ALTER TABLE \"\(tableID.schema)\".\"\(tableID.table)\" DROP COLUMN \"\(dropTarget)\""
+                    }
+                    let _ = await databaseService.execute(configID: configID, sql: sql)
+                }
+                dropCascade = false
+                dropErrorMessage = nil
+                showDropAlert = false
+            } catch {
+                dropErrorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    private func refreshAllCaches() {
+        let previouslyExpanded = expandedItems
+        cachedChildren.removeAll()
+        for item in previouslyExpanded {
+            if item.hasPrefix("conn:") || item.hasPrefix("db:") || item.hasPrefix("schema:") || item.hasPrefix("table:") {
+                if loadingItems.contains(item) { continue }
+                loadingItems.insert(item)
+                Task { @MainActor in
+                    if item.hasPrefix("conn:") {
+                        let configId = String(item.dropFirst(5))
+                        if let config = databaseService.config(withID: configId) {
+                            let connChildren = await loadChildren(for: .connection(config, state: .disconnected), configID: configId)
+                            cachedChildren[item] = connChildren
+                        }
+                    } else if item.hasPrefix("db:") {
+                        let dbName = String(item.dropFirst(3))
+                        for config in databaseService.connections {
+                            let connId = "conn:\(config.id)"
+                            if previouslyExpanded.contains(connId) {
+                                let children = cachedChildren[connId] ?? []
+                                if children.contains(where: { if case .database(let n) = $0 { return n == dbName }; return false }) {
+                                    let dbChildren = await loadChildren(for: .database(dbName), configID: config.id)
+                                    cachedChildren[item] = dbChildren
+                                }
+                            }
+                        }
+                    }
+                    loadingItems.remove(item)
+                }
+            } else if item.contains(".Tables") || item.contains(".Views") || item.contains(".Materialized") || item.hasPrefix("table:") {
+                loadingItems.insert(item)
+                Task { @MainActor in
+                    for config in databaseService.connections {
+                        let connId = "conn:\(config.id)"
+                        if let connChildren = cachedChildren[connId] {
+                            for dbEntry in connChildren {
+                                if case .database(let dbName) = dbEntry {
+                                    let dbId = "db:\(dbName)"
+                                    if let schemaChildren = cachedChildren[dbId] {
+                                        for schemaEntry in schemaChildren {
+                                            if case .schema(let s) = schemaEntry {
+                                                for sectionType in SchemaSection.SchemaSectionType.allCases {
+                                                    let secId = "\(s.name).\(sectionType.rawValue)"
+                                                    if secId == item {
+                                                        let children = await loadChildren(for: .schemaSection(SchemaSection(sectionType: sectionType, schema: s.name)), configID: config.id)
+                                                        cachedChildren[item] = children
+                                                    }
+                                                }
+                                                if item.hasPrefix("table:") {
+                                                    let tableChildren = await loadChildren(for: .table(TableInfo(schema: s.name, name: String(item.dropFirst(6)))), configID: config.id)
+                                                    cachedChildren[item] = tableChildren
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    loadingItems.remove(item)
+                }
+            }
+        }
+    }
+
+    private func findSchema(for entry: DBTreeEntry, configID: String) -> String? {
+        if case .column(_, let tableName) = entry {
+            for config in databaseService.connections {
+                let connId = "conn:\(config.id)"
+                if let connChildren = cachedChildren[connId] {
+                    for dbEntry in connChildren {
+                        if case .database = dbEntry {
+                            if let schemaChildren = cachedChildren[dbEntry.id] {
+                                for schemaEntry in schemaChildren {
+                                    if case .schema(let s) = schemaEntry {
+                                        let tablesSectionId = "\(s.name).Tables"
+                                        if let tableChildren = cachedChildren[tablesSectionId] {
+                                            for tableEntry in tableChildren {
+                                                if case .table(let t) = tableEntry, t.name == tableName {
+                                                    return s.name
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return nil
+    }
+
     // MARK: - Helpers
 
     private func iconFor(_ entry: DBTreeEntry) -> String {
@@ -479,7 +763,6 @@ struct DatabaseExplorerView: View {
         case .column(let col, _): return typeSFSymbol(for: col.dataType)
         case .function: return "f.cursive"
         case .procedure: return "gearshape.2"
-        default: return "circle"
         }
     }
 
@@ -529,7 +812,6 @@ struct DatabaseExplorerView: View {
         case .column: return .textTertiary
         case .function: return .accentPurple
         case .procedure: return .accentOrange
-        default: return .textTertiary
         }
     }
 

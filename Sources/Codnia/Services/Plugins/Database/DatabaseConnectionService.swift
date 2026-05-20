@@ -212,6 +212,70 @@ public final class DatabaseConnectionService: ObservableObject {
         return (try? await provider.deleteRow(handle: handle, table: table, primaryKeyValues: primaryKeyValues)) ?? 0
     }
 
+    // MARK: - DDL Operations
+
+    @Published public var schemaVersion: Int = 0
+
+    private func ddlProvider(for configID: String) -> (any DatabaseProvider, String)? {
+        guard let config = config(withID: configID),
+              let provider = providers[config.type],
+              let handle = sessions[configID]?.handleID
+        else { return nil }
+        return (provider, handle)
+    }
+
+    public func fetchTableDDL(configID: String, table: TableID) async -> String {
+        guard let (provider, handle) = ddlProvider(for: configID) else { return "" }
+        return (try? await provider.fetchTableDDL(handle: handle, table: table)) ?? ""
+    }
+
+    public func createTable(configID: String, schema: String, name: String, columns: [NewColumnInfo]) async throws {
+        guard let (provider, handle) = ddlProvider(for: configID) else { throw DatabaseConnectionError.notConnected }
+        try await provider.createTable(handle: handle, schema: schema, name: name, columns: columns)
+        schemaVersion += 1
+    }
+
+    public func dropTable(configID: String, table: TableID, cascade: Bool) async throws {
+        guard let (provider, handle) = ddlProvider(for: configID) else { throw DatabaseConnectionError.notConnected }
+        try await provider.dropTable(handle: handle, table: table, cascade: cascade)
+        schemaVersion += 1
+    }
+
+    public func addColumn(configID: String, table: TableID, column: NewColumnInfo) async throws {
+        guard let (provider, handle) = ddlProvider(for: configID) else { throw DatabaseConnectionError.notConnected }
+        try await provider.addColumn(handle: handle, table: table, column: column)
+        schemaVersion += 1
+    }
+
+    public func dropColumn(configID: String, table: TableID, column: String) async throws {
+        guard let (provider, handle) = ddlProvider(for: configID) else { throw DatabaseConnectionError.notConnected }
+        try await provider.dropColumn(handle: handle, table: table, column: column)
+        schemaVersion += 1
+    }
+
+    public func alterColumn(configID: String, table: TableID, column: String, newName: String? = nil, newType: String? = nil, nullable: Bool? = nil, defaultValue: String? = nil) async throws {
+        guard let (provider, handle) = ddlProvider(for: configID) else { throw DatabaseConnectionError.notConnected }
+        try await provider.alterColumn(handle: handle, table: table, column: column, newName: newName, newType: newType, nullable: nullable, defaultValue: defaultValue)
+        schemaVersion += 1
+    }
+
+    public func fetchIndexes(configID: String, table: TableID) async -> [IndexInfo] {
+        guard let (provider, handle) = ddlProvider(for: configID) else { return [] }
+        return (try? await provider.fetchIndexes(handle: handle, table: table)) ?? []
+    }
+
+    public func createIndex(configID: String, table: TableID, name: String, columns: [String], unique: Bool) async throws {
+        guard let (provider, handle) = ddlProvider(for: configID) else { throw DatabaseConnectionError.notConnected }
+        try await provider.createIndex(handle: handle, table: table, name: name, columns: columns, unique: unique)
+        schemaVersion += 1
+    }
+
+    public func dropIndex(configID: String, indexName: String, table: TableID) async throws {
+        guard let (provider, handle) = ddlProvider(for: configID) else { throw DatabaseConnectionError.notConnected }
+        try await provider.dropIndex(handle: handle, indexName: indexName, table: table)
+        schemaVersion += 1
+    }
+
     // MARK: - Schema Browsing
 
     public func fetchDatabases(configID: String) async -> [DatabaseInfo] {
@@ -287,5 +351,17 @@ public final class DatabaseConnectionService: ObservableObject {
               let data = try? JSONEncoder().encode(connections)
         else { return }
         try? data.write(to: url)
+    }
+}
+
+public enum DatabaseConnectionError: LocalizedError {
+    case notConnected
+    case providerNotFound
+
+    public var errorDescription: String? {
+        switch self {
+        case .notConnected: return "Not connected to database"
+        case .providerNotFound: return "No provider found for database type"
+        }
     }
 }
