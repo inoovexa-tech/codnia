@@ -49,6 +49,7 @@ struct EditorAreaView: View {
             // Query result tab
             if let activeTab = editorVM.currentTab, activeTab.type == .queryResult {
                 QueryResultTabView(tabId: activeTab.id)
+                    .id(activeTab.id)
             }
 
             // Browser tab

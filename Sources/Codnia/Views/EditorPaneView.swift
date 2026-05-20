@@ -83,6 +83,7 @@ struct EditorPaneView: View {
 
             case .queryResult:
                 QueryResultTabView(tabId: tab.id)
+                    .id(tab.id)
 
             case .restApi:
                 RESTApiTabView(
