@@ -9,6 +9,9 @@ final class PostgreSQLProvider: DatabaseProvider, @unchecked Sendable {
 
     private let eventLoopGroup: EventLoopGroup
     private var connections: [String: PostgresConnection] = [:]
+    private var configs: [String: ConnectionConfig] = [:]
+    private var passwords: [String: String] = [:]
+    private var backendPIDs: [String: Int] = [:]
     private let lock = NSLock()
     private let logger = Logger(label: "com.codnia.app.postgresql")
 
@@ -23,6 +26,31 @@ final class PostgreSQLProvider: DatabaseProvider, @unchecked Sendable {
 
     func open(config: ConnectionConfig, password: String) async throws -> String {
         let handle = UUID().uuidString
+        let conn = try await makeConnection(config: config, password: password)
+        lock.withLock {
+            connections[handle] = conn
+            configs[handle] = config
+            passwords[handle] = password
+        }
+        return handle
+    }
+
+    func close(handle: String) async throws {
+        let conn: PostgresConnection? = lock.withLock {
+            let c = connections.removeValue(forKey: handle)
+            configs.removeValue(forKey: handle)
+            passwords.removeValue(forKey: handle)
+            backendPIDs.removeValue(forKey: handle)
+            return c
+        }
+        try await conn?.close()
+    }
+
+    func setBackendPID(handle: String, pid: Int) {
+        lock.withLock { backendPIDs[handle] = pid }
+    }
+
+    private func makeConnection(config: ConnectionConfig, password: String) async throws -> PostgresConnection {
         let tls: PostgresConnection.Configuration.TLS = config.useSSL
             ? .require(try NIOSSLContext(configuration: .makeClientConfiguration()))
             : .disable
@@ -34,23 +62,12 @@ final class PostgreSQLProvider: DatabaseProvider, @unchecked Sendable {
             database: config.database,
             tls: tls
         )
-        let conn = try await PostgresConnection.connect(
+        return try await PostgresConnection.connect(
             on: eventLoopGroup.next(),
             configuration: pgConfig,
             id: 1,
             logger: logger
         )
-        lock.withLock {
-        connections[handle] = conn
-    }
-    return handle
-}
-
-func close(handle: String) async throws {
-    let conn = lock.withLock {
-        connections.removeValue(forKey: handle)
-    }
-        try await conn?.close()
     }
 
     func fetchDatabases(handle: String) async throws -> [DatabaseInfo] {
@@ -122,15 +139,40 @@ func close(handle: String) async throws {
         return rows.map { ProcedureInfo(name: $0[0] ?? "?", schema: schema) }
     }
 
+    func cancel(handle: String) async throws {
+        let info = lock.withLock { (configs: configs[handle], passwords: passwords[handle], pid: backendPIDs[handle]) }
+        guard let config = info.configs, let password = info.passwords, let pid = info.pid else {
+            return
+        }
+        let tempConn = try await makeConnection(config: config, password: password)
+        let tempHandle = UUID().uuidString
+        lock.withLock { connections[tempHandle] = tempConn }
+        defer {
+            let conn = lock.withLock { connections.removeValue(forKey: tempHandle) }
+            Task { try? await conn?.close() }
+        }
+        _ = try await runQuery(handle: tempHandle, sql: "SELECT pg_cancel_backend(\(pid))")
+    }
+
     func execute(handle: String, query sql: String, page: Int, pageSize: Int, orderBy: String?) async throws -> QueryPageResult {
         let start = Date()
+
+        let pid = try await getBackendPID(handle: handle)
+        lock.withLock { backendPIDs[handle] = pid }
+
         let trimmed = sql
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .trimmingCharacters(in: CharacterSet(charactersIn: ";"))
         let upper = trimmed.uppercased()
 
         guard upper.hasPrefix("SELECT") || upper.hasPrefix("WITH") || upper.hasPrefix("VALUES") || upper.hasPrefix("TABLE") else {
-            let _ = try await runQuery(handle: handle, sql: trimmed)
+            do {
+                _ = try await runQuery(handle: handle, sql: trimmed)
+            } catch {
+                let _ = lock.withLock { backendPIDs.removeValue(forKey: handle) }
+                throw error
+            }
+            let _ = lock.withLock { backendPIDs.removeValue(forKey: handle) }
             let elapsed = Date().timeIntervalSince(start)
             return QueryPageResult(
                 columns: ["Result"],
@@ -148,6 +190,7 @@ func close(handle: String) async throws {
         do {
             countRows = try await runQuery(handle: handle, sql: countSQL)
         } catch {
+            let _ = lock.withLock { backendPIDs.removeValue(forKey: handle) }
             let elapsed = Date().timeIntervalSince(start)
             return QueryPageResult(
                 columns: [],
@@ -193,6 +236,7 @@ func close(handle: String) async throws {
                 rows.append(rowData)
             }
         } catch {
+            let _ = lock.withLock { backendPIDs.removeValue(forKey: handle) }
             let elapsed = Date().timeIntervalSince(start)
             return QueryPageResult(
                 columns: columns,
@@ -206,8 +250,10 @@ func close(handle: String) async throws {
             )
         }
 
+        let _ = lock.withLock { backendPIDs.removeValue(forKey: handle) }
+
         let elapsed = Date().timeIntervalSince(start)
-        
+
         return QueryPageResult(
             columns: columns,
             columnTypes: columnTypes,
@@ -261,6 +307,16 @@ func close(handle: String) async throws {
         let whereClause = primaryKeyValues.map { "\"\(escapeIdentifier($0.column))\" = \(escapeValue($0.value))" }.joined(separator: " AND ")
         let sql = "DELETE FROM \"\(escapeIdentifier(table.schema))\".\"\(escapeIdentifier(table.table))\" WHERE \(whereClause)"
         return try await runMutation(handle: handle, sql: sql)
+    }
+
+    private func getBackendPID(handle: String) async throws -> Int {
+        let conn = try connection(for: handle)
+        let result = try await conn.query("SELECT pg_backend_pid()", logger: logger)
+        for try await row in result {
+            let access = row.makeRandomAccess()
+            return try access[0].decode(Int.self)
+        }
+        throw DatabaseError.notConnected
     }
 
     // MARK: - Helpers

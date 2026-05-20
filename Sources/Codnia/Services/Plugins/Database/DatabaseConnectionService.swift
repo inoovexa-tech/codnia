@@ -108,6 +108,49 @@ public final class DatabaseConnectionService: ObservableObject {
         KeychainHelper.get(account: configID)
     }
 
+    // MARK: - Cancel Execution
+
+    public func cancelExecution(configID: String) async {
+        guard let config = config(withID: configID),
+              let provider = providers[config.type],
+              let handle = sessions[configID]?.handleID
+        else { return }
+        try? await provider.cancel(handle: handle)
+    }
+
+    public func setBackendPID(configID: String, pid: Int) {
+        guard let config = config(withID: configID),
+              let provider = providers[config.type],
+              let handle = sessions[configID]?.handleID
+        else { return }
+        provider.setBackendPID(handle: handle, pid: pid)
+    }
+
+    // MARK: - Explain
+
+    public func executeExplain(configID: String, sql: String) async -> QueryPageResult {
+        guard let config = config(withID: configID),
+              let provider = providers[config.type],
+              let handle = sessions[configID]?.handleID
+        else {
+            return QueryPageResult(
+                columns: [], rows: [], totalCount: 0,
+                page: 0, pageSize: 1,
+                error: "Not connected"
+            )
+        }
+        let explainSQL = "EXPLAIN (ANALYZE, COSTS, VERBOSE, BUFFERS, FORMAT JSON) \(sql)"
+        do {
+            return try await provider.execute(handle: handle, query: explainSQL, page: 0, pageSize: 1000, orderBy: nil)
+        } catch {
+            return QueryPageResult(
+                columns: [], rows: [], totalCount: 0,
+                page: 0, pageSize: 1,
+                error: error.localizedDescription
+            )
+        }
+    }
+
     // MARK: - Query Execution
 
     public func execute(configID: String, sql: String, page: Int = 0, pageSize: Int = 100, orderBy: String? = nil) async -> QueryPageResult {

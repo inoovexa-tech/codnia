@@ -19,4 +19,9 @@ public protocol DatabaseProvider: AnyObject, Sendable {
     func updateRow(handle: String, table: TableID, set: [(column: String, value: String?)], primaryKeyValues: [(column: String, value: String?)]) async throws -> Int
     func insertRow(handle: String, table: TableID, columns: [String], values: [String?]) async throws -> [String: String?]?
     func deleteRow(handle: String, table: TableID, primaryKeyValues: [(column: String, value: String?)]) async throws -> Int
+
+    // MARK: - Cancellation
+
+    func cancel(handle: String) async throws
+    func setBackendPID(handle: String, pid: Int)
 }

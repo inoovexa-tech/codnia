@@ -26,6 +26,7 @@ public final class EditorViewModel: ObservableObject {
     @Published public var querySql: [String: String] = [:]
     @Published public var browserURLs: [String: String] = [:]
     @Published public var browserTitles: [String: String] = [:]
+    @Published var queryHistory: [QueryHistoryItem] = []
     private var autoSaveTimer: AnyCancellable?
     private var markdownPreviewTabs: Set<String> = []
     private var htmlPreviewTabs: Set<String> = []
@@ -460,6 +461,22 @@ public final class EditorViewModel: ObservableObject {
         var updated = queryResults
         updated[tabId] = result
         queryResults = updated
+    }
+
+    public func addQueryHistory(sql: String, connectionName: String, duration: TimeInterval, rowCount: Int, isError: Bool) {
+        let item = QueryHistoryItem(
+            id: UUID(),
+            sql: sql,
+            timestamp: Date(),
+            connectionName: connectionName,
+            duration: duration,
+            rowCount: rowCount,
+            isError: isError
+        )
+        queryHistory.insert(item, at: 0)
+        if queryHistory.count > 200 {
+            queryHistory = Array(queryHistory.prefix(200))
+        }
     }
 
     public func activateTab(_ id: String) {

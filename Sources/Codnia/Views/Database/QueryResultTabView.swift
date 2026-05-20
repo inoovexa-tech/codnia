@@ -22,6 +22,10 @@ struct QueryResultTabView: View {
     @State private var stagedNewRows: [StagedNewRow] = []
     @State private var stagedDeletions: Set<Int> = []
     @State private var applyError: String?
+    @State private var executingTask: Task<Void, Never>? = nil
+    @State private var showHistory = false
+    @State private var explainResult: String? = nil
+    @State private var showExplain = false
 
     private var connectedConfigs: [ConnectionConfig] {
         databaseService.connections.filter {
@@ -48,6 +52,13 @@ struct QueryResultTabView: View {
         return min(max(56, CGFloat(total) * 20 + 12), editorMaxHeight)
     }
 
+    private var currentConnectionName: String {
+        guard let id = selectedConnectionId,
+              let config = databaseService.config(withID: id)
+        else { return "Unknown" }
+        return config.name
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             toolbar
@@ -60,44 +71,52 @@ struct QueryResultTabView: View {
             Divider()
 
             if let result = editorVM.queryResults[tabId] {
-                PaginatedDataGridView(
-                    columns: result.columns,
-                    columnTypes: result.columnTypes,
-                    rows: result.rows,
-                    page: result.page,
-                    pageSize: result.pageSize,
-                    totalCount: result.totalCount,
-                    executionTime: result.executionTime,
-                    error: applyError ?? result.error,
-                    isLoading: isExecuting,
-                    sortColumn: sortColumn,
-                    sortAscending: sortAscending,
-                    onPageChange: { newPage, newPageSize in
-                        selectedRow = nil
-                        currentPageSize = newPageSize
-                        executeQuery(page: newPage, pageSize: newPageSize, sortColumn: sortColumn, sortAscending: sortAscending)
-                    },
-                    onSortChange: { col, asc in
-                        selectedRow = nil
-                        sortColumn = col
-                        sortAscending = asc
-                        executeQuery(page: 0, pageSize: currentPageSize, sortColumn: col, sortAscending: asc)
-                    },
-                    isEditable: isTableEditable,
-                    selectedRow: $selectedRow,
-                    stagedEdits: $stagedEdits,
-                    stagedNewRows: $stagedNewRows,
-                    stagedDeletions: $stagedDeletions,
-                    onApplyChanges: { applyChanges() },
-                    onDiscardChanges: {
-                        stagedEdits = [:]
-                        stagedNewRows = []
-                        stagedDeletions = []
-                        applyError = nil
-                    }
-                )
+                if showExplain, let explain = explainResult {
+                    explainResultView(explain)
+                } else {
+                    PaginatedDataGridView(
+                        columns: result.columns,
+                        columnTypes: result.columnTypes,
+                        rows: result.rows,
+                        page: result.page,
+                        pageSize: result.pageSize,
+                        totalCount: result.totalCount,
+                        executionTime: result.executionTime,
+                        error: applyError ?? result.error,
+                        isLoading: isExecuting,
+                        sortColumn: sortColumn,
+                        sortAscending: sortAscending,
+                        onPageChange: { newPage, newPageSize in
+                            selectedRow = nil
+                            currentPageSize = newPageSize
+                            executeQuery(page: newPage, pageSize: newPageSize, sortColumn: sortColumn, sortAscending: sortAscending)
+                        },
+                        onSortChange: { col, asc in
+                            selectedRow = nil
+                            sortColumn = col
+                            sortAscending = asc
+                            executeQuery(page: 0, pageSize: currentPageSize, sortColumn: col, sortAscending: asc)
+                        },
+                        isEditable: isTableEditable,
+                        selectedRow: $selectedRow,
+                        stagedEdits: $stagedEdits,
+                        stagedNewRows: $stagedNewRows,
+                        stagedDeletions: $stagedDeletions,
+                        onApplyChanges: { applyChanges() },
+                        onDiscardChanges: {
+                            stagedEdits = [:]
+                            stagedNewRows = []
+                            stagedDeletions = []
+                            applyError = nil
+                        }
+                    )
+                }
             } else {
                 emptyResultState
+            }
+
+            if showHistory {
+                historyPanel
             }
         }
         .onAppear {
@@ -139,29 +158,18 @@ struct QueryResultTabView: View {
             Spacer()
 
             HStack(spacing: 4) {
-                if isExecuting || isApplying {
-                    ProgressView()
-                        .scaleEffect(0.6)
-                        .frame(width: 14, height: 14)
+                if isExecuting {
+                    cancelButton
+                } else {
+                    explainButton
+
+                    runButton
                 }
 
-                Button(action: { executeQuery() }) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "play.fill")
-                            .font(.system(size: 11))
-                        Text("Run")
-                            .font(.system(size: 12, weight: .medium))
-                    }
-                    .foregroundColor(.accentGreen)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .background(Color.accentGreen.opacity(0.1))
-                    .cornerRadius(4)
-                }
-                .buttonStyle(PlainButtonStyle())
-                .keyboardShortcut(.return, modifiers: .command)
-                .disabled(isExecuting || selectedConnectionId == nil)
+                exportMenu
             }
+
+            historyToggle
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
@@ -170,6 +178,111 @@ struct QueryResultTabView: View {
             Rectangle().frame(height: 1).foregroundColor(.borderDefault),
             alignment: .bottom
         )
+    }
+
+    private var runButton: some View {
+        Button(action: { executeQuery() }) {
+            HStack(spacing: 4) {
+                Image(systemName: "play.fill")
+                    .font(.system(size: 11))
+                Text("Run")
+                    .font(.system(size: 12, weight: .medium))
+            }
+            .foregroundColor(.accentGreen)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .background(Color.accentGreen.opacity(0.1))
+            .cornerRadius(4)
+        }
+        .buttonStyle(PlainButtonStyle())
+        .keyboardShortcut(.return, modifiers: .command)
+        .disabled(isExecuting || selectedConnectionId == nil)
+    }
+
+    private var explainButton: some View {
+        Button(action: { executeExplain() }) {
+            HStack(spacing: 4) {
+                Image(systemName: "chart.bar.doc.horizontal")
+                    .font(.system(size: 11))
+                Text("Explain")
+                    .font(.system(size: 12, weight: .medium))
+            }
+            .foregroundColor(.accentYellow)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .background(Color.accentYellow.opacity(0.1))
+            .cornerRadius(4)
+        }
+        .buttonStyle(PlainButtonStyle())
+        .disabled(isExecuting || selectedConnectionId == nil)
+    }
+
+    private var cancelButton: some View {
+        Button(action: { cancelQuery() }) {
+            HStack(spacing: 4) {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 11))
+                Text("Cancel")
+                    .font(.system(size: 12, weight: .medium))
+            }
+            .foregroundColor(.accentRed)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .background(Color.accentRed.opacity(0.1))
+            .cornerRadius(4)
+        }
+        .buttonStyle(PlainButtonStyle())
+        .keyboardShortcut(.escape, modifiers: [])
+    }
+
+    private var exportMenu: some View {
+        Menu {
+            Button(action: { copyAsCSV() }) {
+                Label("Copy as CSV", systemImage: "doc.on.clipboard")
+            }
+            Button(action: { copyAsJSON() }) {
+                Label("Copy as JSON", systemImage: "doc.on.clipboard")
+            }
+            Divider()
+            Button(action: { saveAsCSV() }) {
+                Label("Save as CSV...", systemImage: "doc")
+            }
+            Button(action: { saveAsJSON() }) {
+                Label("Save as JSON...", systemImage: "doc")
+            }
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: "square.and.arrow.up")
+                    .font(.system(size: 11))
+                Text("Export")
+                    .font(.system(size: 12, weight: .medium))
+            }
+            .foregroundColor(.textSecondary)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .background(Color.bgHover)
+            .cornerRadius(4)
+        }
+        .menuStyle(BorderlessButtonMenuStyle())
+        .buttonStyle(PlainButtonStyle())
+        .disabled(editorVM.queryResults[tabId] == nil || editorVM.queryResults[tabId]?.columns.isEmpty == true)
+    }
+
+    private var historyToggle: some View {
+        Button(action: { showHistory.toggle() }) {
+            HStack(spacing: 4) {
+                Image(systemName: showHistory ? "clock.fill" : "clock")
+                    .font(.system(size: 11))
+                Text("History")
+                    .font(.system(size: 12, weight: .medium))
+            }
+            .foregroundColor(showHistory ? .accentBlue : .textSecondary)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .background(showHistory ? Color.accentBlue.opacity(0.1) : Color.bgHover)
+            .cornerRadius(4)
+        }
+        .buttonStyle(PlainButtonStyle())
     }
 
     private var connectionPicker: some View {
@@ -222,6 +335,128 @@ struct QueryResultTabView: View {
         case .disconnected: return .textTertiary
         case .error: return .accentRed
         }
+    }
+
+    // MARK: - Explain Result View
+
+    private func explainResultView(_ text: String) -> some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text("Execution Plan")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.textSecondary)
+                Spacer()
+                Button(action: { showExplain = false }) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 10))
+                        .foregroundColor(.textTertiary)
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+
+            ScrollView([.horizontal, .vertical]) {
+                Text(text)
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundColor(.textPrimary)
+                    .padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .background(Color.bgPrimary)
+        }
+    }
+
+    // MARK: - History Panel
+
+    private var historyPanel: some View {
+        VStack(spacing: 0) {
+            Divider()
+            HStack {
+                Text("Query History")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.textSecondary)
+                Spacer()
+                Text("\(editorVM.queryHistory.count)")
+                    .font(.system(size: 10))
+                    .foregroundColor(.textTertiary)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(Color.bgSecondary)
+
+            if editorVM.queryHistory.isEmpty {
+                VStack(spacing: 4) {
+                    Text("No queries yet")
+                        .font(.system(size: 11))
+                        .foregroundColor(.textTertiary)
+                }
+                .padding(.vertical, 16)
+                .frame(maxWidth: .infinity)
+            } else {
+                List {
+                    ForEach(editorVM.queryHistory) { item in
+                        historyRow(item)
+                    }
+                }
+                .listStyle(.plain)
+                .frame(height: min(CGFloat(editorVM.queryHistory.count) * 44, 200))
+            }
+        }
+    }
+
+    private func historyRow(_ item: QueryHistoryItem) -> some View {
+        Button(action: {
+            sql = item.sql
+            editorVM.querySql[tabId] = item.sql
+            showHistory = false
+        }) {
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(item.isError ? Color.accentRed : Color.accentGreen)
+                    .frame(width: 6, height: 6)
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(item.sql.replacingOccurrences(of: "\n", with: " "))
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundColor(.textPrimary)
+                        .lineLimit(1)
+
+                    HStack(spacing: 6) {
+                        Text(item.connectionName)
+                            .font(.system(size: 9))
+                            .foregroundColor(.textTertiary)
+                        Text(formattedTimestamp(item.timestamp))
+                            .font(.system(size: 9))
+                            .foregroundColor(.textTertiary)
+                        Text(String(format: "%.0fms", item.duration * 1000))
+                            .font(.system(size: 9))
+                            .foregroundColor(.textTertiary)
+                        if item.rowCount > 0 {
+                            Text("\(item.rowCount) rows")
+                                .font(.system(size: 9))
+                                .foregroundColor(.textTertiary)
+                        }
+                    }
+                }
+
+                Spacer()
+
+                Image(systemName: "arrow.up.doc.on.clipboard")
+                    .font(.system(size: 9))
+                    .foregroundColor(.textTertiary)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+
+    private func formattedTimestamp(_ date: Date) -> String {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm:ss"
+        return f.string(from: date)
     }
 
     // MARK: - SQL Editor
@@ -315,7 +550,6 @@ struct QueryResultTabView: View {
             let pkCols = await databaseService.fetchPrimaryKeyColumns(configID: connectionId, table: tableId)
             var updatedRows = result.rows
 
-            // 1. Process deletions (from highest index to lowest to preserve indices)
             for rowIdx in stagedDeletions.sorted().reversed() {
                 guard rowIdx < updatedRows.count else { continue }
                 let row = updatedRows[rowIdx]
@@ -332,7 +566,6 @@ struct QueryResultTabView: View {
                 }
             }
 
-            // 2. Process updates (apply edits to local rows)
             let editedRowIndices = Set(stagedEdits.keys.compactMap { key -> Int? in
                 let parts = key.split(separator: ":")
                 guard parts.count == 2, let row = Int(parts[0]) else { return nil }
@@ -361,7 +594,6 @@ struct QueryResultTabView: View {
                 if setValues.isEmpty { continue }
                 let affected = await databaseService.updateRow(configID: connectionId, table: tableId, set: setValues, primaryKeyValues: pkValues)
 
-                // Update local row on success
                 if affected > 0 {
                     var mutatedRow = updatedRows[rowIdx]
                     for colIdx in 0..<result.columns.count {
@@ -376,7 +608,6 @@ struct QueryResultTabView: View {
                 }
             }
 
-            // 3. Process new rows — insert and capture RETURNING values
             var insertFailed = false
             for newRow in stagedNewRows {
                 var insertCols: [String] = []
@@ -411,7 +642,6 @@ struct QueryResultTabView: View {
                 return
             }
 
-            // Clear staged changes
             stagedEdits = [:]
             stagedNewRows = []
             stagedDeletions = []
@@ -444,14 +674,110 @@ struct QueryResultTabView: View {
         }
 
         isExecuting = true
+        showExplain = false
+        explainResult = nil
 
-        Task { @MainActor in
+        let task = Task { @MainActor in
+            let start = Date()
             let result = await databaseService.execute(configID: connectionId, sql: query, page: page, pageSize: pageSize, orderBy: orderBy)
+            let duration = Date().timeIntervalSince(start)
+
+            guard !Task.isCancelled else {
+                isExecuting = false
+                return
+            }
+
             editorVM.setQueryResult(result, forTab: tabId)
             editorVM.activeTabId = tabId
 
+            editorVM.addQueryHistory(
+                sql: query,
+                connectionName: currentConnectionName,
+                duration: duration,
+                rowCount: result.rows.count,
+                isError: result.error != nil
+            )
+
             isExecuting = false
+            executingTask = nil
         }
+
+        executingTask = task
+    }
+
+    private func cancelQuery() {
+        executingTask?.cancel()
+        executingTask = nil
+        isExecuting = false
+
+        guard let connectionId = selectedConnectionId else { return }
+        Task {
+            await databaseService.cancelExecution(configID: connectionId)
+        }
+    }
+
+    private func executeExplain() {
+        guard let connectionId = selectedConnectionId else { return }
+
+        let query: String
+        if !selectedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            query = selectedText
+        } else if !sql.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            query = sql
+        } else {
+            return
+        }
+
+        isExecuting = true
+        showExplain = false
+        explainResult = nil
+
+        let task = Task { @MainActor in
+            let start = Date()
+            let result = await databaseService.executeExplain(configID: connectionId, sql: query)
+            let duration = Date().timeIntervalSince(start)
+
+            guard !Task.isCancelled else {
+                isExecuting = false
+                return
+            }
+
+            if result.error != nil {
+                editorVM.setQueryResult(result, forTab: tabId)
+            } else if !result.rows.isEmpty {
+                let jsonText = result.rows.compactMap { row -> String? in
+                    guard let first = row.first else { return nil }
+                    return first
+                }.joined(separator: "\n")
+                let formatted = formatExplainJSON(jsonText)
+                explainResult = formatted
+                showExplain = true
+            }
+
+            editorVM.addQueryHistory(
+                sql: "EXPLAIN \(query)",
+                connectionName: currentConnectionName,
+                duration: duration,
+                rowCount: result.rows.count,
+                isError: result.error != nil
+            )
+
+            isExecuting = false
+            executingTask = nil
+        }
+
+        executingTask = task
+    }
+
+    private func formatExplainJSON(_ text: String) -> String {
+        guard let data = text.data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: data),
+              let prettyData = try? JSONSerialization.data(withJSONObject: json, options: [.prettyPrinted, .withoutEscapingSlashes]),
+              let pretty = String(data: prettyData, encoding: .utf8)
+        else {
+            return text
+        }
+        return pretty
     }
 
     private func reexecuteQuery() {
@@ -477,5 +803,74 @@ struct QueryResultTabView: View {
         } else if databaseService.connections.count == 1 {
             selectedConnectionId = databaseService.connections[0].id
         }
+    }
+
+    // MARK: - Export
+
+    private func copyAsCSV() {
+        guard let result = editorVM.queryResults[tabId] else { return }
+        let csv = generateCSV(columns: result.columns, rows: result.rows)
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(csv, forType: .string)
+    }
+
+    private func copyAsJSON() {
+        guard let result = editorVM.queryResults[tabId] else { return }
+        let json = generateJSON(columns: result.columns, rows: result.rows)
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(json, forType: .string)
+    }
+
+    private func saveAsCSV() {
+        guard let result = editorVM.queryResults[tabId] else { return }
+        let csv = generateCSV(columns: result.columns, rows: result.rows)
+        saveToFile(content: csv, filename: "query_result.csv")
+    }
+
+    private func saveAsJSON() {
+        guard let result = editorVM.queryResults[tabId] else { return }
+        let json = generateJSON(columns: result.columns, rows: result.rows)
+        saveToFile(content: json, filename: "query_result.json")
+    }
+
+    private func generateCSV(columns: [String], rows: [[String?]]) -> String {
+        var csv = columns.map { escapeCSV($0) }.joined(separator: ",") + "\n"
+        for row in rows {
+            csv += row.map { escapeCSV($0 ?? "") }.joined(separator: ",") + "\n"
+        }
+        return csv
+    }
+
+    private func escapeCSV(_ value: String) -> String {
+        if value.contains(",") || value.contains("\"") || value.contains("\n") || value.contains("\r") {
+            return "\"\(value.replacingOccurrences(of: "\"", with: "\"\""))\""
+        }
+        return value
+    }
+
+    private func generateJSON(columns: [String], rows: [[String?]]) -> String {
+        let objects: [[String: String?]] = rows.map { row in
+            var dict: [String: String?] = [:]
+            for (i, col) in columns.enumerated() {
+                dict[col] = i < row.count ? row[i] : nil
+            }
+            return dict
+        }
+        guard let data = try? JSONSerialization.data(withJSONObject: objects, options: [.prettyPrinted, .withoutEscapingSlashes]),
+              let json = String(data: data, encoding: .utf8)
+        else { return "[]" }
+        return json
+    }
+
+    private func saveToFile(content: String, filename: String) {
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = filename
+        panel.canCreateDirectories = true
+        NSApp.activate(ignoringOtherApps: true)
+        let response = panel.runModal()
+        if response == .OK, let url = panel.url {
+            try? content.write(to: url, atomically: true, encoding: .utf8)
+        }
+        panel.close()
     }
 }
