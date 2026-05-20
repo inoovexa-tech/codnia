@@ -12,4 +12,11 @@ public protocol DatabaseProvider: AnyObject, Sendable {
     func fetchFunctions(handle: String, schema: String) async throws -> [FunctionInfo]
     func fetchProcedures(handle: String, schema: String) async throws -> [ProcedureInfo]
     func execute(handle: String, query: String, page: Int, pageSize: Int, orderBy: String?) async throws -> QueryPageResult
+
+    // MARK: - DML
+
+    func fetchPrimaryKeyColumns(handle: String, table: TableID) async throws -> [String]
+    func updateRow(handle: String, table: TableID, set: [(column: String, value: String?)], primaryKeyValues: [(column: String, value: String?)]) async throws -> Int
+    func insertRow(handle: String, table: TableID, columns: [String], values: [String?]) async throws -> [String: String?]?
+    func deleteRow(handle: String, table: TableID, primaryKeyValues: [(column: String, value: String?)]) async throws -> Int
 }

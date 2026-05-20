@@ -38,6 +38,9 @@
     cp .build/release/Codnia_Codnia.bundle/icon.icns /tmp/Codnia-v<version>/Codnia.app/Contents/Resources/
     cp Info.plist /tmp/Codnia-v<version>/Codnia.app/Contents/
 
+    # Add rpath so Sparkle is found in Contents/Frameworks/ at runtime
+    install_name_tool -add_rpath @loader_path/../Frameworks /tmp/Codnia-v<version>/Codnia.app/Contents/MacOS/Codnia
+
     # Copy and sign Sparkle framework
     SPARKLE_SOURCE=".build/artifacts/sparkle/Sparkle.xcframework/macos-arm64_x86_64/Sparkle.framework"
     cp -R "$SPARKLE_SOURCE" /tmp/Codnia-v<version>/Codnia.app/Contents/Frameworks/

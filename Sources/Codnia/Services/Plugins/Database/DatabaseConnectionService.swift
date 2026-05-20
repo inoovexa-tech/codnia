@@ -135,6 +135,40 @@ public final class DatabaseConnectionService: ObservableObject {
         }
     }
 
+    // MARK: - DML Operations
+
+    public func fetchPrimaryKeyColumns(configID: String, table: TableID) async -> [String] {
+        guard let config = config(withID: configID),
+              let provider = providers[config.type],
+              let handle = sessions[configID]?.handleID
+        else { return [] }
+        return (try? await provider.fetchPrimaryKeyColumns(handle: handle, table: table)) ?? []
+    }
+
+    public func updateRow(configID: String, table: TableID, set: [(column: String, value: String?)], primaryKeyValues: [(column: String, value: String?)]) async -> Int {
+        guard let config = config(withID: configID),
+              let provider = providers[config.type],
+              let handle = sessions[configID]?.handleID
+        else { return 0 }
+        return (try? await provider.updateRow(handle: handle, table: table, set: set, primaryKeyValues: primaryKeyValues)) ?? 0
+    }
+
+    public func insertRow(configID: String, table: TableID, columns: [String], values: [String?]) async -> [String: String?]? {
+        guard let config = config(withID: configID),
+              let provider = providers[config.type],
+              let handle = sessions[configID]?.handleID
+        else { return nil }
+        return try? await provider.insertRow(handle: handle, table: table, columns: columns, values: values)
+    }
+
+    public func deleteRow(configID: String, table: TableID, primaryKeyValues: [(column: String, value: String?)]) async -> Int {
+        guard let config = config(withID: configID),
+              let provider = providers[config.type],
+              let handle = sessions[configID]?.handleID
+        else { return 0 }
+        return (try? await provider.deleteRow(handle: handle, table: table, primaryKeyValues: primaryKeyValues)) ?? 0
+    }
+
     // MARK: - Schema Browsing
 
     public func fetchDatabases(configID: String) async -> [DatabaseInfo] {

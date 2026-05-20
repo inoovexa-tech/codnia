@@ -9,6 +9,7 @@ struct QueryResultTabView: View {
     @State private var sql: String = ""
     @State private var selectedText: String = ""
     @State private var isExecuting = false
+    @State private var isApplying = false
     @State private var selectedConnectionId: String?
     @State private var showConnectionPicker = false
     @State private var editorHeight: CGFloat = 56
@@ -16,11 +17,28 @@ struct QueryResultTabView: View {
     @State private var sortColumn: String? = nil
     @State private var sortAscending: Bool = true
     @State private var currentPageSize: Int = 100
+    @State private var selectedRow: Int?
+    @State private var stagedEdits: [String: String] = [:]
+    @State private var stagedNewRows: [[String?]] = []
+    @State private var stagedDeletions: Set<Int> = []
+    @State private var applyError: String?
 
     private var connectedConfigs: [ConnectionConfig] {
         databaseService.connections.filter {
             databaseService.state(for: $0.id).isConnected
         }
+    }
+
+    private var tableId: TableID? {
+        guard let tab = editorVM.tabs.first(where: { $0.id == tabId }),
+              let schema = tab.queryTableSchema,
+              let table = tab.queryTableName
+        else { return nil }
+        return TableID(schema: schema, table: table)
+    }
+
+    private var isTableEditable: Bool {
+        tableId != nil && selectedConnectionId != nil
     }
 
     private var computedEditorHeight: CGFloat {
@@ -50,18 +68,32 @@ struct QueryResultTabView: View {
                     pageSize: result.pageSize,
                     totalCount: result.totalCount,
                     executionTime: result.executionTime,
-                    error: result.error,
+                    error: applyError ?? result.error,
                     isLoading: isExecuting,
                     sortColumn: sortColumn,
                     sortAscending: sortAscending,
                     onPageChange: { newPage, newPageSize in
+                        selectedRow = nil
                         currentPageSize = newPageSize
                         executeQuery(page: newPage, pageSize: newPageSize, sortColumn: sortColumn, sortAscending: sortAscending)
                     },
                     onSortChange: { col, asc in
+                        selectedRow = nil
                         sortColumn = col
                         sortAscending = asc
                         executeQuery(page: 0, pageSize: currentPageSize, sortColumn: col, sortAscending: asc)
+                    },
+                    isEditable: isTableEditable,
+                    selectedRow: $selectedRow,
+                    stagedEdits: $stagedEdits,
+                    stagedNewRows: $stagedNewRows,
+                    stagedDeletions: $stagedDeletions,
+                    onApplyChanges: { applyChanges() },
+                    onDiscardChanges: {
+                        stagedEdits = [:]
+                        stagedNewRows = []
+                        stagedDeletions = []
+                        applyError = nil
                     }
                 )
             } else {
@@ -87,10 +119,27 @@ struct QueryResultTabView: View {
         HStack(spacing: 8) {
             connectionPicker
 
+            if isTableEditable {
+                Button(action: addNewRow) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "plus.square")
+                            .font(.system(size: 11))
+                        Text("Add Row")
+                            .font(.system(size: 12, weight: .medium))
+                    }
+                    .foregroundColor(.accentGreen)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(Color.accentGreen.opacity(0.1))
+                    .cornerRadius(4)
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+
             Spacer()
 
             HStack(spacing: 4) {
-                if isExecuting {
+                if isExecuting || isApplying {
                     ProgressView()
                         .scaleEffect(0.6)
                         .frame(width: 14, height: 14)
@@ -219,6 +268,149 @@ struct QueryResultTabView: View {
         .background(Color.bgPrimary)
     }
 
+    // MARK: - Staged Operations
+
+    private func addNewRow() {
+        guard let result = editorVM.queryResults[tabId] else { return }
+        var row: [String?] = Array(repeating: nil, count: result.columns.count)
+        for i in 0..<min(result.columns.count, result.columnTypes.count) {
+            let colName = result.columns[i].lowercased()
+            let colType = result.columnTypes[i].lowercased()
+            let isSerial = colType.contains("serial")
+            let isUUID = colType.contains("uuid")
+            let isId = colName == "id" || colName.hasSuffix("_id") || colName == "codigo" || colName == "cod"
+            let isDate = colType.contains("date") || colType.contains("timestamp") || colType.contains("timestamptz")
+            if isSerial || isUUID || isId {
+                row[i] = "[auto]"
+            } else if isDate {
+                let now = Date()
+                if colType.contains("timestamp") || colType.contains("timestamptz") {
+                    let f = ISO8601DateFormatter()
+                    f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+                    row[i] = f.string(from: now)
+                } else if colType.contains("date") {
+                    let f = DateFormatter()
+                    f.dateFormat = "yyyy-MM-dd"
+                    row[i] = f.string(from: now)
+                } else {
+                    let f = DateFormatter()
+                    f.dateFormat = "HH:mm:ss"
+                    row[i] = f.string(from: now)
+                }
+            }
+        }
+        stagedNewRows.append(row)
+    }
+
+    private func applyChanges() {
+        guard let tableId = tableId,
+              let connectionId = selectedConnectionId,
+              let result = editorVM.queryResults[tabId]
+        else { return }
+
+        isApplying = true
+        applyError = nil
+
+        Task { @MainActor in
+            let pkCols = await databaseService.fetchPrimaryKeyColumns(configID: connectionId, table: tableId)
+            var updatedRows = result.rows
+
+            // 1. Process deletions (from highest index to lowest to preserve indices)
+            for rowIdx in stagedDeletions.sorted().reversed() {
+                guard rowIdx < updatedRows.count else { continue }
+                let row = updatedRows[rowIdx]
+                var pkValues: [(column: String, value: String?)] = []
+                for pk in pkCols {
+                    if let pkIdx = result.columns.firstIndex(of: pk) {
+                        pkValues.append((pk, pkIdx < row.count ? row[pkIdx] : nil))
+                    }
+                }
+                if pkValues.isEmpty { continue }
+                let affected = await databaseService.deleteRow(configID: connectionId, table: tableId, primaryKeyValues: pkValues)
+                if affected > 0 {
+                    updatedRows.remove(at: rowIdx)
+                }
+            }
+
+            // 2. Process updates (apply edits to local rows)
+            let editedRowIndices = Set(stagedEdits.keys.compactMap { key -> Int? in
+                let parts = key.split(separator: ":")
+                guard parts.count == 2, let row = Int(parts[0]) else { return nil }
+                return row
+            })
+
+            for rowIdx in editedRowIndices {
+                guard rowIdx < updatedRows.count else { continue }
+                let oldRow = updatedRows[rowIdx]
+
+                var pkValues: [(column: String, value: String?)] = []
+                for pk in pkCols {
+                    if let pkIdx = result.columns.firstIndex(of: pk) {
+                        pkValues.append((pk, pkIdx < oldRow.count ? oldRow[pkIdx] : nil))
+                    }
+                }
+                if pkValues.isEmpty { continue }
+
+                var setValues: [(column: String, value: String?)] = []
+                for colIdx in 0..<result.columns.count {
+                    let key = "\(rowIdx):\(colIdx)"
+                    if let newVal = stagedEdits[key] {
+                        setValues.append((result.columns[colIdx], newVal.isEmpty ? nil : newVal))
+                    }
+                }
+                if setValues.isEmpty { continue }
+                let affected = await databaseService.updateRow(configID: connectionId, table: tableId, set: setValues, primaryKeyValues: pkValues)
+
+                // Update local row on success
+                if affected > 0 {
+                    var mutatedRow = updatedRows[rowIdx]
+                    for colIdx in 0..<result.columns.count {
+                        let key = "\(rowIdx):\(colIdx)"
+                        if let newVal = stagedEdits[key] {
+                            if colIdx < mutatedRow.count {
+                                mutatedRow[colIdx] = newVal.isEmpty ? nil : newVal
+                            }
+                        }
+                    }
+                    updatedRows[rowIdx] = mutatedRow
+                }
+            }
+
+            // 3. Process new rows — insert and capture RETURNING values
+            for newRow in stagedNewRows {
+                var insertCols: [String] = []
+                var insertVals: [String?] = []
+                for colIdx in 0..<result.columns.count {
+                    let val = colIdx < newRow.count ? newRow[colIdx] : nil
+                    if val == "[auto]" { continue }
+                    insertCols.append(result.columns[colIdx])
+                    insertVals.append(val)
+                }
+                guard !insertCols.isEmpty else { continue }
+
+                if let inserted = await databaseService.insertRow(configID: connectionId, table: tableId, columns: insertCols, values: insertVals) {
+                    var completeRow: [String?] = Array(repeating: nil, count: result.columns.count)
+                    for (colName, val) in inserted {
+                        if let idx = result.columns.firstIndex(of: colName) {
+                            completeRow[idx] = val
+                        }
+                    }
+                    updatedRows.append(completeRow)
+                }
+            }
+
+            // Clear staged changes
+            stagedEdits = [:]
+            stagedNewRows = []
+            stagedDeletions = []
+            selectedRow = nil
+
+            isApplying = false
+
+            reexecuteQuery()
+        }
+    }
+
     // MARK: - Actions
 
     private func executeQuery(page: Int = 0, pageSize: Int = 100, sortColumn: String? = nil, sortAscending: Bool = true) {
@@ -246,10 +438,12 @@ struct QueryResultTabView: View {
             editorVM.setQueryResult(result, forTab: tabId)
             editorVM.activeTabId = tabId
 
-            // Tab name intentionally left unchanged to preserve user-given name
-
             isExecuting = false
         }
+    }
+
+    private func reexecuteQuery() {
+        executeQuery(page: 0, pageSize: currentPageSize, sortColumn: sortColumn, sortAscending: sortAscending)
     }
 
     private func loadSavedSQL() {
@@ -270,13 +464,6 @@ struct QueryResultTabView: View {
             selectedConnectionId = connectedConfigs[0].id
         } else if databaseService.connections.count == 1 {
             selectedConnectionId = databaseService.connections[0].id
-        }
-    }
-
-    private func executeIfPreloaded() {
-        guard editorVM.queryResults[tabId] == nil else { return }
-        if !sql.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && selectedConnectionId != nil {
-            executeQuery()
         }
     }
 }

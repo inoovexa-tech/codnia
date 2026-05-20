@@ -445,7 +445,9 @@ struct DatabaseExplorerView: View {
             name: table,
             type: .queryResult,
             queryConnectionId: configID,
-            querySql: sql
+            querySql: sql,
+            queryTableSchema: schema,
+            queryTableName: table
         )
         editorVM.tabs.append(tab)
         editorVM.querySql[tab.id] = sql

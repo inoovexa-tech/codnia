@@ -219,6 +219,50 @@ func close(handle: String) async throws {
         )
     }
 
+    // MARK: - DML
+
+    func fetchPrimaryKeyColumns(handle: String, table: TableID) async throws -> [String] {
+        let sql = """
+        SELECT kcu.column_name
+        FROM information_schema.table_constraints tc
+        JOIN information_schema.key_column_usage kcu
+            ON tc.constraint_name = kcu.constraint_name
+            AND tc.table_schema = kcu.table_schema
+        WHERE tc.table_schema = '\(escape(table.schema))'
+            AND tc.table_name = '\(escape(table.table))'
+            AND tc.constraint_type = 'PRIMARY KEY'
+        ORDER BY kcu.ordinal_position
+        """
+        let rows = try await runQuery(handle: handle, sql: sql)
+        return rows.compactMap { $0.first ?? nil }
+    }
+
+    func updateRow(handle: String, table: TableID, set: [(column: String, value: String?)], primaryKeyValues: [(column: String, value: String?)]) async throws -> Int {
+        let setClause = set.map { "\"\(escape($0.column))\" = \(escapeValue($0.value))" }.joined(separator: ", ")
+        let whereClause = primaryKeyValues.map { "\"\(escape($0.column))\" = \(escapeValue($0.value))" }.joined(separator: " AND ")
+        let sql = "UPDATE \"\(escape(table.schema))\".\"\(escape(table.table))\" SET \(setClause) WHERE \(whereClause)"
+        return try await runMutation(handle: handle, sql: sql)
+    }
+
+    func insertRow(handle: String, table: TableID, columns: [String], values: [String?]) async throws -> [String: String?]? {
+        let colList = columns.map { "\"\(escape($0))\"" }.joined(separator: ", ")
+        let valList = values.map { escapeValue($0) }.joined(separator: ", ")
+        let sql = "INSERT INTO \"\(escape(table.schema))\".\"\(escape(table.table))\" (\(colList)) VALUES (\(valList)) RETURNING *"
+        let result = try await runQueryWithColumns(handle: handle, sql: sql)
+        guard let row = result.rows.first else { return nil }
+        var dict: [String: String?] = [:]
+        for (i, col) in result.columns.enumerated() {
+            dict[col] = i < row.count ? row[i] : nil
+        }
+        return dict
+    }
+
+    func deleteRow(handle: String, table: TableID, primaryKeyValues: [(column: String, value: String?)]) async throws -> Int {
+        let whereClause = primaryKeyValues.map { "\"\(escape($0.column))\" = \(escapeValue($0.value))" }.joined(separator: " AND ")
+        let sql = "DELETE FROM \"\(escape(table.schema))\".\"\(escape(table.table))\" WHERE \(whereClause)"
+        return try await runMutation(handle: handle, sql: sql)
+    }
+
     // MARK: - Helpers
 
     private func connection(for handle: String) throws -> PostgresConnection {
@@ -243,6 +287,48 @@ func close(handle: String) async throws {
             rows.append(rowData)
         }
         return rows
+    }
+
+    private func runQueryWithColumns(handle: String, sql: String) async throws -> (columns: [String], columnTypes: [String], rows: [[String?]]) {
+        let conn = try connection(for: handle)
+        let result = try await conn.query(PostgresQuery(unsafeSQL: sql), logger: logger)
+        var columns: [String] = []
+        var columnTypes: [String] = []
+        var rows: [[String?]] = []
+        var isFirst = true
+        for try await row in result {
+            let access = row.makeRandomAccess()
+            if isFirst {
+                columns = (0..<access.count).map { access[$0].columnName }
+                columnTypes = (0..<access.count).map { access[$0].dataType.description }
+                isFirst = false
+            }
+            var rowData: [String?] = []
+            for i in 0..<columns.count {
+                rowData.append(decodeCell(access[i]))
+            }
+            rows.append(rowData)
+        }
+        return (columns, columnTypes, rows)
+    }
+
+    private func runMutation(handle: String, sql: String) async throws -> Int {
+        let conn = try connection(for: handle)
+        let result = try await conn.query(PostgresQuery(unsafeSQL: sql), logger: logger)
+        var affected = 0
+        for try await row in result {
+            let access = row.makeRandomAccess()
+            if access.count > 0, let tag = try? access[0].decode(String.self) {
+                if tag.hasPrefix("INSERT") || tag.hasPrefix("UPDATE") || tag.hasPrefix("DELETE") {
+                    let parts = tag.split(separator: " ")
+                    if let count = Int(parts.last ?? "") {
+                        affected = count
+                    }
+                }
+            }
+            affected += 1
+        }
+        return affected
     }
 
     private let dateFormatter: ISO8601DateFormatter = {
@@ -294,6 +380,12 @@ func close(handle: String) async throws {
 
     private func escape(_ ident: String) -> String {
         ident.replacingOccurrences(of: "'", with: "''")
+    }
+
+    private func escapeValue(_ value: String?) -> String {
+        guard let value = value else { return "NULL" }
+        let escaped = value.replacingOccurrences(of: "'", with: "''")
+        return "'\(escaped)'"
     }
 }
 
