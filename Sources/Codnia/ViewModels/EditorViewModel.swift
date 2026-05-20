@@ -26,7 +26,7 @@ public final class EditorViewModel: ObservableObject {
     @Published public var querySql: [String: String] = [:]
     @Published public var browserURLs: [String: String] = [:]
     @Published public var browserTitles: [String: String] = [:]
-    @Published var queryHistory: [QueryHistoryItem] = []
+    @Published var queryHistory: [String: [QueryHistoryItem]] = [:]
     private var autoSaveTimer: AnyCancellable?
     private var markdownPreviewTabs: Set<String> = []
     private var htmlPreviewTabs: Set<String> = []
@@ -463,7 +463,7 @@ public final class EditorViewModel: ObservableObject {
         queryResults = updated
     }
 
-    public func addQueryHistory(sql: String, connectionName: String, duration: TimeInterval, rowCount: Int, isError: Bool) {
+    public func addQueryHistory(forTab tabId: String, sql: String, connectionName: String, duration: TimeInterval, rowCount: Int, isError: Bool) {
         let item = QueryHistoryItem(
             id: UUID(),
             sql: sql,
@@ -473,10 +473,12 @@ public final class EditorViewModel: ObservableObject {
             rowCount: rowCount,
             isError: isError
         )
-        queryHistory.insert(item, at: 0)
-        if queryHistory.count > 200 {
-            queryHistory = Array(queryHistory.prefix(200))
+        var history = queryHistory[tabId] ?? []
+        history.insert(item, at: 0)
+        if history.count > 200 {
+            history = Array(history.prefix(200))
         }
+        queryHistory[tabId] = history
     }
 
     public func activateTab(_ id: String) {
@@ -531,6 +533,7 @@ public final class EditorViewModel: ObservableObject {
             diffData.removeValue(forKey: id)
             queryResults.removeValue(forKey: id)
             querySql.removeValue(forKey: id)
+            queryHistory.removeValue(forKey: id)
             browserURLs.removeValue(forKey: id)
             browserTitles.removeValue(forKey: id)
 

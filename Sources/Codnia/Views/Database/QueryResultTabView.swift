@@ -377,7 +377,7 @@ struct QueryResultTabView: View {
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundColor(.textSecondary)
                 Spacer()
-                Text("\(editorVM.queryHistory.count)")
+                Text("\(editorVM.queryHistory[tabId]?.count ?? 0)")
                     .font(.system(size: 10))
                     .foregroundColor(.textTertiary)
             }
@@ -385,7 +385,7 @@ struct QueryResultTabView: View {
             .padding(.vertical, 6)
             .background(Color.bgSecondary)
 
-            if editorVM.queryHistory.isEmpty {
+            if (editorVM.queryHistory[tabId]?.isEmpty ?? true) {
                 VStack(spacing: 4) {
                     Text("No queries yet")
                         .font(.system(size: 11))
@@ -395,12 +395,12 @@ struct QueryResultTabView: View {
                 .frame(maxWidth: .infinity)
             } else {
                 List {
-                    ForEach(editorVM.queryHistory) { item in
+                    ForEach(editorVM.queryHistory[tabId]!) { item in
                         historyRow(item)
                     }
                 }
                 .listStyle(.plain)
-                .frame(height: min(CGFloat(editorVM.queryHistory.count) * 44, 200))
+                .frame(height: min(CGFloat(editorVM.queryHistory[tabId]?.count ?? 0) * 44, 200))
             }
         }
     }
@@ -691,6 +691,7 @@ struct QueryResultTabView: View {
             editorVM.activeTabId = tabId
 
             editorVM.addQueryHistory(
+                forTab: tabId,
                 sql: query,
                 connectionName: currentConnectionName,
                 duration: duration,
@@ -755,6 +756,7 @@ struct QueryResultTabView: View {
             }
 
             editorVM.addQueryHistory(
+                forTab: tabId,
                 sql: "EXPLAIN \(query)",
                 connectionName: currentConnectionName,
                 duration: duration,
