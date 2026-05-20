@@ -19,7 +19,7 @@ struct QueryResultTabView: View {
     @State private var currentPageSize: Int = 100
     @State private var selectedRow: Int?
     @State private var stagedEdits: [String: String] = [:]
-    @State private var stagedNewRows: [[String?]] = []
+    @State private var stagedNewRows: [StagedNewRow] = []
     @State private var stagedDeletions: Set<Int> = []
     @State private var applyError: String?
 
@@ -272,7 +272,7 @@ struct QueryResultTabView: View {
 
     private func addNewRow() {
         guard let result = editorVM.queryResults[tabId] else { return }
-        var row: [String?] = Array(repeating: nil, count: result.columns.count)
+        var values: [String?] = Array(repeating: nil, count: result.columns.count)
         for i in 0..<min(result.columns.count, result.columnTypes.count) {
             let colName = result.columns[i].lowercased()
             let colType = result.columnTypes[i].lowercased()
@@ -281,25 +281,25 @@ struct QueryResultTabView: View {
             let isId = colName == "id" || colName.hasSuffix("_id") || colName == "codigo" || colName == "cod"
             let isDate = colType.contains("date") || colType.contains("timestamp") || colType.contains("timestamptz")
             if isSerial || isUUID || isId {
-                row[i] = "[auto]"
+                values[i] = "[auto]"
             } else if isDate {
                 let now = Date()
                 if colType.contains("timestamp") || colType.contains("timestamptz") {
                     let f = ISO8601DateFormatter()
                     f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-                    row[i] = f.string(from: now)
+                    values[i] = f.string(from: now)
                 } else if colType.contains("date") {
                     let f = DateFormatter()
                     f.dateFormat = "yyyy-MM-dd"
-                    row[i] = f.string(from: now)
+                    values[i] = f.string(from: now)
                 } else {
                     let f = DateFormatter()
                     f.dateFormat = "HH:mm:ss"
-                    row[i] = f.string(from: now)
+                    values[i] = f.string(from: now)
                 }
             }
         }
-        stagedNewRows.append(row)
+        stagedNewRows.append(StagedNewRow(insertAfter: Int.max, values: values))
     }
 
     private func applyChanges() {
@@ -382,7 +382,7 @@ struct QueryResultTabView: View {
                 var insertCols: [String] = []
                 var insertVals: [String?] = []
                 for colIdx in 0..<result.columns.count {
-                    let val = colIdx < newRow.count ? newRow[colIdx] : nil
+                    let val = colIdx < newRow.values.count ? newRow.values[colIdx] : nil
                     if val == "[auto]" { continue }
                     insertCols.append(result.columns[colIdx])
                     insertVals.append(val)

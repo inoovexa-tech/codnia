@@ -1,5 +1,15 @@
 import SwiftUI
 
+struct StagedNewRow {
+    let insertAfter: Int
+    var values: [String?]
+}
+
+private struct RowMeta: Equatable {
+    let isNew: Bool
+    let sourceIndex: Int
+}
+
 struct PaginatedDataGridView: View {
     let columns: [String]
     let columnTypes: [String]
@@ -19,7 +29,7 @@ struct PaginatedDataGridView: View {
     @Binding var selectedRow: Int?
 
     @Binding var stagedEdits: [String: String]
-    @Binding var stagedNewRows: [[String?]]
+    @Binding var stagedNewRows: [StagedNewRow]
     @Binding var stagedDeletions: Set<Int>
     let onApplyChanges: () -> Void
     let onDiscardChanges: () -> Void
@@ -58,34 +68,55 @@ struct PaginatedDataGridView: View {
         stagedEdits.count + stagedNewRows.count + stagedDeletions.count
     }
 
-    private var allRows: [[String?]] {
-        rows + stagedNewRows
+    private var combination: (values: [[String?]], metas: [RowMeta]) {
+        var values = rows
+        var metas: [RowMeta] = rows.indices.map { RowMeta(isNew: false, sourceIndex: $0) }
+
+        let sorted = stagedNewRows.enumerated().sorted { a, b in
+            a.element.insertAfter < b.element.insertAfter
+                || (a.element.insertAfter == b.element.insertAfter && a.offset < b.offset)
+        }
+
+        var offset = 0
+        for (newIdx, newRow) in sorted {
+            let pos = newRow.insertAfter == Int.max
+                ? values.count
+                : min(newRow.insertAfter + 1 + offset, values.count)
+            values.insert(newRow.values, at: pos)
+            metas.insert(RowMeta(isNew: true, sourceIndex: newIdx), at: pos)
+            offset += 1
+        }
+
+        return (values, metas)
     }
 
+    private var allRows: [[String?]] { combination.values }
+
+    private var rowMetas: [RowMeta] { combination.metas }
+
     private func isNewRow(_ idx: Int) -> Bool {
-        idx >= rows.count
+        guard idx < rowMetas.count else { return false }
+        return rowMetas[idx].isNew
     }
 
     private func isDeleteRow(_ idx: Int) -> Bool {
-        !isNewRow(idx) && stagedDeletions.contains(idx)
-    }
-
-    private func editKey(_ row: Int, _ col: Int) -> String {
-        "\(row):\(col)"
+        guard idx < rowMetas.count, !rowMetas[idx].isNew else { return false }
+        return stagedDeletions.contains(rowMetas[idx].sourceIndex)
     }
 
     private func displayValue(row: Int, col: Int) -> String? {
-        if isNewRow(row) {
-            let newIdx = row - rows.count
-            guard newIdx < stagedNewRows.count, col < stagedNewRows[newIdx].count else { return nil }
-            return stagedNewRows[newIdx][col]
+        guard row < rowMetas.count else { return nil }
+        let meta = rowMetas[row]
+        if meta.isNew {
+            guard meta.sourceIndex < stagedNewRows.count, col < columns.count else { return nil }
+            return stagedNewRows[meta.sourceIndex].values[col]
         }
-        let key = editKey(row, col)
+        let key = "\(meta.sourceIndex):\(col)"
         if let edited = stagedEdits[key] {
             return edited
         }
-        guard row < rows.count, col < rows[row].count else { return nil }
-        return rows[row][col]
+        guard meta.sourceIndex < rows.count, col < rows[meta.sourceIndex].count else { return nil }
+        return rows[meta.sourceIndex][col]
     }
 
     var body: some View {
@@ -267,17 +298,17 @@ struct PaginatedDataGridView: View {
 
     private var addRowButton: some View {
         Button(action: {
-            var row: [String?] = Array(repeating: nil, count: columns.count)
+            var values: [String?] = Array(repeating: nil, count: columns.count)
             for i in 0..<min(columns.count, columnTypes.count) {
                 let colName = columns[i].lowercased()
                 let colType = columnTypes[i].lowercased()
                 if isSerialType(colType) || isUUIDType(colType) || isIdColumn(colName) {
-                    row[i] = "[auto]"
+                    values[i] = "[auto]"
                 } else if isDateType(colType) {
-                    row[i] = formatDateNow(for: colType)
+                    values[i] = formatDateNow(for: colType)
                 }
             }
-            stagedNewRows.append(row)
+            stagedNewRows.append(StagedNewRow(insertAfter: Int.max, values: values))
         }) {
             HStack(spacing: 4) {
                 Image(systemName: "plus.circle.fill").font(.system(size: 11))
@@ -340,26 +371,34 @@ struct PaginatedDataGridView: View {
                 }
 
                 Button(action: {
-                    var row: [String?] = Array(repeating: nil, count: columns.count)
+                    var values: [String?] = Array(repeating: nil, count: columns.count)
                     for i in 0..<min(columns.count, columnTypes.count) {
                         let colName = columns[i].lowercased()
                         let colType = columnTypes[i].lowercased()
                         if isSerialType(colType) || isUUIDType(colType) || isIdColumn(colName) {
-                            row[i] = "[auto]"
+                            values[i] = "[auto]"
                         } else if isDateType(colType) {
-                            row[i] = formatDateNow(for: colType)
+                            values[i] = formatDateNow(for: colType)
                         }
                     }
-                    stagedNewRows.append(row)
+                    stagedNewRows.append(StagedNewRow(insertAfter: rowIdx, values: values))
                 }) {
                     Label("Add Row", systemImage: "plus.square")
                 }
 
                 Divider()
 
-                if !newRow {
+                if newRow, rowIdx < rowMetas.count {
                     Button(role: .destructive, action: {
-                        confirmDeleteRow = rowIdx
+                        let newIdx = rowMetas[rowIdx].sourceIndex
+                        guard newIdx < stagedNewRows.count else { return }
+                        stagedNewRows.remove(at: newIdx)
+                    }) {
+                        Label("Discard Row", systemImage: "xmark.circle")
+                    }
+                } else if !newRow, rowIdx < rowMetas.count {
+                    Button(role: .destructive, action: {
+                        confirmDeleteRow = rowMetas[rowIdx].sourceIndex
                         showDeleteConfirm = true
                     }) {
                         Label("Delete Row", systemImage: "trash")
@@ -381,20 +420,33 @@ struct PaginatedDataGridView: View {
 
     private func deleteCell(rowIdx: Int, deleted: Bool) -> some View {
         let width: CGFloat = 28
+        let isRowNew = rowIdx < rowMetas.count && rowMetas[rowIdx].isNew
+        let originalIdx = rowIdx < rowMetas.count && !isRowNew ? rowMetas[rowIdx].sourceIndex : rowIdx
         return HStack(spacing: 0) {
-            if deleted {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.system(size: 12))
-                    .foregroundColor(.accentRed)
-                    .frame(width: width, alignment: .center)
+            if deleted || isRowNew {
+                Button(action: {
+                    if isRowNew, rowIdx < rowMetas.count {
+                        let newIdx = rowMetas[rowIdx].sourceIndex
+                        guard newIdx < stagedNewRows.count else { return }
+                        stagedNewRows.remove(at: newIdx)
+                    } else if deleted {
+                        stagedDeletions.remove(originalIdx)
+                    }
+                }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 12))
+                        .foregroundColor(isRowNew ? .accentRed : .accentRed)
+                        .frame(width: width, alignment: .center)
+                }
+                .buttonStyle(PlainButtonStyle())
+                .help("Discard new row")
+                .onHover { inside in
+                    if inside { NSCursor.pointingHand.push() } else { NSCursor.pop() }
+                }
             } else {
                 Button(action: {
-                    if deleted {
-                        stagedDeletions.remove(rowIdx)
-                    } else {
-                        confirmDeleteRow = rowIdx
-                        showDeleteConfirm = true
-                    }
+                    confirmDeleteRow = originalIdx
+                    showDeleteConfirm = true
                 }) {
                     Image(systemName: "minus.circle")
                         .font(.system(size: 12))
@@ -415,7 +467,8 @@ struct PaginatedDataGridView: View {
     private func dataCell(rowIdx: Int, colIdx: Int, deleted: Bool, newRow: Bool) -> some View {
         let colName = colIdx < columns.count ? columns[colIdx] : "?"
         let w = columnWidth(for: colName)
-        let key = editKey(rowIdx, colIdx)
+        let originalIdx = rowIdx < rowMetas.count ? rowMetas[rowIdx].sourceIndex : rowIdx
+        let key = "\(originalIdx):\(colIdx)"
         let val = displayValue(row: rowIdx, col: colIdx)
         let isNull = val == nil
         let isEditing = editingRow == rowIdx && editingCol == colIdx
@@ -516,16 +569,19 @@ struct PaginatedDataGridView: View {
             editingCol = nil
         }
 
-        if isNewRow(rowIdx) {
-            let newIdx = rowIdx - rows.count
-            guard newIdx < stagedNewRows.count, colIdx < columns.count else { return }
-            stagedNewRows[newIdx][colIdx] = editBuffer.isEmpty ? nil : editBuffer
+        guard rowIdx < rowMetas.count else { return }
+        let meta = rowMetas[rowIdx]
+
+        if meta.isNew {
+            guard meta.sourceIndex < stagedNewRows.count, colIdx < columns.count else { return }
+            stagedNewRows[meta.sourceIndex].values[colIdx] = editBuffer.isEmpty ? nil : editBuffer
             return
         }
 
-        let key = editKey(rowIdx, colIdx)
-        let wasNull = rowIdx < rows.count && colIdx < rows[rowIdx].count && rows[rowIdx][colIdx] == nil
-        let oldVal = wasNull ? nil : (rowIdx < rows.count && colIdx < rows[rowIdx].count ? rows[rowIdx][colIdx] : nil)
+        let key = "\(meta.sourceIndex):\(colIdx)"
+        let oldRowIdx = meta.sourceIndex
+        let wasNull = oldRowIdx < rows.count && colIdx < rows[oldRowIdx].count && rows[oldRowIdx][colIdx] == nil
+        let oldVal = wasNull ? nil : (oldRowIdx < rows.count && colIdx < rows[oldRowIdx].count ? rows[oldRowIdx][colIdx] : nil)
         let newVal = editBuffer.isEmpty ? nil : editBuffer
 
         if newVal != oldVal {
