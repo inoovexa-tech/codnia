@@ -24,8 +24,6 @@ struct QueryResultTabView: View {
     @State private var applyError: String?
     @State private var executingTask: Task<Void, Never>? = nil
     @State private var showHistory = false
-    @State private var explainResult: String? = nil
-    @State private var showExplain = false
 
     private var connectedConfigs: [ConnectionConfig] {
         databaseService.connections.filter {
@@ -71,10 +69,7 @@ struct QueryResultTabView: View {
             Divider()
 
             if let result = editorVM.queryResults[tabId] {
-                if showExplain, let explain = explainResult {
-                    explainResultView(explain)
-                } else {
-                    PaginatedDataGridView(
+                PaginatedDataGridView(
                         columns: result.columns,
                         columnTypes: result.columnTypes,
                         rows: result.rows,
@@ -110,7 +105,6 @@ struct QueryResultTabView: View {
                             applyError = nil
                         }
                     )
-                }
             } else {
                 emptyResultState
             }
@@ -161,8 +155,6 @@ struct QueryResultTabView: View {
                 if isExecuting {
                     cancelButton
                 } else {
-                    explainButton
-
                     runButton
                 }
 
@@ -196,24 +188,6 @@ struct QueryResultTabView: View {
         }
         .buttonStyle(PlainButtonStyle())
         .keyboardShortcut(.return, modifiers: .command)
-        .disabled(isExecuting || selectedConnectionId == nil)
-    }
-
-    private var explainButton: some View {
-        Button(action: { executeExplain() }) {
-            HStack(spacing: 4) {
-                Image(systemName: "chart.bar.doc.horizontal")
-                    .font(.system(size: 11))
-                Text("Explain")
-                    .font(.system(size: 12, weight: .medium))
-            }
-            .foregroundColor(.accentYellow)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 4)
-            .background(Color.accentYellow.opacity(0.1))
-            .cornerRadius(4)
-        }
-        .buttonStyle(PlainButtonStyle())
         .disabled(isExecuting || selectedConnectionId == nil)
     }
 
@@ -334,36 +308,6 @@ struct QueryResultTabView: View {
         case .connecting: return .accentYellow
         case .disconnected: return .textTertiary
         case .error: return .accentRed
-        }
-    }
-
-    // MARK: - Explain Result View
-
-    private func explainResultView(_ text: String) -> some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text("Execution Plan")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(.textSecondary)
-                Spacer()
-                Button(action: { showExplain = false }) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 10))
-                        .foregroundColor(.textTertiary)
-                }
-                .buttonStyle(PlainButtonStyle())
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-
-            ScrollView([.horizontal, .vertical]) {
-                Text(text)
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundColor(.textPrimary)
-                    .padding(12)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .background(Color.bgPrimary)
         }
     }
 
@@ -674,8 +618,6 @@ struct QueryResultTabView: View {
         }
 
         isExecuting = true
-        showExplain = false
-        explainResult = nil
 
         let task = Task { @MainActor in
             let start = Date()
@@ -715,71 +657,6 @@ struct QueryResultTabView: View {
         Task {
             await databaseService.cancelExecution(configID: connectionId)
         }
-    }
-
-    private func executeExplain() {
-        guard let connectionId = selectedConnectionId else { return }
-
-        let query: String
-        if !selectedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            query = selectedText
-        } else if !sql.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            query = sql
-        } else {
-            return
-        }
-
-        isExecuting = true
-        showExplain = false
-        explainResult = nil
-
-        let task = Task { @MainActor in
-            let start = Date()
-            let result = await databaseService.executeExplain(configID: connectionId, sql: query)
-            let duration = Date().timeIntervalSince(start)
-
-            guard !Task.isCancelled else {
-                isExecuting = false
-                return
-            }
-
-            if result.error != nil {
-                editorVM.setQueryResult(result, forTab: tabId)
-            } else if !result.rows.isEmpty {
-                let jsonText = result.rows.compactMap { row -> String? in
-                    guard let first = row.first else { return nil }
-                    return first
-                }.joined(separator: "\n")
-                let formatted = formatExplainJSON(jsonText)
-                explainResult = formatted
-                showExplain = true
-            }
-
-            editorVM.addQueryHistory(
-                forTab: tabId,
-                sql: "EXPLAIN \(query)",
-                connectionName: currentConnectionName,
-                duration: duration,
-                rowCount: result.rows.count,
-                isError: result.error != nil
-            )
-
-            isExecuting = false
-            executingTask = nil
-        }
-
-        executingTask = task
-    }
-
-    private func formatExplainJSON(_ text: String) -> String {
-        guard let data = text.data(using: .utf8),
-              let json = try? JSONSerialization.jsonObject(with: data),
-              let prettyData = try? JSONSerialization.data(withJSONObject: json, options: [.prettyPrinted, .withoutEscapingSlashes]),
-              let pretty = String(data: prettyData, encoding: .utf8)
-        else {
-            return text
-        }
-        return pretty
     }
 
     private func reexecuteQuery() {
