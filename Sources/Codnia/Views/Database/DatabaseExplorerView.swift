@@ -526,6 +526,10 @@ struct DatabaseExplorerView: View {
         let result: [DBTreeEntry]
 
         switch entry {
+        case .connection:
+            let databases = await databaseService.fetchDatabases(configID: configID)
+            result = databases.map { DBTreeEntry.database($0.name) }
+
         case .database:
             let schemas = await databaseService.fetchSchemas(configID: configID)
             result = schemas.map { DBTreeEntry.schema($0) }
@@ -653,65 +657,23 @@ struct DatabaseExplorerView: View {
     private func refreshAllCaches() {
         let previouslyExpanded = expandedItems
         cachedChildren.removeAll()
-        for item in previouslyExpanded {
-            if item.hasPrefix("conn:") || item.hasPrefix("db:") || item.hasPrefix("schema:") || item.hasPrefix("table:") {
-                if loadingItems.contains(item) { continue }
-                loadingItems.insert(item)
-                Task { @MainActor in
-                    if item.hasPrefix("conn:") {
-                        let configId = String(item.dropFirst(5))
-                        if let config = databaseService.config(withID: configId) {
-                            let connChildren = await loadChildren(for: .connection(config, state: .disconnected), configID: configId)
-                            cachedChildren[item] = connChildren
-                        }
-                    } else if item.hasPrefix("db:") {
-                        let dbName = String(item.dropFirst(3))
-                        for config in databaseService.connections {
-                            let connId = "conn:\(config.id)"
-                            if previouslyExpanded.contains(connId) {
-                                let children = cachedChildren[connId] ?? []
-                                if children.contains(where: { if case .database(let n) = $0 { return n == dbName }; return false }) {
-                                    let dbChildren = await loadChildren(for: .database(dbName), configID: config.id)
-                                    cachedChildren[item] = dbChildren
-                                }
-                            }
-                        }
-                    }
-                    loadingItems.remove(item)
-                }
-            } else if item.contains(".Tables") || item.contains(".Views") || item.contains(".Materialized") || item.hasPrefix("table:") {
-                loadingItems.insert(item)
-                Task { @MainActor in
-                    for config in databaseService.connections {
-                        let connId = "conn:\(config.id)"
-                        if let connChildren = cachedChildren[connId] {
-                            for dbEntry in connChildren {
-                                if case .database(let dbName) = dbEntry {
-                                    let dbId = "db:\(dbName)"
-                                    if let schemaChildren = cachedChildren[dbId] {
-                                        for schemaEntry in schemaChildren {
-                                            if case .schema(let s) = schemaEntry {
-                                                for sectionType in SchemaSection.SchemaSectionType.allCases {
-                                                    let secId = "\(s.name).\(sectionType.rawValue)"
-                                                    if secId == item {
-                                                        let children = await loadChildren(for: .schemaSection(SchemaSection(sectionType: sectionType, schema: s.name)), configID: config.id)
-                                                        cachedChildren[item] = children
-                                                    }
-                                                }
-                                                if item.hasPrefix("table:") {
-                                                    let tableChildren = await loadChildren(for: .table(TableInfo(schema: s.name, name: String(item.dropFirst(6)))), configID: config.id)
-                                                    cachedChildren[item] = tableChildren
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    loadingItems.remove(item)
-                }
+        Task { @MainActor in
+            for config in databaseService.connections {
+                let connId = "conn:\(config.id)"
+                guard previouslyExpanded.contains(connId) else { continue }
+                await refreshChildrenRecursively(for: .connection(config, state: .disconnected), configID: config.id, expanded: previouslyExpanded)
             }
+        }
+    }
+
+    private func refreshChildrenRecursively(for entry: DBTreeEntry, configID: String, expanded: Set<String>) async {
+        guard entry.isExpandable, expanded.contains(entry.id) else { return }
+        loadingItems.insert(entry.id)
+        let children = await loadChildren(for: entry, configID: configID)
+        cachedChildren[entry.id] = children
+        loadingItems.remove(entry.id)
+        for child in children {
+            await refreshChildrenRecursively(for: child, configID: configID, expanded: expanded)
         }
     }
 
