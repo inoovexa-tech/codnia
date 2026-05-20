@@ -634,6 +634,13 @@ struct DatabaseExplorerView: View {
                 switch dropType {
                 case "Table":
                     try await databaseService.dropTable(configID: configID, table: tableID, cascade: isCascade)
+                case "Column":
+                    let sql = "ALTER TABLE \"\(tableID.schema)\".\"\(tableID.table)\" DROP COLUMN \"\(dropTarget)\""
+                    let result = await databaseService.execute(configID: configID, sql: sql)
+                    if let error = result.error {
+                        dropErrorMessage = error
+                        return
+                    }
                 default:
                     let sql: String
                     if dropType == "Function" {
@@ -643,11 +650,16 @@ struct DatabaseExplorerView: View {
                     } else {
                         sql = "ALTER TABLE \"\(tableID.schema)\".\"\(tableID.table)\" DROP COLUMN \"\(dropTarget)\""
                     }
-                    let _ = await databaseService.execute(configID: configID, sql: sql)
+                    let result = await databaseService.execute(configID: configID, sql: sql)
+                    if let error = result.error {
+                        dropErrorMessage = error
+                        return
+                    }
                 }
                 dropCascade = false
                 dropErrorMessage = nil
                 showDropAlert = false
+                refreshAllCaches()
             } catch {
                 dropErrorMessage = error.localizedDescription
             }
