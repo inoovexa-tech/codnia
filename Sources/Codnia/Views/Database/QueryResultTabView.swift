@@ -377,6 +377,7 @@ struct QueryResultTabView: View {
             }
 
             // 3. Process new rows — insert and capture RETURNING values
+            var insertFailed = false
             for newRow in stagedNewRows {
                 var insertCols: [String] = []
                 var insertVals: [String?] = []
@@ -388,15 +389,26 @@ struct QueryResultTabView: View {
                 }
                 guard !insertCols.isEmpty else { continue }
 
-                if let inserted = await databaseService.insertRow(configID: connectionId, table: tableId, columns: insertCols, values: insertVals) {
-                    var completeRow: [String?] = Array(repeating: nil, count: result.columns.count)
-                    for (colName, val) in inserted {
-                        if let idx = result.columns.firstIndex(of: colName) {
-                            completeRow[idx] = val
+                do {
+                    if let inserted = try await databaseService.insertRow(configID: connectionId, table: tableId, columns: insertCols, values: insertVals) {
+                        var completeRow: [String?] = Array(repeating: nil, count: result.columns.count)
+                        for (colName, val) in inserted {
+                            if let idx = result.columns.firstIndex(of: colName) {
+                                completeRow[idx] = val
+                            }
                         }
+                        updatedRows.append(completeRow)
                     }
-                    updatedRows.append(completeRow)
+                } catch {
+                    applyError = error.localizedDescription
+                    insertFailed = true
+                    break
                 }
+            }
+
+            if insertFailed {
+                isApplying = false
+                return
             }
 
             // Clear staged changes

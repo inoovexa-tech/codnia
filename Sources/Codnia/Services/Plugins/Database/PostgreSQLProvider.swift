@@ -238,16 +238,16 @@ func close(handle: String) async throws {
     }
 
     func updateRow(handle: String, table: TableID, set: [(column: String, value: String?)], primaryKeyValues: [(column: String, value: String?)]) async throws -> Int {
-        let setClause = set.map { "\"\(escape($0.column))\" = \(escapeValue($0.value))" }.joined(separator: ", ")
-        let whereClause = primaryKeyValues.map { "\"\(escape($0.column))\" = \(escapeValue($0.value))" }.joined(separator: " AND ")
-        let sql = "UPDATE \"\(escape(table.schema))\".\"\(escape(table.table))\" SET \(setClause) WHERE \(whereClause)"
+        let setClause = set.map { "\"\(escapeIdentifier($0.column))\" = \(escapeValue($0.value))" }.joined(separator: ", ")
+        let whereClause = primaryKeyValues.map { "\"\(escapeIdentifier($0.column))\" = \(escapeValue($0.value))" }.joined(separator: " AND ")
+        let sql = "UPDATE \"\(escapeIdentifier(table.schema))\".\"\(escapeIdentifier(table.table))\" SET \(setClause) WHERE \(whereClause)"
         return try await runMutation(handle: handle, sql: sql)
     }
 
     func insertRow(handle: String, table: TableID, columns: [String], values: [String?]) async throws -> [String: String?]? {
-        let colList = columns.map { "\"\(escape($0))\"" }.joined(separator: ", ")
+        let colList = columns.map { "\"\(escapeIdentifier($0))\"" }.joined(separator: ", ")
         let valList = values.map { escapeValue($0) }.joined(separator: ", ")
-        let sql = "INSERT INTO \"\(escape(table.schema))\".\"\(escape(table.table))\" (\(colList)) VALUES (\(valList)) RETURNING *"
+        let sql = "INSERT INTO \"\(escapeIdentifier(table.schema))\".\"\(escapeIdentifier(table.table))\" (\(colList)) VALUES (\(valList)) RETURNING *"
         let result = try await runQueryWithColumns(handle: handle, sql: sql)
         guard let row = result.rows.first else { return nil }
         var dict: [String: String?] = [:]
@@ -258,8 +258,8 @@ func close(handle: String) async throws {
     }
 
     func deleteRow(handle: String, table: TableID, primaryKeyValues: [(column: String, value: String?)]) async throws -> Int {
-        let whereClause = primaryKeyValues.map { "\"\(escape($0.column))\" = \(escapeValue($0.value))" }.joined(separator: " AND ")
-        let sql = "DELETE FROM \"\(escape(table.schema))\".\"\(escape(table.table))\" WHERE \(whereClause)"
+        let whereClause = primaryKeyValues.map { "\"\(escapeIdentifier($0.column))\" = \(escapeValue($0.value))" }.joined(separator: " AND ")
+        let sql = "DELETE FROM \"\(escapeIdentifier(table.schema))\".\"\(escapeIdentifier(table.table))\" WHERE \(whereClause)"
         return try await runMutation(handle: handle, sql: sql)
     }
 
@@ -326,7 +326,6 @@ func close(handle: String) async throws {
                     }
                 }
             }
-            affected += 1
         }
         return affected
     }
@@ -380,6 +379,10 @@ func close(handle: String) async throws {
 
     private func escape(_ ident: String) -> String {
         ident.replacingOccurrences(of: "'", with: "''")
+    }
+
+    private func escapeIdentifier(_ ident: String) -> String {
+        ident.replacingOccurrences(of: "\"", with: "\"\"")
     }
 
     private func escapeValue(_ value: String?) -> String {

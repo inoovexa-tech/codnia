@@ -153,12 +153,12 @@ public final class DatabaseConnectionService: ObservableObject {
         return (try? await provider.updateRow(handle: handle, table: table, set: set, primaryKeyValues: primaryKeyValues)) ?? 0
     }
 
-    public func insertRow(configID: String, table: TableID, columns: [String], values: [String?]) async -> [String: String?]? {
+    public func insertRow(configID: String, table: TableID, columns: [String], values: [String?]) async throws -> [String: String?]? {
         guard let config = config(withID: configID),
               let provider = providers[config.type],
               let handle = sessions[configID]?.handleID
         else { return nil }
-        return try? await provider.insertRow(handle: handle, table: table, columns: columns, values: values)
+        return try await provider.insertRow(handle: handle, table: table, columns: columns, values: values)
     }
 
     public func deleteRow(configID: String, table: TableID, primaryKeyValues: [(column: String, value: String?)]) async -> Int {
