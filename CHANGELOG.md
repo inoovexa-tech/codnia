@@ -1,3 +1,29 @@
+## [0.16.0] — 2026-05-21
+
+### Added
+- Browser DevTools with Console, Elements, Network, and Storage panels
+- Notes sidebar organized by directory structure
+- ER diagram viewer with movable cards and PNG export
+- SQL auto-complete and SSH tunnel support
+- MySQL and SQLite database support (PostgreSQL, MySQL, SQLite)
+- Connection groups and saved queries
+- DDL visual schema editing (create/alter/drop tables, columns, indexes)
+- Editable database grid with staged changes and apply
+- Per-tab query history with export and query cancellation
+- Edit connection option in context menu
+- Distinct SF Symbols for PostgreSQL, MySQL, and SQLite connections
+- Persist browser tab state per worktree
+
+### Fixed
+- Resolve Swift 6 concurrency warnings in build
+- Deduplicate ungrouped connections in sidebar listing
+- Tree collapse after DDL operations (alter column, etc.)
+- SQL query cross-contamination when switching database tabs
+- Database insert error propagation and SQL escaping bugs
+- Reset index creation state after successful creation
+- Drop column result check and tree refresh after successful drop
+- Only show project loading spinner for AI tabs (opencode, claude, codex)
+
 ## [0.15.0] — 2026-05-19
 
 ### Added

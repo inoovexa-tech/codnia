@@ -6,6 +6,20 @@
     <language>en</language>
 
     <item>
+      <title>Version 0.16.0</title>
+      <sparkle:version>16</sparkle:version>
+      <sparkle:shortVersionString>0.16.0</sparkle:shortVersionString>
+      <pubDate>Thu, 21 May 2026 00:00:00 +0000</pubDate>
+      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+      <enclosure
+        url="https://github.com/inoovexa-tech/codnia/releases/download/v0.16.0/Codnia-v0.16.0.dmg"
+        length="11845450"
+        type="application/octet-stream"
+        sparkle:edSignature="Q7sGewRW4sLoPS24hBq7v8DdnEKfABqNQe1MMwcQszWnaV6TEtd+2AiqdNepBtGlwwTQdj8UwJJyISxilBY8Bw=="
+      />
+    </item>
+
+    <item>
       <title>Version 0.15.0</title>
       <sparkle:version>15</sparkle:version>
       <sparkle:shortVersionString>0.15.0</sparkle:shortVersionString>
