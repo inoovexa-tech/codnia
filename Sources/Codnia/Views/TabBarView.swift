@@ -324,6 +324,10 @@ struct TabButton: View {
                     Image(systemName: "tablecells")
                         .foregroundColor(iconColor)
                         .font(.system(size: 13))
+                } else if tab.type == .diagram {
+                    Image(systemName: "square.stack.3d.up")
+                        .foregroundColor(iconColor)
+                        .font(.system(size: 13))
                 } else {
                     terminalIcon(for: tab.type)
                         .foregroundColor(iconColor)
@@ -405,6 +409,7 @@ struct TabButton: View {
         case .queryResult: return .accentBlue
         case .browser: return .accentBlue
         case .restApi: return .accentGreen
+        case .diagram: return .accentBlue
         }
     }
 

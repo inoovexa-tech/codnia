@@ -12,6 +12,7 @@ public enum TabType: String, Codable, Equatable, Sendable {
     case queryResult
     case browser
     case restApi
+    case diagram
 
     public var isAI: Bool {
         switch self {

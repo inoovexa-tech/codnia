@@ -27,10 +27,6 @@ struct DatabaseExplorerView: View {
     @State private var dropTableID = TableID(schema: "", table: "")
     @State private var dropCascade = false
     @State private var dropErrorMessage: String?
-    @State private var showERDiagram = false
-    @State private var erConfigID = ""
-    @State private var erSchema = ""
-
     @State private var searchText = ""
     @State private var rowCounts: [String: Int] = [:]
     @State private var loadingRowCounts = Set<String>()
@@ -88,11 +84,6 @@ struct DatabaseExplorerView: View {
         .sheet(isPresented: $showIndexManagement) {
             IndexManagementView(configID: indexManagementConfigID, table: indexManagementTable)
                 .environmentObject(databaseService)
-        }
-        .sheet(isPresented: $showERDiagram) {
-            ERDiagramView(configID: erConfigID, schema: erSchema)
-                .environmentObject(databaseService)
-                .frame(width: 700, height: 500)
         }
         .alert("Drop \(dropType)", isPresented: $showDropAlert, actions: {
             if dropType == "Table" {
@@ -340,7 +331,7 @@ struct DatabaseExplorerView: View {
 
     // MARK: - Tree Row
 
-    private func treeRow(_ entry: DBTreeEntry, depth: Int, configID: String) -> some View {
+    private func treeRow(_ entry: DBTreeEntry, depth: Int, configID: String, databaseName: String? = nil) -> some View {
         let isExpanded = expandedItems.contains(entry.id)
         let isLoading = loadingItems.contains(entry.id)
         let isSearching = !searchText.isEmpty
@@ -442,9 +433,8 @@ struct DatabaseExplorerView: View {
                         }
                         Divider()
                         Button("ER Diagram") {
-                            erConfigID = configID
-                            erSchema = t.schema
-                            showERDiagram = true
+                            let dbName = databaseName ?? databaseService.config(withID: configID)?.name ?? configID
+                            editorVM.openDiagramTab(configID: configID, schema: t.schema, databaseName: dbName)
                         }
                         Divider()
                         Button("Add Column") {
@@ -513,9 +503,8 @@ struct DatabaseExplorerView: View {
                             }
                             Divider()
                             Button("ER Diagram") {
-                                erConfigID = configID
-                                erSchema = sec.schema
-                                showERDiagram = true
+                                let dbName = databaseName ?? databaseService.config(withID: configID)?.name ?? configID
+                                editorVM.openDiagramTab(configID: configID, schema: sec.schema, databaseName: dbName)
                             }
                         }
                     case .column(let col, let tableName):
@@ -554,8 +543,12 @@ struct DatabaseExplorerView: View {
                 }
 
                 if isExpanded, let children = cachedChildren[entry.id] {
+                    let childDbName: String? = {
+                        if case .database(let name) = entry { name }
+                        else { databaseName }
+                    }()
                     ForEach(children) { child in
-                        treeRow(child, depth: depth + 1, configID: configID)
+                        treeRow(child, depth: depth + 1, configID: configID, databaseName: childDbName)
                     }
                 }
             }

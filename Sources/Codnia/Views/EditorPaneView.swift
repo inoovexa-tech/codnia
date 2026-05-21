@@ -94,6 +94,14 @@ struct EditorPaneView: View {
                 )
                 .id(tab.id)
 
+            case .diagram:
+                if let configID = tab.queryConnectionId, let schema = tab.queryTableSchema {
+                    let config = appState.databaseService.config(withID: configID)
+                    let dbName = config?.database ?? config?.name ?? ""
+                    ERDiagramView(configID: configID, schema: schema, databaseName: dbName)
+                        .environmentObject(appState.databaseService)
+                }
+
             case .browser:
                 BrowserView(
                     tabId: tab.id,

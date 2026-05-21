@@ -87,6 +87,15 @@ struct EditorAreaView: View {
                 )
             }
 
+            // ER Diagram
+            if let activeTab = editorVM.currentTab, activeTab.type == .diagram {
+                if let configID = activeTab.queryConnectionId, let schema = activeTab.queryTableSchema {
+                    let dbName = databaseService.config(withID: configID)?.name ?? ""
+                    ERDiagramView(configID: configID, schema: schema, databaseName: dbName)
+                        .environmentObject(databaseService)
+                }
+            }
+
             // File editor
             if let activeTab = editorVM.currentTab, activeTab.type == .file {
                 if editorVM.isCurrentTabMarkdown && editorVM.showMarkdownPreview {

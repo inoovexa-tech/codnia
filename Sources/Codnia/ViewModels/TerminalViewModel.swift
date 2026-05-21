@@ -218,6 +218,7 @@ public final class TerminalViewModel: ObservableObject {
         case .queryResult: return "SQL Query"
         case .browser: return "Browser"
         case .restApi: return "REST API"
+        case .diagram: return "ER Diagram"
         }
     }
 

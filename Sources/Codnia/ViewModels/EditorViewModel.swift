@@ -447,6 +447,25 @@ public final class EditorViewModel: ObservableObject {
         return "http://" + trimmed
     }
 
+    // MARK: - Diagram Tab
+
+    public func openDiagramTab(configID: String, schema: String, databaseName: String) {
+        let name = "ER - \(databaseName):\(schema)"
+        if let existing = tabs.first(where: { $0.type == .diagram && $0.queryTableSchema == schema && $0.queryConnectionId == configID }) {
+            activateTab(existing.id)
+            return
+        }
+        let tab = Tab(
+            name: name,
+            type: .diagram,
+            queryConnectionId: configID,
+            queryTableSchema: schema
+        )
+        tabs.append(tab)
+        activeTabId = tab.id
+        saveTabsToWorktree()
+    }
+
     // MARK: - Query Result Tabs
 
     public func newQueryTab(connectionId: String?) {
@@ -508,6 +527,9 @@ public final class EditorViewModel: ObservableObject {
             } else if tab.type == .browser {
                 editorContent = ""
                 currentLanguage = "Browser"
+            } else if tab.type == .diagram {
+                editorContent = ""
+                currentLanguage = "ER Diagram"
             } else {
                 if let savedContent = fileContents[tab.id] {
                     editorContent = savedContent
