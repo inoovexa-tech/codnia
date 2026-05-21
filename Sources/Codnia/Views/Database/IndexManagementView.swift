@@ -275,6 +275,7 @@ struct IndexManagementView: View {
                     newIndexName = ""
                     newIndexColumns = []
                     newIndexUnique = false
+                    isCreating = false
                 }
                 await loadIndexes()
             } catch {
