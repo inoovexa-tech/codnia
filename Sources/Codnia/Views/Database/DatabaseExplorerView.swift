@@ -52,7 +52,7 @@ struct DatabaseExplorerView: View {
                                 connectionRow(config)
                             }
                         } else {
-                            ForEach(Array(grouped.keys.sorted()), id: \.self) { groupName in
+                            ForEach(Array(grouped.keys.sorted()).filter { $0 != "__ungrouped" }, id: \.self) { groupName in
                                 if let conns = grouped[groupName] {
                                     groupSection(groupName, connections: conns)
                                 }
