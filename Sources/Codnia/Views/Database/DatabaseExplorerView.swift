@@ -8,6 +8,7 @@ struct DatabaseExplorerView: View {
     @State private var loadingItems = Set<String>()
     @State private var cachedChildren: [String: [DBTreeEntry]] = [:]
     @State private var showConnectionSheet = false
+    @State private var connectionToEdit: ConnectionConfig?
     @State private var hoveredId: String?
     @State private var showCreateTable = false
     @State private var createTableConfigID = ""
@@ -66,6 +67,10 @@ struct DatabaseExplorerView: View {
         }
         .sheet(isPresented: $showConnectionSheet) {
             ConnectionEditSheet()
+                .environmentObject(databaseService)
+        }
+        .sheet(item: $connectionToEdit) { config in
+            ConnectionEditSheet(editingConfig: config)
                 .environmentObject(databaseService)
         }
         .sheet(isPresented: $showCreateTable) {
@@ -297,6 +302,9 @@ struct DatabaseExplorerView: View {
                     Button("Disconnect") {
                         Task { await databaseService.disconnect(configID: config.id) }
                     }
+                }
+                Button("Edit Connection") {
+                    connectionToEdit = config
                 }
                 Button("Remove Connection") {
                     databaseService.removeConnection(config)

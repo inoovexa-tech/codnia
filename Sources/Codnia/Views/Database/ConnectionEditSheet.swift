@@ -27,6 +27,10 @@ struct ConnectionEditSheet: View {
     @State private var testState: TestState = .idle
     @State private var editingConfig: ConnectionConfig?
 
+    init(editingConfig: ConnectionConfig? = nil) {
+        _editingConfig = State(initialValue: editingConfig)
+    }
+
     private let environmentOptions = ["", "dev", "staging", "prod"]
 
     private enum TestState: Equatable {
