@@ -24,6 +24,7 @@ struct QueryResultTabView: View {
     @State private var applyError: String?
     @State private var executingTask: Task<Void, Never>? = nil
     @State private var showHistory = false
+    @StateObject private var completionProvider = SQLCompletionProvider()
 
     private var connectedConfigs: [ConnectionConfig] {
         databaseService.connections.filter {
@@ -122,6 +123,10 @@ struct QueryResultTabView: View {
                 executeQuery()
             }
             editorHeight = computedEditorHeight
+            loadCompletionSchema()
+        }
+        .onChange(of: selectedConnectionId) { _ in
+            loadCompletionSchema()
         }
         .frame(maxHeight: .infinity)
     }
@@ -408,7 +413,7 @@ struct QueryResultTabView: View {
     private var sqlEditor: some View {
         SQLTextEditor(text: $sql, onSelectionChange: { sel in
             selectedText = sel
-        })
+        }, completionProvider: completionProvider)
         .padding(.horizontal, 4)
         .onChange(of: sql) { newValue in
             editorVM.querySql[tabId] = newValue
@@ -681,6 +686,36 @@ struct QueryResultTabView: View {
             selectedConnectionId = connectedConfigs[0].id
         } else if databaseService.connections.count == 1 {
             selectedConnectionId = databaseService.connections[0].id
+        }
+    }
+
+    private func loadCompletionSchema() {
+        guard let connId = selectedConnectionId,
+              databaseService.state(for: connId).isConnected
+        else { return }
+
+        Task {
+            let schemas = await databaseService.fetchSchemas(configID: connId)
+            var allTables: [(String, String)] = []
+            var allColumns: [(String, String)] = []
+
+            for schema in schemas {
+                let tables = await databaseService.fetchTables(configID: connId, schema: schema.name)
+                for table in tables where table.tableType == .table {
+                    allTables.append((schema.name, table.name))
+                    let cols = await databaseService.fetchColumns(
+                        configID: connId,
+                        table: TableID(schema: schema.name, table: table.name)
+                    )
+                    for col in cols {
+                        allColumns.append((table.name, col.name))
+                    }
+                }
+            }
+
+            await MainActor.run {
+                completionProvider.updateSchema(tables: allTables, columns: allColumns)
+            }
         }
     }
 

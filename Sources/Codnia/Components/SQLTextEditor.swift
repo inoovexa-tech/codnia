@@ -4,6 +4,7 @@ import AppKit
 struct SQLTextEditor: NSViewRepresentable {
     @Binding var text: String
     var onSelectionChange: (String) -> Void
+    var completionProvider: SQLCompletionProvider?
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
@@ -35,6 +36,11 @@ struct SQLTextEditor: NSViewRepresentable {
         tv.allowsUndo = true
         tv.isAutomaticTextReplacementEnabled = false
         tv.isAutomaticSpellingCorrectionEnabled = false
+        tv.isAutomaticQuoteSubstitutionEnabled = false
+        tv.isAutomaticDashSubstitutionEnabled = false
+        tv.isAutomaticLinkDetectionEnabled = false
+        tv.isAutomaticDataDetectionEnabled = false
+        tv.isAutomaticTextCompletionEnabled = false
 
         scrollView.documentView = tv
         context.coordinator.textView = tv
@@ -51,6 +57,7 @@ struct SQLTextEditor: NSViewRepresentable {
             tv.string = text
             context.coordinator.applyHighlighting()
         }
+        context.coordinator.parent = self
     }
 
     class Coordinator: NSObject, NSTextViewDelegate {
@@ -84,6 +91,27 @@ struct SQLTextEditor: NSViewRepresentable {
             } else {
                 parent.onSelectionChange("")
             }
+        }
+
+        func textView(_ textView: NSTextView, completions words: [String], forPartialWordRange charRange: NSRange, indexOfSelectedItem index: UnsafeMutablePointer<Int>?) -> [String] {
+            guard let provider = parent.completionProvider else { return words }
+            let partial = (textView.string as NSString).substring(with: charRange)
+            let items = provider.items(matching: partial)
+            if items.isEmpty { return words }
+            return items.map { $0.displayText }
+        }
+
+        func textView(_ textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
+            if commandSelector == #selector(NSResponder.complete(_:)) {
+                return false
+            }
+            if commandSelector == #selector(NSResponder.insertNewline(_:)) {
+                return false
+            }
+            return false
+        }
+
+        func textViewDidChangeTypingAttributes(_ notification: Notification) {
         }
     }
 }

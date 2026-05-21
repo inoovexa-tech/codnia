@@ -27,21 +27,44 @@ struct DatabaseExplorerView: View {
     @State private var dropTableID = TableID(schema: "", table: "")
     @State private var dropCascade = false
     @State private var dropErrorMessage: String?
+    @State private var showERDiagram = false
+    @State private var erConfigID = ""
+    @State private var erSchema = ""
+
+    @State private var searchText = ""
+    @State private var rowCounts: [String: Int] = [:]
+    @State private var loadingRowCounts = Set<String>()
 
     var body: some View {
         VStack(spacing: 0) {
             header
 
+            searchBar
+
             if databaseService.connections.isEmpty {
                 emptyState
             } else {
                 ScrollView(.vertical, showsIndicators: true) {
-                    VStack(alignment: .leading, spacing: 0) {
-                        ForEach(databaseService.connections) { config in
-                            connectionRow(config)
+                    VStack(alignment: .leading, spacing: 2) {
+                        let grouped = groupedConnections
+                        if grouped.isEmpty {
+                            ForEach(databaseService.connections) { config in
+                                connectionRow(config)
+                            }
+                        } else {
+                            ForEach(Array(grouped.keys.sorted()), id: \.self) { groupName in
+                                if let conns = grouped[groupName] {
+                                    groupSection(groupName, connections: conns)
+                                }
+                            }
+                            if let ungrouped = grouped["__ungrouped"], !ungrouped.isEmpty {
+                                groupSection("Ungrouped", connections: ungrouped)
+                            }
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
+
+                    savedQueriesSection
                 }
             }
         }
@@ -65,6 +88,11 @@ struct DatabaseExplorerView: View {
         .sheet(isPresented: $showIndexManagement) {
             IndexManagementView(configID: indexManagementConfigID, table: indexManagementTable)
                 .environmentObject(databaseService)
+        }
+        .sheet(isPresented: $showERDiagram) {
+            ERDiagramView(configID: erConfigID, schema: erSchema)
+                .environmentObject(databaseService)
+                .frame(width: 700, height: 500)
         }
         .alert("Drop \(dropType)", isPresented: $showDropAlert, actions: {
             if dropType == "Table" {
@@ -115,6 +143,63 @@ struct DatabaseExplorerView: View {
             Rectangle().frame(height: 1).foregroundColor(.borderDefault),
             alignment: .bottom
         )
+    }
+
+    // MARK: - Search
+
+    private var searchBar: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 10))
+                .foregroundColor(.textTertiary)
+            TextField("Filter tables...", text: $searchText)
+                .textFieldStyle(.plain)
+                .font(.system(size: 11))
+                .foregroundColor(.textPrimary)
+            if !searchText.isEmpty {
+                Button(action: { searchText = "" }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 10))
+                        .foregroundColor(.textTertiary)
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(Color.bgTertiary)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+    }
+
+    // MARK: - Groups
+
+    private var groupedConnections: [String: [ConnectionConfig]] {
+        let groups = Dictionary(grouping: databaseService.connections) { config in
+            config.group ?? "__ungrouped"
+        }
+        return groups
+    }
+
+    private func groupSection(_ name: String, connections: [ConnectionConfig]) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 4) {
+                Image(systemName: "folder")
+                    .font(.system(size: 10))
+                    .foregroundColor(.textTertiary)
+                Text(name == "__ungrouped" ? "Ungrouped" : name)
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(.textTertiary)
+                    .textCase(.uppercase)
+                Spacer()
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 4)
+
+            ForEach(connections) { config in
+                connectionRow(config)
+            }
+        }
     }
 
     // MARK: - Empty State
@@ -177,6 +262,10 @@ struct DatabaseExplorerView: View {
                     .foregroundColor(.textPrimary)
                     .lineLimit(1)
 
+                if let env = config.environment, !env.isEmpty {
+                    environmentBadge(env)
+                }
+
                 Spacer()
 
                 if case .connecting = state {
@@ -231,190 +320,255 @@ struct DatabaseExplorerView: View {
         }
     }
 
+    private func environmentBadge(_ env: String) -> some View {
+        let color: Color = {
+            switch env.lowercased() {
+            case "dev", "development": return .accentGreen
+            case "staging", "stage", "qa": return .accentYellow
+            case "prod", "production": return .accentRed
+            default: return .accentBlue
+            }
+        }()
+        return Text(env.prefix(3).uppercased())
+            .font(.system(size: 8, weight: .bold))
+            .foregroundColor(color)
+            .padding(.horizontal, 4)
+            .padding(.vertical, 1)
+            .background(color.opacity(0.15))
+            .cornerRadius(3)
+    }
+
     // MARK: - Tree Row
 
     private func treeRow(_ entry: DBTreeEntry, depth: Int, configID: String) -> some View {
         let isExpanded = expandedItems.contains(entry.id)
         let isLoading = loadingItems.contains(entry.id)
+        let isSearching = !searchText.isEmpty
+        let matchesSearch: Bool = {
+            guard isSearching else { return true }
+            let q = searchText.lowercased()
+            return entry.name.lowercased().contains(q)
+        }()
 
-        return VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 4) {
-                if entry.isExpandable {
-                    Button(action: { handleExpand(entry, configID: configID) }) {
-                        Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+        if isSearching && !matchesSearch && !isExpanded {
+            return AnyView(EmptyView())
+        }
+
+        return AnyView(
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: 4) {
+                    if entry.isExpandable {
+                        Button(action: { handleExpand(entry, configID: configID) }) {
+                            Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                                .font(.system(size: 10))
+                                .foregroundColor(.textTertiary)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .frame(width: 16, height: 16)
+                    } else {
+                        Spacer().frame(width: 16)
+                    }
+
+                    if isLoading {
+                        ProgressView()
+                            .scaleEffect(0.5)
+                            .frame(width: 12, height: 12)
+                    } else {
+                        Image(systemName: iconFor(entry))
+                            .font(.system(size: 12))
+                            .foregroundColor(colorFor(entry))
+                    }
+
+                    let isSection: Bool = {
+                        if case .schemaSection = entry { return true }
+                        return false
+                    }()
+
+                    Text(entry.name)
+                        .font(.system(size: 13, weight: isSection ? .medium : .regular))
+                        .foregroundColor(isSection ? .textPrimary : .textSecondary)
+                        .lineLimit(1)
+
+                    if case .table(let t) = entry {
+                        let rowCountKey = "\(configID):\(t.schema):\(t.name)"
+                        if let count = rowCounts[rowCountKey] {
+                            Text("(\(count))")
+                                .font(.system(size: 10))
+                                .foregroundColor(.textTertiary)
+                                .lineLimit(1)
+                        } else if loadingRowCounts.contains(rowCountKey) {
+                            ProgressView()
+                                .scaleEffect(0.4)
+                                .frame(width: 10, height: 10)
+                        }
+                    }
+
+                    if case .column(let col, _) = entry {
+                        Text(col.dataType)
                             .font(.system(size: 10))
                             .foregroundColor(.textTertiary)
+                            .lineLimit(1)
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 1)
+                            .background(Color.borderDefault.opacity(0.3))
+                            .cornerRadius(3)
                     }
-                    .buttonStyle(PlainButtonStyle())
-                    .frame(width: 16, height: 16)
-                } else {
-                    Spacer().frame(width: 16)
+
+                    Spacer()
+
+                    if case .database = entry, isExpanded {
+                        Circle()
+                            .fill(Color.accentGreen)
+                            .frame(width: 6, height: 6)
+                    }
                 }
-
-                if isLoading {
-                    ProgressView()
-                        .scaleEffect(0.5)
-                        .frame(width: 12, height: 12)
-                } else {
-                    Image(systemName: iconFor(entry))
-                        .font(.system(size: 12))
-                        .foregroundColor(colorFor(entry))
+                .padding(.leading, CGFloat(8 + depth * 16))
+                .padding(.trailing, 4)
+                .padding(.vertical, 2)
+                .frame(height: 24)
+                .background(hoveredId == entry.id ? Color.bgHover : Color.clear)
+                .onHover { hovering in
+                    hoveredId = hovering ? entry.id : nil
                 }
-
-                let isSection: Bool = {
-                    if case .schemaSection = entry { return true }
-                    return false
-                }()
-
-                Text(entry.name)
-                    .font(.system(size: 13, weight: isSection ? .medium : .regular))
-                    .foregroundColor(isSection ? .textPrimary : .textSecondary)
-                    .lineLimit(1)
-
-                if case .column(let col, _) = entry {
-                    Text(col.dataType)
-                        .font(.system(size: 10))
-                        .foregroundColor(.textTertiary)
-                        .lineLimit(1)
-                        .padding(.horizontal, 4)
-                        .padding(.vertical, 1)
-                        .background(Color.borderDefault.opacity(0.3))
-                        .cornerRadius(3)
-                }
-
-                Spacer()
-
-                if case .database = entry, isExpanded {
-                    Circle()
-                        .fill(Color.accentGreen)
-                        .frame(width: 6, height: 6)
-                }
-            }
-            .padding(.leading, CGFloat(8 + depth * 16))
-            .padding(.trailing, 4)
-            .padding(.vertical, 2)
-            .frame(height: 24)
-            .background(hoveredId == entry.id ? Color.bgHover : Color.clear)
-            .onHover { hovering in
-                hoveredId = hovering ? entry.id : nil
-            }
-            .contextMenu {
-                switch entry {
-                case .table(let t):
-                    Button("Select Top 100") {
-                        selectTop100(schema: t.schema, table: t.name, configID: configID)
-                    }
-                    Divider()
-                    Button("View DDL") {
-                        viewDDL(configID: configID, table: TableID(schema: t.schema, table: t.name), name: t.name)
-                    }
-                    Divider()
-                    Button("Add Column") {
-                        alterColumnConfigID = configID
-                        alterColumnTable = TableID(schema: t.schema, table: t.name)
-                        alterColumnInfo = nil
-                        alterColumnMode = .add
-                        showAlterColumn = true
-                    }
-                    Button("Manage Indexes") {
-                        indexManagementConfigID = configID
-                        indexManagementTable = TableID(schema: t.schema, table: t.name)
-                        showIndexManagement = true
-                    }
-                    Divider()
-                    Button("Copy Name") {
-                        NSPasteboard.general.clearContents()
-                        NSPasteboard.general.setString("\(t.schema).\(t.name)", forType: .string)
-                    }
-                    Divider()
-                    Button("Drop Table...", role: .destructive) {
-                        dropConfigID = configID
-                        dropTarget = "\(t.schema).\(t.name)"
-                        dropType = "Table"
-                        dropTableID = TableID(schema: t.schema, table: t.name)
-                        dropCascade = false
-                        dropErrorMessage = nil
-                        showDropAlert = true
-                    }
-                case .function(let f):
-                    Button("Copy Name") {
-                        NSPasteboard.general.clearContents()
-                        NSPasteboard.general.setString(f.name, forType: .string)
-                    }
-                    Divider()
-                    Button("Drop Function...", role: .destructive) {
-                        dropConfigID = configID
-                        dropTarget = f.name
-                        dropType = "Function"
-                        dropTableID = TableID(schema: f.schema, table: f.name)
-                        dropCascade = false
-                        dropErrorMessage = nil
-                        showDropAlert = true
-                    }
-                case .procedure(let p):
-                    Button("Copy Name") {
-                        NSPasteboard.general.clearContents()
-                        NSPasteboard.general.setString(p.name, forType: .string)
-                    }
-                    Divider()
-                    Button("Drop Procedure...", role: .destructive) {
-                        dropConfigID = configID
-                        dropTarget = p.name
-                        dropType = "Procedure"
-                        dropTableID = TableID(schema: p.schema, table: p.name)
-                        dropCascade = false
-                        dropErrorMessage = nil
-                        showDropAlert = true
-                    }
-                case .schemaSection(let sec):
-                    if sec.sectionType == .tables {
-                        Button("New Table") {
-                            createTableConfigID = configID
-                            createTableSchema = sec.schema
-                            showCreateTable = true
-                        }
-                    }
-                case .column(let col, let tableName):
-                    if let schema = findSchema(for: entry, configID: configID) {
-                        Button("Alter Column...") {
-                            alterColumnConfigID = configID
-                            alterColumnTable = TableID(schema: schema, table: tableName)
-                            alterColumnInfo = col
-                            alterColumnMode = .alter
-                            showAlterColumn = true
+                .contextMenu {
+                    switch entry {
+                    case .table(let t):
+                        Button("Select Top 100") {
+                            selectTop100(schema: t.schema, table: t.name, configID: configID)
                         }
                         Divider()
-                        Button("Drop Column...", role: .destructive) {
+                        Button("View DDL") {
+                            viewDDL(configID: configID, table: TableID(schema: t.schema, table: t.name), name: t.name)
+                        }
+                        Divider()
+                        Button("ER Diagram") {
+                            erConfigID = configID
+                            erSchema = t.schema
+                            showERDiagram = true
+                        }
+                        Divider()
+                        Button("Add Column") {
+                            alterColumnConfigID = configID
+                            alterColumnTable = TableID(schema: t.schema, table: t.name)
+                            alterColumnInfo = nil
+                            alterColumnMode = .add
+                            showAlterColumn = true
+                        }
+                        Button("Manage Indexes") {
+                            indexManagementConfigID = configID
+                            indexManagementTable = TableID(schema: t.schema, table: t.name)
+                            showIndexManagement = true
+                        }
+                        Divider()
+                        Button("Copy Name") {
+                            NSPasteboard.general.clearContents()
+                            NSPasteboard.general.setString("\(t.schema).\(t.name)", forType: .string)
+                        }
+                        Divider()
+                        Button("Drop Table...", role: .destructive) {
                             dropConfigID = configID
-                            dropTarget = col.name
-                            dropType = "Column"
-                            dropTableID = TableID(schema: schema, table: tableName)
+                            dropTarget = "\(t.schema).\(t.name)"
+                            dropType = "Table"
+                            dropTableID = TableID(schema: t.schema, table: t.name)
                             dropCascade = false
                             dropErrorMessage = nil
                             showDropAlert = true
                         }
+                    case .function(let f):
+                        Button("Copy Name") {
+                            NSPasteboard.general.clearContents()
+                            NSPasteboard.general.setString(f.name, forType: .string)
+                        }
+                        Divider()
+                        Button("Drop Function...", role: .destructive) {
+                            dropConfigID = configID
+                            dropTarget = f.name
+                            dropType = "Function"
+                            dropTableID = TableID(schema: f.schema, table: f.name)
+                            dropCascade = false
+                            dropErrorMessage = nil
+                            showDropAlert = true
+                        }
+                    case .procedure(let p):
+                        Button("Copy Name") {
+                            NSPasteboard.general.clearContents()
+                            NSPasteboard.general.setString(p.name, forType: .string)
+                        }
+                        Divider()
+                        Button("Drop Procedure...", role: .destructive) {
+                            dropConfigID = configID
+                            dropTarget = p.name
+                            dropType = "Procedure"
+                            dropTableID = TableID(schema: p.schema, table: p.name)
+                            dropCascade = false
+                            dropErrorMessage = nil
+                            showDropAlert = true
+                        }
+                    case .schemaSection(let sec):
+                        if sec.sectionType == .tables {
+                            Button("New Table") {
+                                createTableConfigID = configID
+                                createTableSchema = sec.schema
+                                showCreateTable = true
+                            }
+                            Divider()
+                            Button("ER Diagram") {
+                                erConfigID = configID
+                                erSchema = sec.schema
+                                showERDiagram = true
+                            }
+                        }
+                    case .column(let col, let tableName):
+                        if let schema = findSchema(for: entry, configID: configID) {
+                            Button("Alter Column...") {
+                                alterColumnConfigID = configID
+                                alterColumnTable = TableID(schema: schema, table: tableName)
+                                alterColumnInfo = col
+                                alterColumnMode = .alter
+                                showAlterColumn = true
+                            }
+                            Divider()
+                            Button("Drop Column...", role: .destructive) {
+                                dropConfigID = configID
+                                dropTarget = col.name
+                                dropType = "Column"
+                                dropTableID = TableID(schema: schema, table: tableName)
+                                dropCascade = false
+                                dropErrorMessage = nil
+                                showDropAlert = true
+                            }
+                        }
+                    default:
+                        EmptyView()
                     }
-                default:
-                    EmptyView()
                 }
-            }
-            .onTapGesture(count: 2) {
-                if case .table(let t) = entry {
-                    selectTop100(schema: t.schema, table: t.name, configID: configID)
+                .onTapGesture(count: 2) {
+                    if case .table(let t) = entry {
+                        selectTop100(schema: t.schema, table: t.name, configID: configID)
+                    }
                 }
-            }
-            .onTapGesture {
-                if entry.isExpandable {
-                    handleExpand(entry, configID: configID)
+                .onTapGesture {
+                    if entry.isExpandable {
+                        handleExpand(entry, configID: configID)
+                    }
                 }
-            }
 
-            if isExpanded, let children = cachedChildren[entry.id] {
-                ForEach(children) { child in
-                    AnyView(treeRow(child, depth: depth + 1, configID: configID))
+                if isExpanded, let children = cachedChildren[entry.id] {
+                    ForEach(children) { child in
+                        treeRow(child, depth: depth + 1, configID: configID)
+                    }
                 }
             }
-        }
+        )
+    }
+
+    // MARK: - Saved Queries Section
+
+    private var savedQueriesSection: some View {
+        SavedQueriesView()
+            .environmentObject(databaseService)
+            .environmentObject(editorVM)
+            .padding(.top, 8)
     }
 
     // MARK: - Actions
@@ -517,6 +671,11 @@ struct DatabaseExplorerView: View {
             Task {
                 let children = await loadChildren(for: entry, configID: configID)
                 cachedChildren[entry.id] = children
+
+                if case .table(let t) = entry {
+                    loadRowCount(configID: configID, schema: t.schema, table: t.name)
+                }
+
                 loadingItems.remove(entry.id)
             }
         }
@@ -574,6 +733,17 @@ struct DatabaseExplorerView: View {
         }
 
         return result
+    }
+
+    private func loadRowCount(configID: String, schema: String, table: String) {
+        let key = "\(configID):\(schema):\(table)"
+        guard !loadingRowCounts.contains(key) else { return }
+        loadingRowCounts.insert(key)
+        Task {
+            let count = await databaseService.fetchRowCount(configID: configID, schema: schema, table: table)
+            rowCounts[key] = count
+            loadingRowCounts.remove(key)
+        }
     }
 
     private func selectTop100(schema: String, table: String, configID: String) {

@@ -12,6 +12,10 @@ public final class DatabaseConnectionService: ObservableObject {
     private let connectionsFileName = "database-connections.json"
     private var connectionsLoaded = false
 
+    public let sshTunnelService = SSHTunnelService()
+
+    @Published public var schemaVersion: Int = 0
+
     public init() {
         registerProvider(PostgreSQLProvider())
         registerProvider(MySQLProvider())
@@ -63,6 +67,7 @@ public final class DatabaseConnectionService: ObservableObject {
         connections.removeAll { $0.id == config.id }
         sessions.removeValue(forKey: config.id)
         KeychainHelper.delete(account: config.id)
+        sshTunnelService.stopTunnel(configID: config.id)
         saveConnections()
     }
 
@@ -79,29 +84,39 @@ public final class DatabaseConnectionService: ObservableObject {
         do {
             var effectiveConfig = config
             if let db = database { effectiveConfig.database = db }
+
+            if let sshConfig = config.sshConfig, sshConfig.host.isEmpty == false {
+                let localPort = try await sshTunnelService.startTunnel(
+                    configID: config.id,
+                    sshConfig: sshConfig,
+                    remoteHost: config.host,
+                    remotePort: config.port
+                )
+                effectiveConfig.host = "127.0.0.1"
+                effectiveConfig.port = localPort
+            }
+
             let handle = try await provider.open(config: effectiveConfig, password: password)
             sessions[config.id] = .connected(handleID: handle)
             KeychainHelper.save(account: config.id, password: password)
         } catch {
+            sshTunnelService.stopTunnel(configID: config.id)
             sessions[config.id] = .error(error.localizedDescription)
         }
         objectWillChange.send()
     }
 
     public func disconnect(configID: String) async {
-        guard case .connected(let handle) = sessions[configID],
+        if case .connected(let handle) = sessions[configID],
               let config = config(withID: configID),
-              let provider = providers[config.type]
-        else {
-            sessions[configID] = .disconnected
-            objectWillChange.send()
-            return
+              let provider = providers[config.type] {
+            do {
+                try await provider.close(handle: handle)
+            } catch {
+
+            }
         }
-        do {
-            try await provider.close(handle: handle)
-        } catch {
-            
-        }
+        sshTunnelService.stopTunnel(configID: configID)
         sessions[configID] = .disconnected
         objectWillChange.send()
     }
@@ -131,7 +146,7 @@ public final class DatabaseConnectionService: ObservableObject {
     // MARK: - Query Execution
 
     public func execute(configID: String, sql: String, page: Int = 0, pageSize: Int = 100, orderBy: String? = nil) async -> QueryPageResult {
-        
+
         guard let config = config(withID: configID),
               let provider = providers[config.type],
               let handle = sessions[configID]?.handleID
@@ -144,7 +159,7 @@ public final class DatabaseConnectionService: ObservableObject {
         }
         do {
             let result = try await provider.execute(handle: handle, query: sql, page: page, pageSize: pageSize, orderBy: orderBy)
-            
+
             return result
         } catch {
             return QueryPageResult(
@@ -190,8 +205,6 @@ public final class DatabaseConnectionService: ObservableObject {
     }
 
     // MARK: - DDL Operations
-
-    @Published public var schemaVersion: Int = 0
 
     private func ddlProvider(for configID: String) -> (any DatabaseProvider, String)? {
         guard let config = config(withID: configID),
@@ -303,6 +316,103 @@ public final class DatabaseConnectionService: ObservableObject {
         return (try? await provider.fetchProcedures(handle: handle, schema: schema)) ?? []
     }
 
+    // MARK: - Foreign Keys (for ER Diagram)
+
+    public func fetchForeignKeys(configID: String, schema: String) async -> [ForeignKeyInfo] {
+        guard let config = config(withID: configID),
+              sessions[configID]?.isConnected == true
+        else { return [] }
+
+        var sql: String
+        switch config.type {
+        case .postgres:
+            sql = """
+            SELECT
+                tc.constraint_name,
+                kcu.table_schema AS schema_name,
+                kcu.table_name AS table_name,
+                kcu.column_name AS column_name,
+                ccu.table_schema AS foreign_schema_name,
+                ccu.table_name AS foreign_table_name,
+                ccu.column_name AS foreign_column_name
+            FROM information_schema.table_constraints tc
+            JOIN information_schema.key_column_usage kcu
+                ON tc.constraint_catalog = kcu.constraint_catalog
+                AND tc.constraint_schema = kcu.constraint_schema
+                AND tc.constraint_name = kcu.constraint_name
+            JOIN information_schema.constraint_column_usage ccu
+                ON ccu.constraint_catalog = tc.constraint_catalog
+                AND ccu.constraint_schema = tc.constraint_schema
+                AND ccu.constraint_name = tc.constraint_name
+            WHERE tc.constraint_type = 'FOREIGN KEY'
+                AND kcu.table_schema = '\(schema)'
+            """
+        case .mysql:
+            sql = """
+            SELECT
+                tc.constraint_name,
+                tc.table_schema AS schema_name,
+                tc.table_name AS table_name,
+                kcu.column_name AS column_name,
+                kcu.referenced_table_schema AS foreign_schema_name,
+                kcu.referenced_table_name AS foreign_table_name,
+                kcu.referenced_column_name AS foreign_column_name
+            FROM information_schema.table_constraints tc
+            JOIN information_schema.key_column_usage kcu
+                ON tc.constraint_schema = kcu.constraint_schema
+                AND tc.constraint_name = kcu.constraint_name
+            WHERE tc.constraint_type = 'FOREIGN KEY'
+                AND tc.table_schema = '\(schema)'
+            """
+        case .sqlite:
+            return []
+        }
+
+        let result = await execute(configID: configID, sql: sql, pageSize: 1000)
+        if result.error != nil {
+            return []
+        }
+
+        var fks: [ForeignKeyInfo] = []
+        let colIdx = { (name: String) -> Int? in
+            result.columns.firstIndex { $0.lowercased() == name.lowercased() }
+        }
+
+        for row in result.rows {
+            guard let constraintNameIdx = colIdx("constraint_name"),
+                  let schemaIdx = colIdx("schema_name"),
+                  let tableIdx = colIdx("table_name"),
+                  let columnIdx = colIdx("column_name"),
+                  let foreignSchemaIdx = colIdx("foreign_schema_name"),
+                  let foreignTableIdx = colIdx("foreign_table_name"),
+                  let foreignColumnIdx = colIdx("foreign_column_name")
+            else { continue }
+
+            let info = ForeignKeyInfo(
+                constraintName: row[constraintNameIdx] ?? "",
+                schema: row[schemaIdx] ?? schema,
+                table: row[tableIdx] ?? "",
+                column: row[columnIdx] ?? "",
+                foreignSchema: row[foreignSchemaIdx] ?? "",
+                foreignTable: row[foreignTableIdx] ?? "",
+                foreignColumn: row[foreignColumnIdx] ?? ""
+            )
+            fks.append(info)
+        }
+        return fks
+    }
+
+    // MARK: - Row Count
+
+    public func fetchRowCount(configID: String, schema: String, table: String) async -> Int {
+        guard sessions[configID]?.isConnected == true else { return 0 }
+        let sql = "SELECT COUNT(*) AS cnt FROM \"\(schema)\".\"\(table)\""
+        let result = await execute(configID: configID, sql: sql, pageSize: 1)
+        if result.error != nil { return 0 }
+        guard let firstRow = result.rows.first, let countStr = firstRow.first else { return 0 }
+        return Int(countStr ?? "0") ?? 0
+    }
+
     // MARK: - Persistence
 
     private func connectionsFileURL() -> URL? {
@@ -340,5 +450,29 @@ public enum DatabaseConnectionError: LocalizedError {
         case .notConnected: return "Not connected to database"
         case .providerNotFound: return "No provider found for database type"
         }
+    }
+}
+
+// MARK: - Foreign Key Model
+
+public struct ForeignKeyInfo: Identifiable, Sendable {
+    public let id: String
+    public let constraintName: String
+    public let schema: String
+    public let table: String
+    public let column: String
+    public let foreignSchema: String
+    public let foreignTable: String
+    public let foreignColumn: String
+
+    public init(constraintName: String, schema: String, table: String, column: String, foreignSchema: String, foreignTable: String, foreignColumn: String) {
+        self.id = "\(schema).\(table).\(constraintName)"
+        self.constraintName = constraintName
+        self.schema = schema
+        self.table = table
+        self.column = column
+        self.foreignSchema = foreignSchema
+        self.foreignTable = foreignTable
+        self.foreignColumn = foreignColumn
     }
 }

@@ -14,8 +14,20 @@ struct ConnectionEditSheet: View {
     @State private var useSSL: Bool = false
     @State private var filePath: String = ""
 
+    @State private var useSSH: Bool = false
+    @State private var sshHost: String = ""
+    @State private var sshPort: String = "22"
+    @State private var sshUser: String = ""
+    @State private var sshAuthMethod: SSHConfig.SSHAuthMethod = .key
+    @State private var sshKeyPath: String = ""
+
+    @State private var group: String = ""
+    @State private var environment: String = ""
+
     @State private var testState: TestState = .idle
     @State private var editingConfig: ConnectionConfig?
+
+    private let environmentOptions = ["", "dev", "staging", "prod"]
 
     private enum TestState: Equatable {
         case idle, testing, success, failed(String)
@@ -64,6 +76,10 @@ struct ConnectionEditSheet: View {
                     } else {
                         serverFields
                     }
+
+                    sshSection
+
+                    groupSection
                 }
                 .padding(20)
             }
@@ -101,7 +117,7 @@ struct ConnectionEditSheet: View {
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
         }
-        .frame(width: 420, height: 520)
+        .frame(width: 440, height: 620)
         .background(Color.bgPrimary)
         .onAppear(perform: loadExistingConfig)
     }
@@ -170,6 +186,85 @@ struct ConnectionEditSheet: View {
                     RoundedRectangle(cornerRadius: 4)
                         .stroke(Color.borderLight, lineWidth: 0.5)
                 )
+        }
+    }
+
+    @ViewBuilder
+    private var sshSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Toggle(isOn: $useSSH) {
+                Text("Use SSH Tunnel")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.textSecondary)
+            }
+            .toggleStyle(.switch)
+            .controlSize(.small)
+
+            if useSSH {
+                VStack(spacing: 10) {
+                    formField("SSH Host", value: $sshHost)
+                    formField("SSH Port", value: $sshPort)
+                    formField("SSH User", value: $sshUser)
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Auth Method")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.textSecondary)
+                        Picker("", selection: $sshAuthMethod) {
+                            Text("SSH Key").tag(SSHConfig.SSHAuthMethod.key)
+                            Text("Password").tag(SSHConfig.SSHAuthMethod.password)
+                        }
+                        .pickerStyle(.segmented)
+                    }
+
+                    if sshAuthMethod == .key {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Key Path (optional)")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.textSecondary)
+                            TextField("~/.ssh/id_rsa", text: $sshKeyPath)
+                                .textFieldStyle(.plain)
+                                .font(.system(size: 13))
+                                .foregroundColor(.textPrimary)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(Color.bgTertiary)
+                                .cornerRadius(4)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 4)
+                                        .stroke(Color.borderLight, lineWidth: 0.5)
+                                )
+                        }
+                    }
+                }
+                .padding(.leading, 8)
+            }
+        }
+        .padding(12)
+        .background(Color.bgSecondary.opacity(0.5))
+        .cornerRadius(6)
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .stroke(Color.borderLight, lineWidth: 0.5)
+        )
+    }
+
+    @ViewBuilder
+    private var groupSection: some View {
+        VStack(spacing: 10) {
+            formField("Group", value: $group)
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Environment")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.textSecondary)
+                Picker("", selection: $environment) {
+                    ForEach(environmentOptions, id: \.self) { env in
+                        Text(env.isEmpty ? "None" : env.capitalized).tag(env)
+                    }
+                }
+                .pickerStyle(.segmented)
+            }
         }
     }
 
@@ -263,8 +358,18 @@ struct ConnectionEditSheet: View {
         database = config.database ?? ""
         useSSL = config.useSSL
         filePath = config.filePath ?? ""
+        group = config.group ?? ""
+        environment = config.environment ?? ""
         if let saved = databaseService.password(for: config.id) {
             password = saved
+        }
+        if let ssh = config.sshConfig {
+            useSSH = true
+            sshHost = ssh.host
+            sshPort = String(ssh.port)
+            sshUser = ssh.user
+            sshAuthMethod = ssh.authMethod
+            sshKeyPath = ssh.keyPath ?? ""
         }
     }
 
@@ -281,7 +386,7 @@ struct ConnectionEditSheet: View {
             let pw = resolvedPassword(for: config.id)
             await databaseService.connect(config, password: pw)
 
-            for _ in 0..<20 {
+            for _ in 0..<30 {
                 let s = databaseService.state(for: config.id)
                 if case .connected = s { break }
                 if case .error = s { break }
@@ -319,6 +424,15 @@ struct ConnectionEditSheet: View {
 
     private func buildConfig() -> ConnectionConfig {
         let defaultPort: Int = type == .mysql ? 3306 : 5432
+
+        let ssh: SSHConfig? = useSSH && !sshHost.isEmpty ? SSHConfig(
+            host: sshHost,
+            port: Int(sshPort) ?? 22,
+            user: sshUser,
+            authMethod: sshAuthMethod,
+            keyPath: sshKeyPath.isEmpty ? nil : sshKeyPath
+        ) : nil
+
         return ConnectionConfig(
             id: editingConfig?.id ?? UUID().uuidString,
             name: name,
@@ -328,7 +442,10 @@ struct ConnectionEditSheet: View {
             user: user,
             database: database.isEmpty ? nil : database,
             useSSL: type == .sqlite ? false : useSSL,
-            filePath: type == .sqlite ? (filePath.isEmpty ? nil : filePath) : nil
+            filePath: type == .sqlite ? (filePath.isEmpty ? nil : filePath) : nil,
+            sshConfig: ssh,
+            group: group.isEmpty ? nil : group,
+            environment: environment.isEmpty ? nil : environment
         )
     }
 }
