@@ -204,14 +204,96 @@ struct NotesView: View {
                     }
                 }
 
-                sectionHeader("All Notes", icon: "folder", color: .textTertiary)
-                ForEach(items) { entry in
-                    noteRow(entry)
-                    Divider().background(Color.borderDefault)
+                if notesVM.searchText.isEmpty {
+                    directoryList
+                } else {
+                    sectionHeader("All Notes", icon: "folder", color: .textTertiary)
+                    ForEach(items) { entry in
+                        noteRow(entry)
+                        Divider().background(Color.borderDefault)
+                    }
                 }
             }
         }
         .background(Color.bgPrimary)
+    }
+
+    @ViewBuilder
+    private var directoryList: some View {
+        let root = notesVM.filteredRootStructure
+        let hasSubdirs = !root.directories.isEmpty
+
+        if hasSubdirs {
+            sectionHeader("Notes", icon: "folder", color: .textTertiary)
+            ForEach(root.directories) { dir in
+                AnyView(directoryRow(dir, indent: 0))
+                Divider().background(Color.borderDefault)
+            }
+            if !root.notes.isEmpty {
+                ForEach(root.notes) { entry in
+                    noteRow(entry)
+                    Divider().background(Color.borderDefault)
+                }
+            }
+        } else {
+            sectionHeader("All Notes", icon: "folder", color: .textTertiary)
+            ForEach(root.notes) { entry in
+                noteRow(entry)
+                Divider().background(Color.borderDefault)
+            }
+        }
+    }
+
+    private func directoryRow(_ dir: NoteDirectory, indent: Int) -> AnyView {
+        let isExpanded = notesVM.expandedDirectories.contains(dir.path)
+        return AnyView(VStack(spacing: 0) {
+            Button(action: {
+                if isExpanded {
+                    notesVM.expandedDirectories.remove(dir.path)
+                } else {
+                    notesVM.expandedDirectories.insert(dir.path)
+                }
+            }) {
+                HStack(spacing: 4) {
+                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                        .font(.system(size: 9))
+                        .foregroundColor(.textTertiary)
+                        .frame(width: 12)
+
+                    Image(systemName: "folder")
+                        .font(.system(size: 12))
+                        .foregroundColor(.textTertiary)
+                        .frame(width: 16)
+
+                    Text(dir.name)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.textPrimary)
+                        .lineLimit(1)
+
+                    Spacer()
+                }
+                .padding(.leading, CGFloat(8 + indent * 16))
+                .padding(.trailing, 10)
+                .padding(.vertical, 5)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(PlainButtonStyle())
+
+            if isExpanded {
+                if !dir.directories.isEmpty {
+                    ForEach(dir.directories) { subDir in
+                        AnyView(directoryRow(subDir, indent: indent + 1))
+                        Divider().background(Color.borderDefault)
+                    }
+                }
+                if !dir.notes.isEmpty {
+                    ForEach(dir.notes) { entry in
+                        noteRow(entry, indent: indent + 1)
+                        Divider().background(Color.borderDefault)
+                    }
+                }
+            }
+        })
     }
 
     private func sectionHeader(_ title: String, icon: String, color: Color) -> some View {
@@ -229,7 +311,7 @@ struct NotesView: View {
         .background(Color.bgSecondary)
     }
 
-    private func noteRow(_ entry: NoteEntry) -> some View {
+    private func noteRow(_ entry: NoteEntry, indent: Int = 0) -> some View {
         let fileName = entry.name.replacingOccurrences(of: ".md", with: "").replacingOccurrences(of: ".markdown", with: "")
         let displayName = entry.frontmatterTitle?.isEmpty == false ? entry.frontmatterTitle! : fileName
 
@@ -269,6 +351,7 @@ struct NotesView: View {
             }
         }
         .padding(.horizontal, 10)
+        .padding(.leading, CGFloat(indent * 16))
         .padding(.vertical, 6)
         .contentShape(Rectangle())
         .onTapGesture {

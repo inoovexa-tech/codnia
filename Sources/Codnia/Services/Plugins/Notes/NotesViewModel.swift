@@ -55,6 +55,7 @@ public final class NotesViewModel: ObservableObject {
     @Published public var noteToRename: NoteEntry?
     @Published public var renameText: String = ""
     @Published public var showTemplatePicker: Bool = false
+    @Published public var expandedDirectories: Set<String> = []
 
     private let fileSystem = FileSystemService.shared
     private var workspacePath: String = ""
@@ -150,6 +151,47 @@ public final class NotesViewModel: ObservableObject {
         }
 
         return result
+    }
+
+    public var rootNotesPath: String {
+        (workspacePath as NSString).appendingPathComponent(".codnia/notes")
+    }
+
+    public var filteredRootStructure: NoteDirectory {
+        buildTree(from: filteredEntries, rootPath: rootNotesPath)
+    }
+
+    public func buildTree(from notes: [NoteEntry], rootPath: String) -> NoteDirectory {
+        var notesByDir: [String: [NoteEntry]] = [:]
+        var childDirsByParent: [String: [String]] = [:]
+        var dirNames: [String: String] = [:]
+
+        for note in notes {
+            let dir = (note.path as NSString).deletingLastPathComponent
+            notesByDir[dir, default: []].append(note)
+        }
+
+        for dirPath in notesByDir.keys where dirPath != rootPath {
+            let parent = (dirPath as NSString).deletingLastPathComponent
+            childDirsByParent[parent, default: []].append(dirPath)
+            dirNames[dirPath] = (dirPath as NSString).lastPathComponent
+        }
+
+        func buildNode(path: String) -> NoteDirectory {
+            let name = dirNames[path] ?? (path as NSString).lastPathComponent
+            let notes = notesByDir[path] ?? []
+            let subdirs = (childDirsByParent[path] ?? [])
+                .map { buildNode(path: $0) }
+                .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+            return NoteDirectory(
+                name: name,
+                path: path,
+                directories: subdirs,
+                notes: notes.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+            )
+        }
+
+        return buildNode(path: rootPath)
     }
 
     public func createNote(name: String, inDirectory directory: String, content: String = "") throws -> String {
@@ -451,6 +493,26 @@ extension String {
             guard let range = Range($0.range, in: self) else { return nil }
             return String(self[range])
         }
+    }
+}
+
+public struct NoteDirectory: Identifiable, Equatable {
+    public let id: String
+    public let name: String
+    public let path: String
+    public var directories: [NoteDirectory]
+    public var notes: [NoteEntry]
+
+    public init(id: String = UUID().uuidString, name: String, path: String, directories: [NoteDirectory] = [], notes: [NoteEntry] = []) {
+        self.id = id
+        self.name = name
+        self.path = path
+        self.directories = directories
+        self.notes = notes
+    }
+
+    public static func == (lhs: NoteDirectory, rhs: NoteDirectory) -> Bool {
+        lhs.id == rhs.id
     }
 }
 
