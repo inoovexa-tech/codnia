@@ -12,6 +12,7 @@ struct ConnectionEditSheet: View {
     @State private var password: String = ""
     @State private var database: String = ""
     @State private var useSSL: Bool = false
+    @State private var filePath: String = ""
 
     @State private var testState: TestState = .idle
     @State private var editingConfig: ConnectionConfig?
@@ -42,36 +43,27 @@ struct ConnectionEditSheet: View {
             ScrollView {
                 VStack(spacing: 16) {
                     formField("Name", value: $name)
-                    formField("Host", value: $host)
-                    formField("Port", value: $port)
-                    formField("User", value: $user)
-                    secureField("Password", value: $password)
 
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Database")
+                        Text("Type")
                             .font(.system(size: 12, weight: .medium))
                             .foregroundColor(.textSecondary)
-                        TextField("postgres", text: $database)
-                            .textFieldStyle(.plain)
-                            .font(.system(size: 13))
-                            .foregroundColor(.textPrimary)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(Color.bgTertiary)
-                            .cornerRadius(4)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 4)
-                                    .stroke(Color.borderLight, lineWidth: 0.5)
-                            )
+                        Picker("", selection: $type) {
+                            ForEach(DatabaseType.allCases, id: \.self) { t in
+                                Text(t.rawValue.capitalized).tag(t)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        .onChange(of: type) { newType in
+                            updateDefaults(for: newType)
+                        }
                     }
 
-                    Toggle(isOn: $useSSL) {
-                        Text("Use SSL")
-                            .font(.system(size: 12))
-                            .foregroundColor(.textSecondary)
+                    if type == .sqlite {
+                        sqliteFields
+                    } else {
+                        serverFields
                     }
-                    .toggleStyle(.switch)
-                    .controlSize(.small)
                 }
                 .padding(20)
             }
@@ -114,12 +106,111 @@ struct ConnectionEditSheet: View {
         .onAppear(perform: loadExistingConfig)
     }
 
+    @ViewBuilder
+    private var sqliteFields: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Database File")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(.textSecondary)
+            HStack(spacing: 8) {
+                TextField("Select a .db file...", text: $filePath)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 13))
+                    .foregroundColor(.textPrimary)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Color.bgTertiary)
+                    .cornerRadius(4)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 4)
+                            .stroke(Color.borderLight, lineWidth: 0.5)
+                    )
+                Button("Browse") {
+                    browseForSQLiteFile()
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            }
+        }
+        databaseField
+    }
+
+    @ViewBuilder
+    private var serverFields: some View {
+        formField("Host", value: $host)
+        formField("Port", value: $port)
+        formField("User", value: $user)
+        secureField("Password", value: $password)
+        databaseField
+
+        Toggle(isOn: $useSSL) {
+            Text("Use SSL")
+                .font(.system(size: 12))
+                .foregroundColor(.textSecondary)
+        }
+        .toggleStyle(.switch)
+        .controlSize(.small)
+    }
+
+    @ViewBuilder
+    private var databaseField: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Database")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(.textSecondary)
+            TextField(type == .postgres ? "postgres" : (type == .mysql ? "mysql" : ""), text: $database)
+                .textFieldStyle(.plain)
+                .font(.system(size: 13))
+                .foregroundColor(.textPrimary)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(Color.bgTertiary)
+                .cornerRadius(4)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 4)
+                        .stroke(Color.borderLight, lineWidth: 0.5)
+                )
+        }
+    }
+
+    private func updateDefaults(for newType: DatabaseType) {
+        switch newType {
+        case .postgres:
+            host = "localhost"
+            port = "5432"
+            user = "postgres"
+            useSSL = false
+        case .mysql:
+            host = "localhost"
+            port = "3306"
+            user = "root"
+            useSSL = false
+        case .sqlite:
+            filePath = ""
+        }
+    }
+
+    private func browseForSQLiteFile() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.init(filenameExtension: "db") ?? .data, .init(filenameExtension: "sqlite") ?? .data, .init(filenameExtension: "sqlite3") ?? .data]
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.begin { response in
+            if response == .OK, let url = panel.url {
+                filePath = url.path
+            }
+        }
+    }
+
     private var testingDisabled: Bool {
-        host.isEmpty || user.isEmpty || testState == .testing
+        if type == .sqlite { return testState == .testing }
+        return host.isEmpty || user.isEmpty || testState == .testing
     }
 
     private var saveDisabled: Bool {
-        name.isEmpty || host.isEmpty || user.isEmpty
+        if type == .sqlite { return name.isEmpty || filePath.isEmpty }
+        return name.isEmpty || host.isEmpty || user.isEmpty
     }
 
     private func formField(_ label: String, value: Binding<String>) -> some View {
@@ -171,6 +262,7 @@ struct ConnectionEditSheet: View {
         user = config.user
         database = config.database ?? ""
         useSSL = config.useSSL
+        filePath = config.filePath ?? ""
         if let saved = databaseService.password(for: config.id) {
             password = saved
         }
@@ -226,15 +318,17 @@ struct ConnectionEditSheet: View {
     }
 
     private func buildConfig() -> ConnectionConfig {
-        ConnectionConfig(
+        let defaultPort: Int = type == .mysql ? 3306 : 5432
+        return ConnectionConfig(
             id: editingConfig?.id ?? UUID().uuidString,
             name: name,
             type: type,
             host: host,
-            port: Int(port) ?? 5432,
+            port: Int(port) ?? defaultPort,
             user: user,
             database: database.isEmpty ? nil : database,
-            useSSL: useSSL
+            useSSL: type == .sqlite ? false : useSSL,
+            filePath: type == .sqlite ? (filePath.isEmpty ? nil : filePath) : nil
         )
     }
 }

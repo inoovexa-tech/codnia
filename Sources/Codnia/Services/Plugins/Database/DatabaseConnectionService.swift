@@ -14,6 +14,8 @@ public final class DatabaseConnectionService: ObservableObject {
 
     public init() {
         registerProvider(PostgreSQLProvider())
+        registerProvider(MySQLProvider())
+        registerProvider(SQLiteProvider())
     }
 
     private func ensureConnectionsLoaded() {
