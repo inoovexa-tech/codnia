@@ -63,7 +63,7 @@ struct ThemeColors: Equatable {
     }
 }
 
-final class ThemeManager: ObservableObject {
+final class ThemeManager: ObservableObject, @unchecked Sendable {
     @Published var theme: CodTheme
     @Published var colors: ThemeColors
 

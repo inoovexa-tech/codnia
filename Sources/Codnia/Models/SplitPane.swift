@@ -1,11 +1,11 @@
 import Foundation
 
-public enum SplitDirection: String, Codable, Equatable {
+public enum SplitDirection: String, Codable, Equatable, Sendable {
     case horizontal
     case vertical
 }
 
-public struct SplitLeaf: Codable, Equatable {
+public struct SplitLeaf: Codable, Equatable, Sendable {
     public var id: UUID
     public var tabId: String?
     public var terminalId: String?
@@ -21,7 +21,7 @@ public struct SplitLeaf: Codable, Equatable {
     public var viewId: UUID { id }
 }
 
-public struct SplitContainer: Codable, Equatable {
+public struct SplitContainer: Codable, Equatable, Sendable {
     public var id: UUID
     public var direction: SplitDirection
     public var first: SplitPane
@@ -37,7 +37,7 @@ public struct SplitContainer: Codable, Equatable {
     }
 }
 
-public indirect enum SplitPane: Codable, Equatable {
+public indirect enum SplitPane: Codable, Equatable, Sendable {
     case leaf(SplitLeaf)
     case split(SplitContainer)
 

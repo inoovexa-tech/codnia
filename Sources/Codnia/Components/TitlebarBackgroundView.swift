@@ -2,7 +2,7 @@ import SwiftUI
 import AppKit
 
 struct InteractiveFrameKey: PreferenceKey {
-    static var defaultValue: [CGRect] = []
+    static let defaultValue: [CGRect] = []
     static func reduce(value: inout [CGRect], nextValue: () -> [CGRect]) {
         value.append(contentsOf: nextValue())
     }
