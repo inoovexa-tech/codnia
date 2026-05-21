@@ -19,11 +19,27 @@ struct BrowserView: View {
     @FocusState private var urlFieldFocused: Bool
     @State private var localURLText: String = ""
 
+    @StateObject private var devToolsService = BrowserDevToolsService()
+    @State private var devToolsOpen: Bool = false
+    @State private var devToolsHeight: CGFloat = 200
+
     var body: some View {
         VStack(spacing: 0) {
             navigationBar
             progressBar
-            webViewRepresentable
+            if devToolsOpen {
+                webViewRepresentable
+                    .frame(maxHeight: .infinity)
+                HorizontalResizableDivider(
+                    height: $devToolsHeight,
+                    minHeight: 100,
+                    maxHeight: 600
+                )
+                BrowserDevToolsView(devToolsService: devToolsService)
+                    .frame(height: devToolsHeight)
+            } else {
+                webViewRepresentable
+            }
         }
     }
 
@@ -72,6 +88,15 @@ struct BrowserView: View {
             }
             .buttonStyle(PlainButtonStyle())
             .foregroundColor(.textSecondary)
+
+            Button(action: { devToolsOpen.toggle() }) {
+                Image(systemName: "wrench.and.screwdriver.fill")
+                    .font(.system(size: 10))
+                    .frame(width: 22, height: 22)
+            }
+            .buttonStyle(PlainButtonStyle())
+            .foregroundColor(devToolsOpen ? .accentBlue : .textTertiary)
+            .help("Toggle Developer Tools")
 
             if let onPinToTab {
                 Divider()
@@ -180,7 +205,8 @@ struct BrowserView: View {
             estimatedProgress: $estimatedProgress,
             canGoBack: $canGoBack,
             canGoForward: $canGoForward,
-            coordinator: $webViewCoordinator
+            coordinator: $webViewCoordinator,
+            devToolsService: devToolsService
         )
     }
 
@@ -208,6 +234,7 @@ struct WebViewRepresentable: NSViewRepresentable {
     @Binding var canGoBack: Bool
     @Binding var canGoForward: Bool
     @Binding var coordinator: WebViewCoordinator?
+    @ObservedObject var devToolsService: BrowserDevToolsService
 
     func makeCoordinator() -> WebViewCoordinator {
         WebViewCoordinator(parent: self)
@@ -216,6 +243,7 @@ struct WebViewRepresentable: NSViewRepresentable {
     func makeNSView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
         config.preferences.javaScriptCanOpenWindowsAutomatically = true
+        devToolsService.injectScripts(into: config)
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = context.coordinator
         webView.allowsBackForwardNavigationGestures = true
@@ -224,6 +252,7 @@ struct WebViewRepresentable: NSViewRepresentable {
         context.coordinator.webView = webView
         context.coordinator.parent = self
         coordinator = context.coordinator
+        devToolsService.webView = webView
 
         if let url = URL(string: urlString), url.scheme != nil {
             webView.load(URLRequest(url: url))
