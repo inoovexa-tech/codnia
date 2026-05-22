@@ -1,3 +1,16 @@
+## [0.16.1] — 2026-05-22
+
+### Fixed
+- MySQL quoting and silent error swallowing on database fetch
+- Improve loading spinner detection for AI tabs
+- Correct Sparkle framework path in DMG and appcast signature
+- Resolve Swift 6 build warnings
+
+### Added
+- Replace database type SF Symbols with official brand logos
+- Add Connect option to DB connection context menu
+- Scroll-while-selecting in terminal via mouseDown/mouseUp swizzling
+
 ## [0.16.0] — 2026-05-21
 
 ### Added
