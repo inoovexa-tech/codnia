@@ -60,7 +60,24 @@ final class TerminalSession: ObservableObject, Identifiable {
     }
 
     func terminate() {
-        terminal?.terminate()
+        guard let terminal = terminal, let process = terminal.process else { return }
+        let pgid = process.shellPid
+        guard pgid > 0 else {
+            terminal.terminate()
+            return
+        }
+
+        // SwiftTerm's terminate sends SIGTERM only to the shell PID (not the process group)
+        terminal.terminate()
+
+        // Send SIGTERM to the entire process group — kills child processes like dev servers
+        killpg(pgid, SIGTERM)
+
+        // SIGKILL fallback after delay ensures orphaned or stuck processes are cleaned up
+        Task.detached { [pgid] in
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            killpg(pgid, SIGKILL)
+        }
     }
 
     func focus() {

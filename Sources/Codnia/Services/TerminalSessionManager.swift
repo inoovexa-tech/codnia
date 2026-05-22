@@ -56,7 +56,7 @@ final class TerminalSessionManager: ObservableObject {
         sessions[sessionId]?.removeView(viewId)
         viewToSessionMap.removeValue(forKey: viewId)
         if let session = sessions[sessionId], session.viewIds.isEmpty {
-            session.terminal?.terminate()
+            session.terminate()
             sessions.removeValue(forKey: sessionId)
         }
     }
@@ -67,7 +67,7 @@ final class TerminalSessionManager: ObservableObject {
     }
 
     func destroySession(id: String) {
-        sessions[id]?.terminal?.terminate()
+        sessions[id]?.terminate()
         sessions.removeValue(forKey: id)
     }
 
@@ -80,7 +80,7 @@ final class TerminalSessionManager: ObservableObject {
     }
 
     func terminateProcess(for sessionId: String) {
-        sessions[sessionId]?.terminal?.terminate()
+        sessions[sessionId]?.terminate()
     }
 
     func isProcessRunning(for sessionId: String) -> Bool {
@@ -160,7 +160,7 @@ final class TerminalSessionManager: ObservableObject {
 
     func clearAll() {
         for (_, session) in sessions {
-            session.terminal?.terminate()
+            session.terminate()
         }
         sessions.removeAll()
         viewToSessionMap.removeAll()
