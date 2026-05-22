@@ -249,9 +249,7 @@ struct DatabaseExplorerView: View {
                     .fill(connectionDotColor(for: state))
                     .frame(width: 6, height: 6)
 
-                Image(systemName: config.type == .postgres ? "server.rack" : config.type == .mysql ? "globe" : "cylinder")
-                    .font(.system(size: 12))
-                    .foregroundColor(.accentBlue)
+                config.type.logoView(size: 14)
 
                 Text(config.name)
                     .font(.system(size: 13))

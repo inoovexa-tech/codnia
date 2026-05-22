@@ -28,6 +28,7 @@ let package = Package(
             ],
             resources: [
                 .process("icon.icns"),
+                .process("Resources"),
             ],
             swiftSettings: [
                 .enableExperimentalFeature("StrictConcurrency")
