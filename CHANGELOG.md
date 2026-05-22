@@ -1,3 +1,9 @@
+## [0.16.2] — 2026-05-22
+
+### Fixed
+- Kill entire process group when closing terminal tab
+- Remove AI tab loading/running state tracking from sidebar
+
 ## [0.16.1] — 2026-05-22
 
 ### Fixed
