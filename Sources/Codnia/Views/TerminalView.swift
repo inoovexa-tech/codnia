@@ -5,6 +5,16 @@ import Carbon
 class CodniaTerminalView: LocalProcessTerminalView {
     var onDataReceived: ((Int) -> Void)?
 
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        _ = Self.prepareSwizzling
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        _ = Self.prepareSwizzling
+    }
+
     override func dataReceived(slice: ArraySlice<UInt8>) {
         super.dataReceived(slice: slice)
         onDataReceived?(slice.count)
@@ -34,6 +44,119 @@ class CodniaTerminalView: LocalProcessTerminalView {
     @objc func clearTerminal() {
         feed(text: "\u{001b}[2J\u{001b}[3J\u{001b}[H")
     }
+
+    private static let prepareSwizzling: Void = {
+        let downSel = NSSelectorFromString("mouseDown:")
+        let upSel = NSSelectorFromString("mouseUp:")
+
+        guard let downOrigMethod = class_getInstanceMethod(CodniaTerminalView.self, downSel),
+              let upOrigMethod = class_getInstanceMethod(CodniaTerminalView.self, upSel) else {
+            assertionFailure("CodniaTerminalView: swizzling failed")
+            return
+        }
+
+        typealias MouseIMP = @convention(c) (AnyObject, Selector, NSEvent) -> Void
+        let downOrigImp = method_getImplementation(downOrigMethod)
+        let downOrig = unsafeBitCast(downOrigImp, to: MouseIMP.self)
+        let upOrigImp = method_getImplementation(upOrigMethod)
+        let upOrig = unsafeBitCast(upOrigImp, to: MouseIMP.self)
+
+        let downBlock: @convention(block) (AnyObject, NSEvent) -> Void = { view, event in
+            downOrig(view, downSel, event)
+
+            guard let tv = view as? CodniaTerminalView else { return }
+            guard tv.allowMouseReporting == false || tv.terminal?.mouseMode == .off else { return }
+
+            let scrollInterval = 0.05
+            var lastScrollTime = Date.distantPast
+            var tracking = true
+            let eventMask: NSEvent.EventTypeMask = [
+                .leftMouseDown, .leftMouseUp, .leftMouseDragged,
+                .rightMouseDown, .rightMouseUp, .rightMouseDragged,
+                .otherMouseDown, .otherMouseUp, .otherMouseDragged,
+                .mouseMoved, .scrollWheel, .keyDown, .keyUp,
+                .flagsChanged, .cursorUpdate, .tabletPoint
+            ]
+            while tracking {
+                let nextEvent = NSApp.nextEvent(
+                    matching: eventMask,
+                    until: Date(timeIntervalSinceNow: scrollInterval),
+                    inMode: .eventTracking,
+                    dequeue: true
+                )
+
+                if let event = nextEvent {
+                    switch event.type {
+                    case .leftMouseUp:
+                        upOrig(view, upSel, event)
+                        tracking = false
+                    case .leftMouseDragged:
+                        tv.mouseDragged(with: event)
+                        lastScrollTime = .distantPast
+                    case .scrollWheel:
+                        let delta = Int(abs(event.deltaY))
+                        guard delta > 0 else { break }
+                        let rows = tv.terminal?.rows ?? 25
+                        let velocity: Int
+                        if delta > 9 { velocity = max(rows, 20) }
+                        else if delta > 5 { velocity = 10 }
+                        else if delta > 1 { velocity = 3 }
+                        else { velocity = 1 }
+
+                        if event.deltaY > 0 { tv.scrollUp(lines: velocity) }
+                        else { tv.scrollDown(lines: velocity) }
+
+                        if tv.selectionActive, let w = tv.window {
+                            let wp = w.convertPoint(fromScreen: NSEvent.mouseLocation)
+                            if let syn = NSEvent.mouseEvent(
+                                with: .leftMouseDragged, location: wp,
+                                modifierFlags: [], timestamp: event.timestamp,
+                                windowNumber: event.windowNumber, context: nil,
+                                eventNumber: 0, clickCount: 1, pressure: 0
+                            ) { tv.mouseDragged(with: syn) }
+                        }
+                    default:
+                        break
+                    }
+                }
+
+                if tracking && tv.selectionActive {
+                    let mousePt = tv.convert(NSEvent.mouseLocation, from: nil)
+                    let visibleRows = tv.terminal?.rows ?? 25
+                    let cellH = tv.bounds.height / CGFloat(visibleRows)
+                    let mouseRow = Int((tv.bounds.height - mousePt.y) / cellH)
+
+                    if mouseRow <= 0 || mouseRow >= visibleRows - 1 {
+                        let now = Date()
+                        if now.timeIntervalSince(lastScrollTime) >= scrollInterval {
+                            lastScrollTime = now
+                            if mouseRow <= 0 { tv.scrollUp(lines: 1) }
+                            else { tv.scrollDown(lines: 1) }
+
+                            if let w = tv.window {
+                                let wp = w.convertPoint(fromScreen: NSEvent.mouseLocation)
+                                if let syn = NSEvent.mouseEvent(
+                                    with: .leftMouseDragged, location: wp,
+                                    modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
+                                    windowNumber: w.windowNumber, context: nil,
+                                    eventNumber: 0, clickCount: 1, pressure: 0
+                                ) { tv.mouseDragged(with: syn) }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        let upBlock: @convention(block) (AnyObject, NSEvent) -> Void = { view, event in
+            upOrig(view, upSel, event)
+        }
+
+        let downEncoding = method_getTypeEncoding(downOrigMethod)
+        let upEncoding = method_getTypeEncoding(upOrigMethod)
+        class_addMethod(CodniaTerminalView.self, downSel, imp_implementationWithBlock(downBlock), downEncoding)
+        class_addMethod(CodniaTerminalView.self, upSel, imp_implementationWithBlock(upBlock), upEncoding)
+    }()
 }
 
 @MainActor
@@ -153,12 +276,12 @@ class TerminalEventMonitor {
         Self.installed = true
         monitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { [weak self] event in
             guard let self = self else { return event }
-            let result = self.handle(event)
+            let result = self.handleScroll(event)
             return result ? nil : event
         }
     }
 
-    private func handle(_ event: NSEvent) -> Bool {
+    private func handleScroll(_ event: NSEvent) -> Bool {
         let terminals = TerminalSessionManager.shared.getAllTerminals()
         let mouseLocation = NSEvent.mouseLocation
         for terminal in terminals {
@@ -168,22 +291,22 @@ class TerminalEventMonitor {
             let viewPoint = terminal.convert(windowPoint, from: nil)
             guard terminal.bounds.contains(viewPoint) else { continue }
 
-            guard terminal.allowMouseReporting else { return false }
-            let mode = terminal.terminal?.mouseMode
-            guard mode != nil, mode != .off else { return false }
+            if let term = terminal.terminal, terminal.allowMouseReporting, term.mouseMode != .off {
+                let cols = term.cols
+                let rows = term.rows
+                let cellW = terminal.bounds.width / CGFloat(cols)
+                let cellH = terminal.bounds.height / CGFloat(rows)
+                let col = max(0, min(Int(viewPoint.x / cellW), cols - 1))
+                let row = max(0, min(Int(viewPoint.y / cellH), rows - 1))
+                let pixelX = Int(viewPoint.x)
+                let pixelY = Int(viewPoint.y)
+                let button = event.deltaY > 0 ? 4 : 5
+                let flags = term.encodeButton(button: button, release: false, shift: false, meta: false, control: false)
+                term.sendEvent(buttonFlags: flags, x: col, y: row, pixelX: pixelX, pixelY: pixelY)
+                return true
+            }
 
-            let cols = terminal.terminal!.cols
-            let rows = terminal.terminal!.rows
-            let cellW = terminal.bounds.width / CGFloat(cols)
-            let cellH = terminal.bounds.height / CGFloat(rows)
-            let col = max(0, min(Int(viewPoint.x / cellW), cols - 1))
-            let row = max(0, min(Int(viewPoint.y / cellH), rows - 1))
-            let pixelX = Int(viewPoint.x)
-            let pixelY = Int(viewPoint.y)
-            let button = event.deltaY > 0 ? 4 : 5
-            let flags = terminal.terminal!.encodeButton(button: button, release: false, shift: false, meta: false, control: false)
-            terminal.terminal!.sendEvent(buttonFlags: flags, x: col, y: row, pixelX: pixelX, pixelY: pixelY)
-            return true
+            return false
         }
         return false
     }
