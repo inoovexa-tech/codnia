@@ -316,9 +316,25 @@ struct DatabaseExplorerView: View {
                 }
             }
 
-            if expandedItems.contains(connId), let children = cachedChildren[connId] {
-                ForEach(children) { entry in
-                    treeRow(entry, depth: 1, configID: config.id)
+            if expandedItems.contains(connId) {
+                if let children = cachedChildren[connId] {
+                    ForEach(children) { entry in
+                        treeRow(entry, depth: 1, configID: config.id)
+                    }
+                }
+                if let errorMsg = databaseService.fetchErrors[config.id] {
+                    HStack(spacing: 4) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 10))
+                            .foregroundColor(.accentRed)
+                        Text(errorMsg)
+                            .font(.system(size: 11))
+                            .foregroundColor(.accentRed)
+                            .lineLimit(3)
+                    }
+                    .padding(.leading, 28)
+                    .padding(.vertical, 4)
+                    .padding(.trailing, 8)
                 }
             }
         }
@@ -766,7 +782,10 @@ struct DatabaseExplorerView: View {
     }
 
     private func selectTop100(schema: String, table: String, configID: String) {
-        let sql = "SELECT * FROM \"\(schema)\".\"\(table)\""
+        guard let qSchema = databaseService.quoteIdentifier(configID: configID, schema),
+              let qTable = databaseService.quoteIdentifier(configID: configID, table)
+        else { return }
+        let sql = "SELECT * FROM \(qSchema).\(qTable)"
         let tab = Tab(
             name: table,
             type: .queryResult,
@@ -824,7 +843,11 @@ struct DatabaseExplorerView: View {
                 case "Table":
                     try await databaseService.dropTable(configID: configID, table: tableID, cascade: isCascade)
                 case "Column":
-                    let sql = "ALTER TABLE \"\(tableID.schema)\".\"\(tableID.table)\" DROP COLUMN \"\(dropTarget)\""
+                    guard let qSchema = databaseService.quoteIdentifier(configID: configID, tableID.schema),
+                          let qTable = databaseService.quoteIdentifier(configID: configID, tableID.table),
+                          let qCol = databaseService.quoteIdentifier(configID: configID, dropTarget)
+                    else { return }
+                    let sql = "ALTER TABLE \(qSchema).\(qTable) DROP COLUMN \(qCol)"
                     let result = await databaseService.execute(configID: configID, sql: sql)
                     if let error = result.error {
                         dropErrorMessage = error
@@ -833,11 +856,17 @@ struct DatabaseExplorerView: View {
                 default:
                     let sql: String
                     if dropType == "Function" {
-                        sql = "DROP FUNCTION \"\(dropTarget)\" CASCADE"
+                        guard let qFunc = databaseService.quoteIdentifier(configID: configID, dropTarget) else { return }
+                        sql = "DROP FUNCTION \(qFunc) CASCADE"
                     } else if dropType == "Procedure" {
-                        sql = "DROP PROCEDURE \"\(dropTarget)\" CASCADE"
+                        guard let qProc = databaseService.quoteIdentifier(configID: configID, dropTarget) else { return }
+                        sql = "DROP PROCEDURE \(qProc) CASCADE"
                     } else {
-                        sql = "ALTER TABLE \"\(tableID.schema)\".\"\(tableID.table)\" DROP COLUMN \"\(dropTarget)\""
+                        guard let qSchema = databaseService.quoteIdentifier(configID: configID, tableID.schema),
+                              let qTable = databaseService.quoteIdentifier(configID: configID, tableID.table),
+                              let qCol = databaseService.quoteIdentifier(configID: configID, dropTarget)
+                        else { return }
+                        sql = "ALTER TABLE \(qSchema).\(qTable) DROP COLUMN \(qCol)"
                     }
                     let result = await databaseService.execute(configID: configID, sql: sql)
                     if let error = result.error {

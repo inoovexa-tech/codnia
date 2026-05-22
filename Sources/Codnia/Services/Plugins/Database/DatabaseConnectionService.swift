@@ -15,6 +15,7 @@ public final class DatabaseConnectionService: ObservableObject {
     public let sshTunnelService = SSHTunnelService()
 
     @Published public var schemaVersion: Int = 0
+    @Published public var fetchErrors: [String: String] = [:]
 
     public init() {
         registerProvider(PostgreSQLProvider())
@@ -73,6 +74,7 @@ public final class DatabaseConnectionService: ObservableObject {
 
     public func connect(_ config: ConnectionConfig, password: String, database: String? = nil) async {
         sessions[config.id] = .connecting
+        fetchErrors[config.id] = nil
         objectWillChange.send()
 
         guard let provider = providers[config.type] else {
@@ -118,6 +120,7 @@ public final class DatabaseConnectionService: ObservableObject {
         }
         sshTunnelService.stopTunnel(configID: configID)
         sessions[configID] = .disconnected
+        fetchErrors[configID] = nil
         objectWillChange.send()
     }
 
@@ -273,7 +276,14 @@ public final class DatabaseConnectionService: ObservableObject {
               let provider = providers[config.type],
               let handle = sessions[configID]?.handleID
         else { return [] }
-        return (try? await provider.fetchDatabases(handle: handle)) ?? []
+        do {
+            let result = try await provider.fetchDatabases(handle: handle)
+            fetchErrors[configID] = nil
+            return result
+        } catch {
+            fetchErrors[configID] = error.localizedDescription
+            return []
+        }
     }
 
     public func fetchSchemas(configID: String) async -> [SchemaInfo] {
@@ -402,11 +412,23 @@ public final class DatabaseConnectionService: ObservableObject {
         return fks
     }
 
+    // MARK: - Identifier Quoting
+
+    public func quoteIdentifier(configID: String, _ name: String) -> String? {
+        guard let config = config(withID: configID),
+              let provider = providers[config.type]
+        else { return nil }
+        return provider.quoteIdentifier(name)
+    }
+
     // MARK: - Row Count
 
     public func fetchRowCount(configID: String, schema: String, table: String) async -> Int {
         guard sessions[configID]?.isConnected == true else { return 0 }
-        let sql = "SELECT COUNT(*) AS cnt FROM \"\(schema)\".\"\(table)\""
+        guard let qSchema = quoteIdentifier(configID: configID, schema),
+              let qTable = quoteIdentifier(configID: configID, table)
+        else { return 0 }
+        let sql = "SELECT COUNT(*) AS cnt FROM \(qSchema).\(qTable)"
         let result = await execute(configID: configID, sql: sql, pageSize: 1)
         if result.error != nil { return 0 }
         guard let firstRow = result.rows.first, let countStr = firstRow.first else { return 0 }

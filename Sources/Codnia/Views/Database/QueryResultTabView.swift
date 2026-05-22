@@ -618,8 +618,10 @@ struct QueryResultTabView: View {
 
         let orderBy = sortColumn.map { col -> String in
             let direction = sortAscending ? "ASC" : "DESC"
-            let escaped = col.replacingOccurrences(of: "\"", with: "\"\"")
-            return "\"\(escaped)\" \(direction)"
+            guard let qCol = databaseService.quoteIdentifier(configID: connectionId, col) else {
+                return col
+            }
+            return "\(qCol) \(direction)"
         }
 
         isExecuting = true

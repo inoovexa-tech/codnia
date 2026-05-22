@@ -281,6 +281,13 @@ final class SQLiteProvider: DatabaseProvider, @unchecked Sendable {
         sqlite3_interrupt(db)
     }
 
+    // MARK: - Identifier Quoting
+
+    func quoteIdentifier(_ name: String) -> String {
+        let escaped = name.replacingOccurrences(of: "\"", with: "\"\"")
+        return "\"\(escaped)\""
+    }
+
     // MARK: - SQLite Helpers
 
     private struct SQLiteColumnResult {

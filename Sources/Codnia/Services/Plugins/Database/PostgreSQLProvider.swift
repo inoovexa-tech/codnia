@@ -486,6 +486,13 @@ final class PostgreSQLProvider: DatabaseProvider, @unchecked Sendable {
         throw DatabaseError.notConnected
     }
 
+    // MARK: - Identifier Quoting
+
+    func quoteIdentifier(_ name: String) -> String {
+        let escaped = name.replacingOccurrences(of: "\"", with: "\"\"")
+        return "\"\(escaped)\""
+    }
+
     // MARK: - Helpers
 
     private func connection(for handle: String) throws -> PostgresConnection {

@@ -32,6 +32,10 @@ public protocol DatabaseProvider: AnyObject, Sendable {
     func createIndex(handle: String, table: TableID, name: String, columns: [String], unique: Bool) async throws
     func dropIndex(handle: String, indexName: String, table: TableID) async throws
 
+    // MARK: - Identifier Quoting
+
+    func quoteIdentifier(_ name: String) -> String
+
     // MARK: - Cancellation
 
     func cancel(handle: String) async throws

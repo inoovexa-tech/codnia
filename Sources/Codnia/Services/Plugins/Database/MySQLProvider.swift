@@ -66,8 +66,19 @@ final class MySQLProvider: DatabaseProvider, @unchecked Sendable {
     // MARK: - Schema Browsing
 
     func fetchDatabases(handle: String) async throws -> [DatabaseInfo] {
-        let rows = try await runQuery(handle: handle, sql: "SHOW DATABASES ORDER BY `Database`")
-        return rows.map { DatabaseInfo(name: $0[0] ?? "?") }
+        do {
+            let rows = try await runQuery(handle: handle, sql: "SHOW DATABASES ORDER BY `Database`")
+            return rows.map { DatabaseInfo(name: $0[0] ?? "?") }
+        } catch {
+            logger.error("fetchDatabases with ORDER BY failed: \(error.localizedDescription)")
+            do {
+                let rows = try await runQuery(handle: handle, sql: "SHOW DATABASES")
+                return rows.map { DatabaseInfo(name: $0[0] ?? "?") }
+            } catch {
+                logger.error("fetchDatabases also failed without ORDER BY: \(error.localizedDescription)")
+                throw error
+            }
+        }
     }
 
     func fetchSchemas(handle: String) async throws -> [SchemaInfo] {
@@ -357,6 +368,13 @@ final class MySQLProvider: DatabaseProvider, @unchecked Sendable {
             }
             _ = try await runQuery(handle: tempHandle, sql: "KILL QUERY \(connID)")
         }
+    }
+
+    // MARK: - Identifier Quoting
+
+    func quoteIdentifier(_ name: String) -> String {
+        let escaped = name.replacingOccurrences(of: "`", with: "``")
+        return "`\(escaped)`"
     }
 
     // MARK: - Helpers
