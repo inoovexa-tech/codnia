@@ -40,18 +40,11 @@ public final class TerminalViewModel: ObservableObject {
     }
 
     private func checkProcessStatesIfNeeded() async {
-        for (termId, worktreeId) in terminalWorktreeMap {
+        for (termId, _) in terminalWorktreeMap {
             guard let session = TerminalSessionManager.shared.getSession(by: termId), let terminal = session.terminal else { continue }
-
-            let isAITab = tabs.contains { $0.terminalId == termId && $0.type.isAI }
 
             if !terminal.process.running {
                 service.setProcessRunning(id: termId, running: false)
-                if terminalProcessingStates[termId] == true {
-                    if isAITab {
-                        workspace?.updateRunningState(for: worktreeId, isRunning: false)
-                    }
-                }
                 terminalProcessingStates.removeValue(forKey: termId)
                 terminalWorktreeMap.removeValue(forKey: termId)
             } else {
@@ -60,9 +53,7 @@ public final class TerminalViewModel: ObservableObject {
 
                 if isActive != wasActive {
                     service.setProcessRunning(id: termId, running: isActive)
-                    if isAITab {
-                        workspace?.updateRunningState(for: worktreeId, isRunning: isActive)
-                    }
+
                     terminalProcessingStates[termId] = isActive
                 }
             }
@@ -138,15 +129,8 @@ public final class TerminalViewModel: ObservableObject {
 
     public func closeTab(_ tab: Tab) {
         if let termId = tab.terminalId {
-            if let worktreeId = terminalWorktreeMap[termId] {
-                if terminalProcessingStates[termId] == true {
-                    if tab.type.isAI {
-                        workspace?.updateRunningState(for: worktreeId, isRunning: false)
-                    }
-                }
-                terminalProcessingStates.removeValue(forKey: termId)
-                terminalWorktreeMap.removeValue(forKey: termId)
-            }
+            terminalProcessingStates.removeValue(forKey: termId)
+            terminalWorktreeMap.removeValue(forKey: termId)
             TerminalSessionManager.shared.destroySession(id: termId)
             service.kill(id: termId)
         }

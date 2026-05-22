@@ -165,11 +165,6 @@ struct ProjectRowExpanded: View {
         project?.activeWorktree
     }
 
-    private var hasRunningProcess: Bool {
-        guard let project = project else { return false }
-        return project.worktrees.contains { (workspaceVM.worktreeRunningStates[$0.id] ?? 0) > 0 }
-    }
-
     private var initials: String {
         guard let project = project else { return "" }
         return project.name
@@ -220,10 +215,6 @@ struct ProjectRowExpanded: View {
                                     .font(.system(size: 12, weight: .medium))
                                     .foregroundColor(.white)
                                     .lineLimit(1)
-
-                                if hasRunningProcess {
-                                    SpinnerLoading()
-                                }
 
                                 Spacer()
                             }
@@ -357,7 +348,6 @@ struct ProjectRowExpanded: View {
                         showWorktreeContextMenu = true
                     } : nil,
                     changes: count,
-                    hasRunningProcess: (workspaceVM.worktreeRunningStates[worktree.id] ?? 0) > 0
                 )
             }
 
@@ -415,8 +405,6 @@ struct WorktreeRow: View {
     let onSelect: () -> Void
     let onRemove: (() -> Void)?
     let changes: (added: Int, deleted: Int)
-    var hasRunningProcess: Bool = false
-
     var body: some View {
         HStack(spacing: 4) {
             Button(action: onSelect) {
@@ -430,10 +418,6 @@ struct WorktreeRow: View {
                         .foregroundColor(isActive ? .textPrimary : .textSecondary)
                         .lineLimit(1)
                         .frame(maxWidth: 100, alignment: .leading)
-
-                    if hasRunningProcess {
-                        SpinnerLoading()
-                    }
 
                     if changes.added > 0 || changes.deleted > 0 {
                         HStack(spacing: 2) {
@@ -553,11 +537,6 @@ struct ProjectRowCollapsed: View {
             .joined()
     }
 
-    private var hasLoading: Bool {
-        guard let project = project else { return false }
-        return project.worktrees.contains { (workspaceVM.worktreeRunningStates[$0.id] ?? 0) > 0 }
-    }
-
     @ViewBuilder
     private var projectIcon: some View {
         if let project = project, let iconPath = project.detectedIconPath,
@@ -579,9 +558,6 @@ struct ProjectRowCollapsed: View {
                     .foregroundColor(.white)
                     .cornerRadius(8)
 
-                if hasLoading {
-                    SpinnerLoading()
-                }
             }
         }
     }
@@ -606,11 +582,3 @@ struct ProjectRowCollapsed: View {
     }
 }
 
-struct SpinnerLoading: View {
-    var body: some View {
-        ProgressView()
-            .progressViewStyle(CircularProgressViewStyle(tint: .gray))
-            .scaleEffect(0.5)
-            .frame(width: 10, height: 10)
-    }
-}
