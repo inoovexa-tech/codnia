@@ -125,6 +125,9 @@ final class TerminalSessionManager: ObservableObject {
     }
 
     func recordBytes(for sessionId: String, bytes: Int) {
+        if bytes > 0 {
+            lastActiveTimes[sessionId] = Date()
+        }
         bytesSinceLastPoll[sessionId] = (bytesSinceLastPoll[sessionId] ?? 0) + bytes
     }
 
@@ -137,10 +140,11 @@ final class TerminalSessionManager: ObservableObject {
             return true
         }
 
-        if let lastActive = lastActiveTimes[sessionId], Date().timeIntervalSince(lastActive) < 3.0 {
+        if let lastActive = lastActiveTimes[sessionId], Date().timeIntervalSince(lastActive) < 1.5 {
             return true
         }
 
+        lastActiveTimes.removeValue(forKey: sessionId)
         return false
     }
 
