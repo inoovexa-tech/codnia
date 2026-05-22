@@ -302,8 +302,13 @@ struct DatabaseExplorerView: View {
                     Button("Disconnect") {
                         Task { await databaseService.disconnect(configID: config.id) }
                     }
+                } else {
+                    Button("Connect") {
+                        connectConfig(config)
+                    }
                 }
-                Button("Edit Connection") {
+                Divider()
+                Button("Edit Connection...") {
                     connectionToEdit = config
                 }
                 Button("Remove Connection") {
@@ -613,6 +618,19 @@ struct DatabaseExplorerView: View {
 
         Task {
             await loadDatabases(config, connId: connId)
+        }
+    }
+
+    private func connectConfig(_ config: ConnectionConfig) {
+        let state = databaseService.state(for: config.id)
+        guard !state.isConnected, case .disconnected = state else { return }
+
+        if let password = databaseService.password(for: config.id) {
+            Task {
+                await databaseService.connect(config, password: password)
+            }
+        } else {
+            connectionToEdit = config
         }
     }
 
