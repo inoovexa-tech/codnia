@@ -687,8 +687,11 @@ struct DatabaseExplorerView: View {
             Task {
                 let config = databaseService.config(withID: configID)
                 if let config = config {
-                    let needsReconnect = config.database != name
+                    let currentDb = databaseService.activeDatabases[configID]
+                    let needsReconnect = currentDb != name
                     if needsReconnect {
+                        // Clear caches from the previous database before disconnecting
+                        await clearSubtreeCaches(for: configID, except: name)
                         let password = databaseService.password(for: configID) ?? ""
                         await databaseService.disconnect(configID: configID)
                         await databaseService.connect(config, password: password, database: name)
@@ -902,6 +905,26 @@ struct DatabaseExplorerView: View {
         loadingItems.remove(entry.id)
         for child in children {
             await refreshChildrenRecursively(for: child, configID: configID, expanded: expanded)
+        }
+    }
+
+    private func clearSubtreeCaches(for configID: String, except databaseName: String) async {
+        let connId = "conn:\(configID)"
+        if let dbEntries = cachedChildren[connId] {
+            for dbEntry in dbEntries {
+                if case .database(let name) = dbEntry, name != databaseName {
+                    clearDescendantCaches(of: dbEntry.id)
+                }
+            }
+        }
+    }
+
+    private func clearDescendantCaches(of entryId: String) {
+        guard let children = cachedChildren[entryId] else { return }
+        cachedChildren.removeValue(forKey: entryId)
+        expandedItems.remove(entryId)
+        for child in children {
+            clearDescendantCaches(of: child.id)
         }
     }
 

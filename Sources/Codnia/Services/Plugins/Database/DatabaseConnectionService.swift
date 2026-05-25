@@ -5,6 +5,7 @@ import Combine
 public final class DatabaseConnectionService: ObservableObject {
     @Published public var connections: [ConnectionConfig] = []
     @Published public var sessions: [String: SessionState] = [:]
+    @Published public var activeDatabases: [String: String] = [:]
 
     public private(set) var providers: [DatabaseType: any DatabaseProvider] = [:]
 
@@ -100,6 +101,7 @@ public final class DatabaseConnectionService: ObservableObject {
 
             let handle = try await provider.open(config: effectiveConfig, password: password)
             sessions[config.id] = .connected(handleID: handle)
+            activeDatabases[config.id] = effectiveConfig.database
             KeychainHelper.save(account: config.id, password: password)
         } catch {
             sshTunnelService.stopTunnel(configID: config.id)
@@ -120,6 +122,7 @@ public final class DatabaseConnectionService: ObservableObject {
         }
         sshTunnelService.stopTunnel(configID: configID)
         sessions[configID] = .disconnected
+        activeDatabases[configID] = nil
         fetchErrors[configID] = nil
         objectWillChange.send()
     }
