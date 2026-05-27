@@ -21,7 +21,7 @@ struct CodTheme: Codable, Identifiable, Equatable {
 extension CodTheme {
     static let builtin: [CodTheme] = [
         CodTheme(name: "Codnia Dark", appearance: "dark", palette: CodThemePalette(
-            bg: "#1e1e1e", fg: "#d4d4d4", accent: "#569cd6", surface: "#252526", syntax: "#569cd6",
+            bg: "#000000", fg: "#d4d4d4", accent: "#569cd6", surface: "#0e0e0e", syntax: "#569cd6",
             syntax2: "#ce9178", syntax3: "#4ec9b0", comment: "#6a9955"
         )),
         CodTheme(name: "Dark+", appearance: "dark", palette: CodThemePalette(
