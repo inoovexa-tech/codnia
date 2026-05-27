@@ -18,6 +18,9 @@ struct RESTApiTabView: View {
     @State private var currentEndpointId: String?
     @State private var showSaveSheet: Bool = false
     @State private var selectedCollectionId: String?
+    @State private var currentTask: Task<Void, Never>?
+    @State private var searchResponseText: String = ""
+    @State private var showResponseSearch: Bool = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -138,6 +141,10 @@ struct RESTApiTabView: View {
     }
 
     private func saveRequest() {
+        guard !endpointStore.collections.isEmpty else {
+            errorMessage = "No collections available. Create one in the sidebar first."
+            return
+        }
         selectedCollectionId = endpointStore.collections.first?.id
         DispatchQueue.main.async {
             self.showSaveSheet = true
@@ -147,16 +154,29 @@ struct RESTApiTabView: View {
     private func saveToCollection(_ collectionId: String) {
         let endpointId = currentEndpointId ?? restApiRequestId
         if let endpointId {
-            let updated = HTTPEndpoint(
-                id: endpointId,
-                name: requestName,
-                request: request
-            )
-            endpointStore.updateEndpoint(updated)
+            let found = endpointStore.collections.contains { $0.endpoints.contains { $0.id == endpointId } }
+            if found {
+                let updated = HTTPEndpoint(
+                    id: endpointId,
+                    name: requestName,
+                    request: request,
+                    updatedAt: Date()
+                )
+                endpointStore.updateEndpoint(updated)
+            } else {
+                let endpoint = HTTPEndpoint(
+                    name: requestName,
+                    request: request,
+                    collectionId: collectionId
+                )
+                endpointStore.addEndpoint(endpoint, to: collectionId)
+                currentEndpointId = endpoint.id
+            }
         } else {
             let endpoint = HTTPEndpoint(
                 name: requestName,
-                request: request
+                request: request,
+                collectionId: collectionId
             )
             endpointStore.addEndpoint(endpoint, to: collectionId)
             currentEndpointId = endpoint.id
@@ -289,10 +309,19 @@ struct RESTApiTabView: View {
                 .buttonStyle(PlainButtonStyle())
                 .padding(.trailing, 8)
             } else {
-                ProgressView()
-                    .scaleEffect(0.5)
-                    .frame(width: 60, height: 28)
-                    .padding(.trailing, 8)
+                HStack(spacing: 4) {
+                    ProgressView()
+                        .scaleEffect(0.5)
+                    Button(action: { cancelRequest() }) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 9))
+                            .foregroundColor(.accentRed)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .help("Cancel request")
+                }
+                .frame(width: 60, height: 28)
+                .padding(.trailing, 8)
             }
         }
         .frame(height: 44)
@@ -337,33 +366,40 @@ struct RESTApiTabView: View {
 
     private func keyValueEditor(pairs: Binding<[KeyValuePair]>, placeholder: String) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            if pairs.wrappedValue.isEmpty {
-                HStack {
-                    Spacer()
-                    VStack(spacing: 6) {
-                        Text("No \(placeholder.lowercased())")
-                            .font(.system(size: 11))
-                            .foregroundColor(.textTertiary)
-                        Button(action: { pairs.wrappedValue.append(KeyValuePair()) }) {
-                            Text("Add")
-                                .font(.system(size: 10))
-                                .foregroundColor(.accentBlue)
+            ScrollView {
+                VStack(spacing: 0) {
+                    if pairs.wrappedValue.isEmpty {
+                        HStack {
+                            Spacer()
+                            VStack(spacing: 6) {
+                                Text("No \(placeholder.lowercased())")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.textTertiary)
+                            }
+                            Spacer()
                         }
-                        .buttonStyle(PlainButtonStyle())
-                    }
-                    Spacer()
-                }
-                .padding(.vertical, 12)
-            } else {
-                ScrollView {
-                    VStack(spacing: 0) {
+                        .padding(.vertical, 12)
+                    } else {
                         ForEach(Array(pairs.wrappedValue.enumerated()), id: \.element.id) { index, pair in
                             keyValueRow(index: index, pairs: pairs)
                         }
                     }
                 }
-                .frame(maxHeight: 120)
             }
+            .frame(maxHeight: 120)
+
+            Button(action: { pairs.wrappedValue.append(KeyValuePair()) }) {
+                HStack(spacing: 4) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 9))
+                    Text("Add \(placeholder)")
+                        .font(.system(size: 10))
+                }
+                .foregroundColor(.accentBlue)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+            }
+            .buttonStyle(PlainButtonStyle())
         }
         .background(Color.bgPrimary)
     }
@@ -530,36 +566,74 @@ struct RESTApiTabView: View {
         .padding(.horizontal, 8)
     }
 
+    private var resolvedURLString: String {
+        let env = environmentStore.activeEnvironment
+        if let url = request.buildURL(env: env) {
+            return url.absoluteString
+        }
+        return request.url
+    }
+
     private var responseHeader: some View {
         Group {
             if let resp = response {
-                HStack(spacing: 8) {
-                    HStack(spacing: 4) {
-                        Text("\(resp.statusCode)")
-                            .font(.system(size: 11, weight: .bold))
-                        Text(resp.statusMessage)
+                VStack(spacing: 2) {
+                    HStack(spacing: 8) {
+                        HStack(spacing: 4) {
+                            Text("\(resp.statusCode)")
+                                .font(.system(size: 11, weight: .bold))
+                            Text(resp.statusMessage)
+                                .font(.system(size: 11))
+                        }
+                        .foregroundColor(statusColor(for: resp))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(statusColor(for: resp).opacity(0.15))
+                        .cornerRadius(4)
+
+                        Text(resp.formattedTiming)
                             .font(.system(size: 11))
+                            .foregroundColor(.textTertiary)
+
+                        Text(resp.formattedSize)
+                            .font(.system(size: 11))
+                            .foregroundColor(.textTertiary)
+
+                        Spacer()
+
+                        if !resp.body.isEmpty {
+                            Button(action: { copyResponse(resp) }) {
+                                HStack(spacing: 3) {
+                                    Image(systemName: "doc.on.doc")
+                                        .font(.system(size: 10))
+                                    Text("Copy")
+                                        .font(.system(size: 10))
+                                }
+                                .foregroundColor(.textTertiary)
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                        }
+
+                        if let error = errorMessage {
+                            Text(error)
+                                .font(.system(size: 11))
+                                .foregroundColor(.accentRed)
+                        }
                     }
-                    .foregroundColor(statusColor(for: resp))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(statusColor(for: resp).opacity(0.15))
-                    .cornerRadius(4)
 
-                    Text(resp.formattedTiming)
-                        .font(.system(size: 11))
-                        .foregroundColor(.textTertiary)
-
-                    Text(resp.formattedSize)
-                        .font(.system(size: 11))
-                        .foregroundColor(.textTertiary)
-
-                    Spacer()
-
-                    if let error = errorMessage {
-                        Text(error)
-                            .font(.system(size: 11))
-                            .foregroundColor(.accentRed)
+                    if resolvedURLString != request.url {
+                        HStack(spacing: 4) {
+                            Image(systemName: "arrow.right")
+                                .font(.system(size: 8))
+                                .foregroundColor(.textTertiary)
+                            Text(resolvedURLString)
+                                .font(.system(size: 9, design: .monospaced))
+                                .foregroundColor(.textTertiary)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                            Spacer()
+                        }
+                        .padding(.horizontal, 8)
                     }
                 }
                 .padding(.horizontal, 8)
@@ -567,6 +641,63 @@ struct RESTApiTabView: View {
                 .background(Color.bgTertiary)
             }
         }
+    }
+
+    private func copyResponse(_ resp: HTTPResponse) {
+        let text = resp.bodyPrettyJSON ?? resp.bodyString
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
+    }
+
+    private func jsonHighlightedText(_ json: String) -> Text {
+        var result = Text("")
+        let lines = json.components(separatedBy: "\n")
+        for (i, line) in lines.enumerated() {
+            var styledLine = Text("")
+            var remaining = Substring(line)
+            while !remaining.isEmpty {
+                if remaining.hasPrefix("\"") {
+                    let end = remaining.dropFirst().firstIndex(of: "\"")
+                    if let endIdx = end {
+                        let content = remaining[remaining.startIndex...endIdx]
+                        let charAfter = remaining.index(after: endIdx)
+                        let isKey = charAfter < remaining.endIndex && remaining[charAfter] == ":"
+                        styledLine = styledLine + Text(content).foregroundColor(isKey ? .accentBlue : .accentGreen)
+                        remaining = remaining[remaining.index(after: endIdx)...]
+                    } else {
+                        styledLine = styledLine + Text(remaining).foregroundColor(.textPrimary)
+                        remaining = ""
+                    }
+                } else if remaining.hasPrefix("{") || remaining.hasPrefix("}") || remaining.hasPrefix("[") || remaining.hasPrefix("]") {
+                    styledLine = styledLine + Text(String(remaining.first!)).foregroundColor(.textTertiary)
+                    remaining = remaining.dropFirst()
+                } else if remaining.hasPrefix(":") {
+                    styledLine = styledLine + Text(":").foregroundColor(.textTertiary)
+                    remaining = remaining.dropFirst()
+                } else if remaining.hasPrefix(",") {
+                    styledLine = styledLine + Text(",").foregroundColor(.textTertiary)
+                    remaining = remaining.dropFirst()
+                } else if remaining.hasPrefix("true") || remaining.hasPrefix("false") {
+                    styledLine = styledLine + Text(remaining.prefix(5)).foregroundColor(.accentYellow)
+                    remaining = remaining.dropFirst(remaining.hasPrefix("false") ? 5 : 4)
+                } else if remaining.hasPrefix("null") {
+                    styledLine = styledLine + Text("null").foregroundColor(.accentRed)
+                    remaining = remaining.dropFirst(4)
+                } else if remaining.first?.isNumber == true || remaining.first == "-" {
+                    let numberEnd = remaining.prefix(while: { $0.isNumber || $0 == "." || $0 == "-" || $0 == "e" || $0 == "E" })
+                    styledLine = styledLine + Text(numberEnd).foregroundColor(.accentOrange)
+                    remaining = remaining.dropFirst(numberEnd.count)
+                } else {
+                    styledLine = styledLine + Text(String(remaining.first!)).foregroundColor(.textPrimary)
+                    remaining = remaining.dropFirst()
+                }
+            }
+            result = result + styledLine
+            if i < lines.count - 1 {
+                result = result + Text("\n")
+            }
+        }
+        return result
     }
 
     private var responseTabs: some View {
@@ -590,25 +721,64 @@ struct RESTApiTabView: View {
     @ViewBuilder
     private var responseContent: some View {
         if responseTab == .body, let resp = response {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    if let prettyJSON = resp.bodyPrettyJSON {
-                        Text(prettyJSON)
-                            .font(.system(size: 12, design: .monospaced))
-                            .foregroundColor(.textPrimary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(8)
-                    } else if resp.bodyString.isEmpty {
-                        Text("Empty response body")
-                            .font(.system(size: 12))
+            VStack(spacing: 0) {
+                if !resp.body.isEmpty {
+                    HStack(spacing: 4) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 10))
                             .foregroundColor(.textTertiary)
-                            .padding(8)
-                    } else {
-                        Text(resp.bodyString)
-                            .font(.system(size: 12, design: .monospaced))
+                        TextField("Search in response...", text: $searchResponseText)
+                            .textFieldStyle(.plain)
+                            .font(.system(size: 11))
                             .foregroundColor(.textPrimary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(8)
+                        if !searchResponseText.isEmpty {
+                            Button(action: { searchResponseText = "" }) {
+                                Image(systemName: "xmark")
+                                    .font(.system(size: 8))
+                                    .foregroundColor(.textTertiary)
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 4)
+                    .background(Color.bgSecondary)
+                }
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        if resp.body.isEmpty {
+                            Text("Empty response body")
+                                .font(.system(size: 12))
+                                .foregroundColor(.textTertiary)
+                                .padding(8)
+                        } else if let prettyJSON = resp.bodyPrettyJSON {
+                            if searchResponseText.isEmpty {
+                                jsonHighlightedText(prettyJSON)
+                                    .font(.system(size: 12, design: .monospaced))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(8)
+                            } else {
+                                jsonHighlightedText(prettyJSON, highlight: searchResponseText)
+                                    .font(.system(size: 12, design: .monospaced))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(8)
+                            }
+                        } else {
+                            let displayText = resp.bodyString
+                            if searchResponseText.isEmpty {
+                                Text(displayText)
+                                    .font(.system(size: 12, design: .monospaced))
+                                    .foregroundColor(.textPrimary)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(8)
+                            } else {
+                                highlightedText(displayText, query: searchResponseText)
+                                    .font(.system(size: 12, design: .monospaced))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(8)
+                            }
+                        }
                     }
                 }
             }
@@ -642,6 +812,85 @@ struct RESTApiTabView: View {
         }
     }
 
+    private func highlightedText(_ text: String, query: String) -> Text {
+        guard !query.isEmpty else { return Text(text) }
+        var result = Text("")
+        let lowerText = text.lowercased()
+        let lowerQuery = query.lowercased()
+        var currentIndex = text.startIndex
+        while currentIndex < text.endIndex {
+            let searchRange = lowerText[currentIndex...]
+            if let range = searchRange.range(of: lowerQuery) {
+                let before = text[currentIndex..<range.lowerBound]
+                if !before.isEmpty {
+                    result = result + Text(String(before)).foregroundColor(.textPrimary)
+                }
+                result = result + Text(String(text[range])).foregroundColor(.accentYellow).bold()
+                currentIndex = range.upperBound
+            } else {
+                let remaining = text[currentIndex...]
+                result = result + Text(String(remaining)).foregroundColor(.textPrimary)
+                break
+            }
+        }
+        return result
+    }
+
+    private func jsonHighlightedText(_ json: String, highlight: String = "") -> Text {
+        guard highlight.isEmpty else {
+            return highlightedText(json, query: highlight)
+        }
+        var result = Text("")
+        let lines = json.components(separatedBy: "\n")
+        for (i, line) in lines.enumerated() {
+            var styledLine = Text("")
+            var remaining = Substring(line)
+            while !remaining.isEmpty {
+                if remaining.hasPrefix("\"") {
+                    let afterQuote = remaining.dropFirst()
+                    if let endIdx = afterQuote.firstIndex(of: "\"") {
+                        let fullEnd = remaining.index(after: endIdx)
+                        let content = remaining[remaining.startIndex...fullEnd]
+                        let isKey = fullEnd < remaining.endIndex && remaining[remaining.index(after: fullEnd)] == ":"
+                        styledLine = styledLine + Text(content).foregroundColor(isKey ? .accentBlue : .accentGreen)
+                        remaining = remaining[remaining.index(after: fullEnd)...]
+                    } else {
+                        styledLine = styledLine + Text(remaining).foregroundColor(.textPrimary)
+                        remaining = ""
+                    }
+                } else if remaining.hasPrefix("{") || remaining.hasPrefix("}") || remaining.hasPrefix("[") || remaining.hasPrefix("]") {
+                    styledLine = styledLine + Text(String(remaining.first!)).foregroundColor(.textTertiary)
+                    remaining = remaining.dropFirst()
+                } else if remaining.hasPrefix(":") {
+                    styledLine = styledLine + Text(":").foregroundColor(.textTertiary)
+                    remaining = remaining.dropFirst()
+                } else if remaining.hasPrefix(",") {
+                    styledLine = styledLine + Text(",").foregroundColor(.textTertiary)
+                    remaining = remaining.dropFirst()
+                } else if remaining.hasPrefix("true") || remaining.hasPrefix("false") {
+                    let word = remaining.hasPrefix("true") ? "true" : "false"
+                    styledLine = styledLine + Text(word).foregroundColor(.accentYellow)
+                    remaining = remaining.dropFirst(word.count)
+                } else if remaining.hasPrefix("null") {
+                    styledLine = styledLine + Text("null").foregroundColor(.accentRed)
+                    remaining = remaining.dropFirst(4)
+                } else if remaining.first?.isNumber == true || remaining.first == "-" {
+                    let numberEnd = remaining.prefix(while: { $0.isNumber || $0 == "." || $0 == "-" || $0 == "e" || $0 == "E" || $0 == "+" })
+                    styledLine = styledLine + Text(numberEnd).foregroundColor(.accentOrange)
+                    remaining = remaining.dropFirst(numberEnd.count)
+                } else {
+                    styledLine = styledLine + Text(String(remaining.first!)).foregroundColor(.textPrimary)
+                    remaining = remaining.dropFirst()
+                }
+            }
+            result = result + styledLine
+            if i < lines.count - 1 {
+                result = result + Text("\n")
+            }
+        }
+        return result
+    }
+
     private func statusColor(for resp: HTTPResponse) -> Color {
         switch resp.statusCategory {
         case .success: return .accentGreen
@@ -662,6 +911,13 @@ struct RESTApiTabView: View {
         case .delete: return .accentRed
         case .head, .options: return .textTertiary
         }
+    }
+
+    private func cancelRequest() {
+        currentTask?.cancel()
+        currentTask = nil
+        isLoading = false
+        errorMessage = "Request cancelled"
     }
 
     private func executeRequest() {
@@ -693,10 +949,12 @@ struct RESTApiTabView: View {
 
         let startTime = Date()
 
-        Task {
+        currentTask = Task {
             do {
                 let (data, urlResponse) = try await URLSession.shared.data(for: urlRequest)
                 let timing = Date().timeIntervalSince(startTime)
+
+                try Task.checkCancellation()
 
                 guard let httpResponse = urlResponse as? HTTPURLResponse else {
                     errorMessage = "Invalid response"
@@ -719,6 +977,9 @@ struct RESTApiTabView: View {
                     body: data,
                     timing: timing
                 )
+            } catch is CancellationError {
+                errorMessage = "Request cancelled"
+                response = nil
             } catch {
                 errorMessage = error.localizedDescription
                 let timing = Date().timeIntervalSince(startTime)
@@ -733,9 +994,12 @@ struct RESTApiTabView: View {
             }
 
             isLoading = false
+            currentTask = nil
 
-            let historyEndpoint = HTTPEndpoint(name: requestName, request: request)
-            endpointStore.addToHistory(historyEndpoint)
+            if errorMessage != "Request cancelled" {
+                let historyEndpoint = HTTPEndpoint(name: requestName, request: request)
+                endpointStore.addToHistory(historyEndpoint)
+            }
         }
     }
 }

@@ -5,18 +5,15 @@ import Combine
 public final class RESTApiViewModel: ObservableObject {
     @Published public var environmentStore: EnvironmentStore
     @Published public var endpointStore: EndpointStore
-    public var service: RESTApiService
 
     @Published public var collections: [EndpointCollection] = []
     @Published public var history: [HTTPEndpoint] = []
 
+    @Published public var selectedCollectionId: String?
+
     @Published public var showEnvironmentEditor: Bool = false
-    @Published public var showSaveSheet: Bool = false
-    @Published public var showCollectionPicker: Bool = false
     @Published public var showNewCollectionSheet: Bool = false
     @Published public var newCollectionName: String = ""
-
-    @Published public var saveEndpointName: String = ""
 
     private var cancellables = Set<AnyCancellable>()
 
@@ -35,7 +32,6 @@ public final class RESTApiViewModel: ObservableObject {
         let epStore = EndpointStore(directoryURL: dir)
         self.environmentStore = envStore
         self.endpointStore = epStore
-        self.service = RESTApiService(environmentStore: envStore, endpointStore: epStore)
 
         self.collections = epStore.collections
         self.history = epStore.history
@@ -51,7 +47,6 @@ public final class RESTApiViewModel: ObservableObject {
         let epStore = EndpointStore(directoryURL: dir)
         environmentStore = envStore
         endpointStore = epStore
-        service = RESTApiService(environmentStore: envStore, endpointStore: epStore)
         collections = epStore.collections
         history = epStore.history
         subscribeToStores()
@@ -82,27 +77,8 @@ public final class RESTApiViewModel: ObservableObject {
         }
     }
 
-    @Published public var selectedCollectionId: String?
-
     public var activeEnvironment: APIEnvironment? {
         environmentStore.activeEnvironment
-    }
-
-    public func saveCurrentAsEndpoint(to collectionId: String?) {
-        guard !saveEndpointName.isEmpty else { return }
-
-        let endpoint = HTTPEndpoint(
-            name: saveEndpointName,
-            request: service.currentRequest,
-            collectionId: collectionId
-        )
-
-        if let collectionId = collectionId {
-            endpointStore.addEndpoint(endpoint, to: collectionId)
-        }
-
-        saveEndpointName = ""
-        showSaveSheet = false
     }
 
     public func deleteEnvironment(_ environment: APIEnvironment) {

@@ -94,16 +94,16 @@ public struct HTTPRequest: Codable, Equatable {
         }
 
         var components = URLComponents(string: baseURL)
-        if !queryParams.isEmpty {
-            let existingItems = components?.queryItems ?? []
-            let additionalItems = queryParams.filter { $0.enabled && !$0.key.isEmpty }.map { param in
-                URLQueryItem(
-                    name: env?.resolve(param.key) ?? param.key,
-                    value: env?.resolve(param.value) ?? param.value
-                )
-            }
-            components?.queryItems = existingItems + additionalItems
+        var items = components?.queryItems ?? []
+        let paramItems = queryParams.filter { $0.enabled && !$0.key.isEmpty }.map { param in
+            URLQueryItem(
+                name: env?.resolve(param.key) ?? param.key,
+                value: env?.resolve(param.value) ?? param.value
+            )
         }
+        items.append(contentsOf: paramItems)
+        items = auth.queryItems(for: items)
+        components?.queryItems = items.isEmpty ? nil : items
         return components?.url
     }
 

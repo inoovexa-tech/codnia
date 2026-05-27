@@ -58,6 +58,7 @@ public final class EnvironmentStore: ObservableObject {
                 APIEnvironment(name: "Development", isActive: true),
                 APIEnvironment(name: "Production", isActive: false)
             ]
+            save()
             return
         }
         do {
@@ -68,6 +69,7 @@ public final class EnvironmentStore: ObservableObject {
                 APIEnvironment(name: "Development", isActive: true),
                 APIEnvironment(name: "Production", isActive: false)
             ]
+            save()
         }
     }
 

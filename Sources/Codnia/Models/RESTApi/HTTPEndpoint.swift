@@ -136,7 +136,12 @@ public final class EndpointStore: ObservableObject {
     public func updateEndpoint(_ endpoint: HTTPEndpoint) {
         for i in collections.indices {
             if let j = collections[i].endpoints.firstIndex(where: { $0.id == endpoint.id }) {
-                collections[i].endpoints[j] = endpoint
+                let original = collections[i].endpoints[j]
+                var updated = endpoint
+                updated.createdAt = original.createdAt
+                updated.collectionId = original.collectionId
+                updated.updatedAt = Date()
+                collections[i].endpoints[j] = updated
                 save()
                 return
             }
