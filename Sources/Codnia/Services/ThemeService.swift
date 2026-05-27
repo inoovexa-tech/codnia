@@ -48,13 +48,13 @@ struct ThemeColors: Equatable {
         self.selectionBg = accent.opacity(0.25)
         self.lineHighlight = accent.opacity(0.05)
         self.syntaxKeyword = syntax
-        self.syntaxString = Color(hex: blend(p.syntax, p.accent, weight: isDark ? 0.6 : 0.5))
-        self.syntaxComment = fg.opacity(0.4)
-        self.syntaxNumber = accent
-        self.syntaxType = Color(hex: blend(p.syntax, p.accent, weight: 0.5))
-        self.syntaxFunction = syntax
-        self.syntaxProperty = syntax
-        self.syntaxConstant = accent.opacity(0.9)
+        self.syntaxString = p.syntax2.flatMap { Color(hex: $0) } ?? Color(hex: blend(p.syntax, p.accent, weight: isDark ? 0.6 : 0.5))
+        self.syntaxComment = p.comment.flatMap { Color(hex: $0) } ?? fg.opacity(0.4)
+        self.syntaxNumber = p.syntax3.flatMap { Color(hex: $0) } ?? accent
+        self.syntaxType = p.syntax3.flatMap { Color(hex: $0) } ?? Color(hex: blend(p.syntax, p.accent, weight: 0.5))
+        self.syntaxFunction = p.syntax2.flatMap { Color(hex: $0) } ?? syntax
+        self.syntaxProperty = p.syntax2.flatMap { Color(hex: $0) } ?? Color(hex: blend(p.syntax, p.accent, weight: isDark ? 0.3 : 0.25))
+        self.syntaxConstant = accent
         self.syntaxOperator = fg.opacity(0.7)
     }
 
