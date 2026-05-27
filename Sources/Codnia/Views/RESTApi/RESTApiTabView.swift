@@ -380,13 +380,25 @@ struct RESTApiTabView: View {
                         }
                         .padding(.vertical, 12)
                     } else {
-                        ForEach(Array(pairs.wrappedValue.enumerated()), id: \.element.id) { index, pair in
-                            keyValueRow(index: index, pairs: pairs)
+                        ForEach(pairs.wrappedValue) { element in
+                            let id = element.id
+                            keyValueRow(
+                                pair: Binding(
+                                    get: { pairs.wrappedValue.first(where: { $0.id == id }) ?? element },
+                                    set: { newValue in
+                                        guard let idx = pairs.wrappedValue.firstIndex(where: { $0.id == id }) else { return }
+                                        pairs.wrappedValue[idx] = newValue
+                                    }
+                                ),
+                                onDelete: {
+                                    pairs.wrappedValue.removeAll { $0.id == id }
+                                }
+                            )
                         }
                     }
                 }
             }
-            .frame(maxHeight: 120)
+            .frame(maxHeight: 200)
 
             Button(action: { pairs.wrappedValue.append(KeyValuePair()) }) {
                 HStack(spacing: 4) {
@@ -404,40 +416,31 @@ struct RESTApiTabView: View {
         .background(Color.bgPrimary)
     }
 
-    private func keyValueRow(index: Int, pairs: Binding<[KeyValuePair]>) -> some View {
+    private func keyValueRow(pair: Binding<KeyValuePair>, onDelete: @escaping () -> Void) -> some View {
         HStack(spacing: 6) {
-            Toggle("", isOn: Binding(
-                get: { pairs.wrappedValue[index].enabled },
-                set: { pairs.wrappedValue[index].enabled = $0 }
-            ))
-            .toggleStyle(.checkbox)
-            .scaleEffect(0.75)
+            Toggle("", isOn: pair.enabled)
+                .toggleStyle(.checkbox)
+                .scaleEffect(0.75)
 
-            TextField("Key", text: Binding(
-                get: { pairs.wrappedValue[index].key },
-                set: { pairs.wrappedValue[index].key = $0 }
-            ))
-            .textFieldStyle(.plain)
-            .font(.system(size: 12))
-            .foregroundColor(.textPrimary)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 4)
-            .background(Color.bgTertiary)
-            .cornerRadius(3)
+            TextField("Key", text: pair.key)
+                .textFieldStyle(.plain)
+                .font(.system(size: 12))
+                .foregroundColor(.textPrimary)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 4)
+                .background(Color.bgTertiary)
+                .cornerRadius(3)
 
-            TextField("Value", text: Binding(
-                get: { pairs.wrappedValue[index].value },
-                set: { pairs.wrappedValue[index].value = $0 }
-            ))
-            .textFieldStyle(.plain)
-            .font(.system(size: 12))
-            .foregroundColor(.textPrimary)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 4)
-            .background(Color.bgTertiary)
-            .cornerRadius(3)
+            TextField("Value", text: pair.value)
+                .textFieldStyle(.plain)
+                .font(.system(size: 12))
+                .foregroundColor(.textPrimary)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 4)
+                .background(Color.bgTertiary)
+                .cornerRadius(3)
 
-            Button(action: { pairs.wrappedValue.remove(at: index) }) {
+            Button(action: onDelete) {
                 Image(systemName: "xmark")
                     .font(.system(size: 9))
                     .foregroundColor(.textTertiary)
@@ -459,6 +462,21 @@ struct RESTApiTabView: View {
             .padding(.horizontal, 8)
             .padding(.top, 8)
 
+            if request.body.type == .json {
+                HStack {
+                    Button(action: formatJSONBody) {
+                        Image(systemName: "curlybraces")
+                            .font(.system(size: 10))
+                        Text("Format")
+                            .font(.system(size: 10))
+                    }
+                    .foregroundColor(.accentBlue)
+                    .help("Pretty-print JSON")
+                    Spacer()
+                }
+                .padding(.horizontal, 8)
+            }
+
             if request.body.type == .json || request.body.type == .raw {
                 TextEditor(text: Binding(
                     get: { request.body.type == .json ? request.body.jsonContent : request.body.rawContent },
@@ -475,18 +493,31 @@ struct RESTApiTabView: View {
                 .scrollContentBackground(.hidden)
                 .background(Color.bgTertiary)
                 .cornerRadius(4)
-                .frame(maxHeight: 100)
                 .padding(.horizontal, 8)
             } else if request.body.type == .formData {
                 keyValueEditor(pairs: $request.body.formData, placeholder: "Form Data")
             }
         }
-        .frame(maxHeight: 150)
+    }
+
+    private func formatJSONBody() {
+        guard let data = request.body.jsonContent.data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: data),
+              let prettyData = try? JSONSerialization.data(withJSONObject: json, options: [.prettyPrinted, .sortedKeys]),
+              let prettyString = String(data: prettyData, encoding: .utf8)
+        else { return }
+        request.body.jsonContent = prettyString
     }
 
     private var authEditor: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
+                Toggle("Enabled", isOn: $request.auth.enabled)
+                    .toggleStyle(.checkbox)
+                    .font(.system(size: 11))
+                    .foregroundColor(.textSecondary)
+                    .help(request.auth.enabled ? "Auth is enabled" : "Auth is disabled")
+
                 Text("Type:")
                     .font(.system(size: 12))
                     .foregroundColor(.textSecondary)
@@ -501,35 +532,42 @@ struct RESTApiTabView: View {
             .padding(.horizontal, 8)
             .padding(.top, 8)
 
-            switch request.auth.type {
-            case .none:
-                Text("No authentication")
+            if request.auth.enabled {
+                switch request.auth.type {
+                case .none:
+                    Text("No authentication")
+                        .font(.system(size: 12))
+                        .foregroundColor(.textTertiary)
+                        .padding(.horizontal, 8)
+
+                case .basic:
+                    authFieldRow(label: "Username", text: $request.auth.username, isSecure: false)
+                    authFieldRow(label: "Password", text: $request.auth.password, isSecure: true)
+
+                case .bearerToken:
+                    authFieldRow(label: "Token", text: $request.auth.token, isSecure: false)
+
+                case .apiKey:
+                    authFieldRow(label: "Key Name", text: $request.auth.apiKeyName, isSecure: false)
+                    authFieldRow(label: "Key Value", text: $request.auth.apiKeyValue, isSecure: false)
+                    HStack(spacing: 8) {
+                        Text("Add to:")
+                            .font(.system(size: 12))
+                            .foregroundColor(.textSecondary)
+                        Picker("", selection: $request.auth.apiKeyLocation) {
+                            Text("Header").tag(AuthConfig.APIKeyLocation.header)
+                            Text("Query Param").tag(AuthConfig.APIKeyLocation.queryParam)
+                        }
+                        .pickerStyle(.segmented)
+                        .frame(width: 200)
+                    }
+                    .padding(.horizontal, 8)
+                }
+            } else {
+                Text("Authentication is disabled")
                     .font(.system(size: 12))
                     .foregroundColor(.textTertiary)
                     .padding(.horizontal, 8)
-
-            case .basic:
-                authFieldRow(label: "Username", text: $request.auth.username, isSecure: false)
-                authFieldRow(label: "Password", text: $request.auth.password, isSecure: true)
-
-            case .bearerToken:
-                authFieldRow(label: "Token", text: $request.auth.token, isSecure: false)
-
-            case .apiKey:
-                authFieldRow(label: "Key Name", text: $request.auth.apiKeyName, isSecure: false)
-                authFieldRow(label: "Key Value", text: $request.auth.apiKeyValue, isSecure: false)
-                HStack(spacing: 8) {
-                    Text("Add to:")
-                        .font(.system(size: 12))
-                        .foregroundColor(.textSecondary)
-                    Picker("", selection: $request.auth.apiKeyLocation) {
-                        Text("Header").tag(AuthConfig.APIKeyLocation.header)
-                        Text("Query Param").tag(AuthConfig.APIKeyLocation.queryParam)
-                    }
-                    .pickerStyle(.segmented)
-                    .frame(width: 200)
-                }
-                .padding(.horizontal, 8)
             }
 
             Spacer()

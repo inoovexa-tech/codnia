@@ -26,6 +26,7 @@ public struct AuthConfig: Codable, Equatable {
     public var apiKeyName: String
     public var apiKeyValue: String
     public var apiKeyLocation: APIKeyLocation
+    public var enabled: Bool
 
     public enum APIKeyLocation: String, Codable, CaseIterable {
         case header
@@ -39,7 +40,8 @@ public struct AuthConfig: Codable, Equatable {
         token: String = "",
         apiKeyName: String = "",
         apiKeyValue: String = "",
-        apiKeyLocation: APIKeyLocation = .header
+        apiKeyLocation: APIKeyLocation = .header,
+        enabled: Bool = true
     ) {
         self.type = type
         self.username = username
@@ -48,9 +50,11 @@ public struct AuthConfig: Codable, Equatable {
         self.apiKeyName = apiKeyName
         self.apiKeyValue = apiKeyValue
         self.apiKeyLocation = apiKeyLocation
+        self.enabled = enabled
     }
 
     public func headers(for baseHeaders: [String: String]) -> [String: String] {
+        guard enabled else { return baseHeaders }
         var result = baseHeaders
         switch type {
         case .none:
@@ -76,6 +80,7 @@ public struct AuthConfig: Codable, Equatable {
     }
 
     public func queryItems(for baseItems: [URLQueryItem]) -> [URLQueryItem] {
+        guard enabled else { return baseItems }
         var result = baseItems
         if type == .apiKey && apiKeyLocation == .queryParam && !apiKeyName.isEmpty && !apiKeyValue.isEmpty {
             result.append(URLQueryItem(name: apiKeyName, value: apiKeyValue))
