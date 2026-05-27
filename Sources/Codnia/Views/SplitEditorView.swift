@@ -9,9 +9,6 @@ struct SplitEditorView: View {
     @EnvironmentObject var settings: SettingsService
     @EnvironmentObject var appState: AppState
 
-    @State private var inFileSearchQuery: String = ""
-    @State private var inFileSearchResults: [NSRange] = []
-    @State private var inFileSearchCurrentIndex: Int = 0
     @FocusState private var inFileSearchFocused: Bool
 
     var body: some View {
@@ -100,7 +97,7 @@ struct SplitEditorView: View {
                     .font(.system(size: 11))
                     .foregroundColor(.textTertiary)
 
-                TextField("Find in file", text: $inFileSearchQuery)
+                TextField("Find in file", text: $editorVM.inFileSearchQuery)
                     .font(.system(size: 12))
                     .foregroundColor(.textPrimary)
                     .textFieldStyle(PlainTextFieldStyle())
@@ -108,16 +105,16 @@ struct SplitEditorView: View {
                     .focused($inFileSearchFocused)
                     .onAppear { inFileSearchFocused = true }
                     .onSubmit {
-                        if inFileSearchResults.count > 1 {
+                        if editorVM.inFileSearchResults.count > 1 {
                             performInFileSearchNext()
                         } else {
                             performInFileSearch()
                         }
                     }
-                    .onChange(of: inFileSearchQuery) { _ in performInFileSearch() }
+                    .onChange(of: editorVM.inFileSearchQuery) { _ in performInFileSearch() }
 
-                if !inFileSearchQuery.isEmpty {
-                    Text("\(inFileSearchResults.isEmpty ? 0 : inFileSearchCurrentIndex + 1)/\(inFileSearchResults.count)")
+                if !editorVM.inFileSearchQuery.isEmpty {
+                    Text("\(editorVM.inFileSearchResults.isEmpty ? 0 : editorVM.inFileSearchCurrentIndex + 1)/\(editorVM.inFileSearchResults.count)")
                         .font(.system(size: 11))
                         .foregroundColor(.textTertiary)
                 }
@@ -127,19 +124,19 @@ struct SplitEditorView: View {
                         .font(.system(size: 10, weight: .medium))
                 }
                 .buttonStyle(PlainButtonStyle())
-                .disabled(inFileSearchResults.isEmpty)
+                .disabled(editorVM.inFileSearchResults.isEmpty)
 
                 Button(action: performInFileSearchNext) {
                     Image(systemName: "chevron.down")
                         .font(.system(size: 10, weight: .medium))
                 }
                 .buttonStyle(PlainButtonStyle())
-                .disabled(inFileSearchResults.isEmpty)
+                .disabled(editorVM.inFileSearchResults.isEmpty)
 
                 Button(action: {
                     editorVM.showInFileSearch = false
-                    inFileSearchQuery = ""
-                    inFileSearchResults = []
+                    editorVM.inFileSearchQuery = ""
+                    editorVM.inFileSearchResults = []
                 }) {
                     Image(systemName: "xmark")
                         .font(.system(size: 10))
@@ -163,8 +160,8 @@ struct SplitEditorView: View {
     }
 
     private func performInFileSearch() {
-        guard !inFileSearchQuery.isEmpty else {
-            inFileSearchResults = []
+        guard !editorVM.inFileSearchQuery.isEmpty else {
+            editorVM.inFileSearchResults = []
             return
         }
         let content = editorVM.editorContent as NSString
@@ -174,7 +171,7 @@ struct SplitEditorView: View {
             if let line = substring {
                 var searchStart = 0
                 while searchStart < line.count {
-                    let range = (line as NSString).range(of: self.inFileSearchQuery, options: .caseInsensitive, range: NSRange(location: searchStart, length: line.count - searchStart))
+                    let range = (line as NSString).range(of: self.editorVM.inFileSearchQuery, options: .caseInsensitive, range: NSRange(location: searchStart, length: line.count - searchStart))
                     if range.location == NSNotFound { break }
                     let fullRange = NSRange(location: lineRange.location + range.location, length: range.length)
                     ranges.append(fullRange)
@@ -182,18 +179,18 @@ struct SplitEditorView: View {
                 }
             }
         }
-        inFileSearchResults = ranges
-        inFileSearchCurrentIndex = ranges.isEmpty ? 0 : 0
+        editorVM.inFileSearchResults = ranges
+        editorVM.inFileSearchCurrentIndex = ranges.isEmpty ? 0 : 0
     }
 
     private func performInFileSearchNext() {
-        guard !inFileSearchResults.isEmpty else { return }
-        inFileSearchCurrentIndex = (inFileSearchCurrentIndex + 1) % inFileSearchResults.count
+        guard !editorVM.inFileSearchResults.isEmpty else { return }
+        editorVM.inFileSearchCurrentIndex = (editorVM.inFileSearchCurrentIndex + 1) % editorVM.inFileSearchResults.count
     }
 
     private func performInFileSearchPrevious() {
-        guard !inFileSearchResults.isEmpty else { return }
-        inFileSearchCurrentIndex = inFileSearchCurrentIndex == 0 ? inFileSearchResults.count - 1 : inFileSearchCurrentIndex - 1
+        guard !editorVM.inFileSearchResults.isEmpty else { return }
+        editorVM.inFileSearchCurrentIndex = editorVM.inFileSearchCurrentIndex == 0 ? editorVM.inFileSearchResults.count - 1 : editorVM.inFileSearchCurrentIndex - 1
     }
 }
 

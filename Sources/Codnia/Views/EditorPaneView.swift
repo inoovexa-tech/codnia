@@ -56,8 +56,8 @@ struct EditorPaneView: View {
                         content: $editorVM.editorContent,
                         language: editorVM.currentLanguage,
                         onChange: { editorVM.markModified(tabId: tab.id) },
-                        searchResults: [],
-                        currentSearchIndex: 0
+                        searchResults: editorVM.inFileSearchResults,
+                        currentSearchIndex: editorVM.inFileSearchCurrentIndex
                     )
                     .environmentObject(settings)
                 } else {

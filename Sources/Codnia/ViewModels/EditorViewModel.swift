@@ -9,10 +9,21 @@ public final class EditorViewModel: ObservableObject {
     @Published public var currentLanguage: String = "Plain Text"
     @Published public var editorContent: String = ""
     @Published public var showGlobalSearch: Bool = false
-    @Published public var showInFileSearch: Bool = false
+    @Published public var showInFileSearch: Bool = false {
+        didSet {
+            if !showInFileSearch {
+                inFileSearchQuery = ""
+                inFileSearchResults = []
+                inFileSearchCurrentIndex = 0
+            }
+        }
+    }
     @Published public var searchHighlightQuery: String = ""
     @Published public var searchHighlightRanges: [NSRange] = []
     @Published public var searchHighlightIndex: Int = 0
+    @Published public var inFileSearchQuery: String = ""
+    @Published public var inFileSearchResults: [NSRange] = []
+    @Published public var inFileSearchCurrentIndex: Int = 0
 
     private let workspace: WorkspaceService
     private let settings: SettingsService
@@ -306,6 +317,10 @@ public final class EditorViewModel: ObservableObject {
         searchHighlightQuery = ""
         searchHighlightRanges = []
         searchHighlightIndex = 0
+        showInFileSearch = false
+        inFileSearchQuery = ""
+        inFileSearchResults = []
+        inFileSearchCurrentIndex = 0
         let name = URL(fileURLWithPath: path).lastPathComponent
         let ext = URL(fileURLWithPath: path).pathExtension.lowercased()
 
@@ -505,6 +520,10 @@ public final class EditorViewModel: ObservableObject {
         searchHighlightQuery = ""
         searchHighlightRanges = []
         searchHighlightIndex = 0
+        showInFileSearch = false
+        inFileSearchQuery = ""
+        inFileSearchResults = []
+        inFileSearchCurrentIndex = 0
         autoSaveTimer?.cancel()
         autoSaveTabId = nil
         if let currentTabId = activeTabId,
