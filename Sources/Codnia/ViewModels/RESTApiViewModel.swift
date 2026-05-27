@@ -82,6 +82,8 @@ public final class RESTApiViewModel: ObservableObject {
         }
     }
 
+    @Published public var selectedCollectionId: String?
+
     public var activeEnvironment: APIEnvironment? {
         environmentStore.activeEnvironment
     }
@@ -116,4 +118,34 @@ public final class RESTApiViewModel: ObservableObject {
         environmentStore.activate(environment)
         objectWillChange.send()
     }
+}
+
+// MARK: - REST API Tab State (persists across tab switches)
+
+enum RESTApiRequestTab: String, CaseIterable, Identifiable {
+    case params = "Params"
+    case headers = "Headers"
+    case body = "Body"
+    case auth = "Auth"
+    var id: String { rawValue }
+}
+
+enum RESTApiResponseTab: String, CaseIterable, Identifiable {
+    case body = "Body"
+    case headers = "Headers"
+    var id: String { rawValue }
+}
+
+struct RESTApiTabState {
+    var request: HTTPRequest = HTTPRequest()
+    var response: HTTPResponse? = nil
+    var isLoading: Bool = false
+    var errorMessage: String? = nil
+    var selectedTab: RESTApiRequestTab = .params
+    var responseTab: RESTApiResponseTab = .body
+    var requestName: String = "New Request"
+    var isEditingName: Bool = false
+    var currentEndpointId: String? = nil
+    var showSaveSheet: Bool = false
+    var selectedCollectionId: String? = nil
 }

@@ -22,25 +22,108 @@ struct BrowserView: View {
     @StateObject private var devToolsService = BrowserDevToolsService()
     @State private var devToolsOpen: Bool = false
     @State private var devToolsHeight: CGFloat = 200
+    @State private var devToolsFloatingWindow: NSWindow?
+    @State private var floatingWindowDelegateInstance: FloatingWindowDelegate?
 
     var body: some View {
-        VStack(spacing: 0) {
-            navigationBar
-            progressBar
-            if devToolsOpen {
-                webViewRepresentable
-                    .frame(maxHeight: .infinity)
-                HorizontalResizableDivider(
-                    height: $devToolsHeight,
-                    minHeight: 100,
-                    maxHeight: 600
-                )
-                BrowserDevToolsView(devToolsService: devToolsService)
-                    .frame(height: devToolsHeight)
+        ZStack {
+            if devToolsOpen && !devToolsService.isFloating {
+                switch devToolsService.dockingPosition {
+                case .bottom:
+                    VStack(spacing: 0) {
+                        navigationBar
+                        progressBar
+                        webViewRepresentable
+                            .frame(maxHeight: .infinity)
+                        HorizontalResizableDivider(
+                            height: $devToolsHeight,
+                            minHeight: 100,
+                            maxHeight: 600
+                        )
+                        BrowserDevToolsView(devToolsService: devToolsService)
+                            .frame(height: devToolsHeight)
+                    }
+                case .right:
+                    VStack(spacing: 0) {
+                        navigationBar
+                        progressBar
+                        HStack(spacing: 0) {
+                            webViewRepresentable
+                                .frame(maxWidth: .infinity)
+                            ResizableDivider(
+                                width: $devToolsService.devToolsWidth,
+                                minWidth: 200,
+                                maxWidth: 800,
+                                side: .right
+                            )
+                            .frame(width: 6)
+                            BrowserDevToolsView(devToolsService: devToolsService)
+                                .frame(width: devToolsService.devToolsWidth)
+                        }
+                    }
+                case .left:
+                    VStack(spacing: 0) {
+                        navigationBar
+                        progressBar
+                        HStack(spacing: 0) {
+                            BrowserDevToolsView(devToolsService: devToolsService)
+                                .frame(width: devToolsService.devToolsWidth)
+                            ResizableDivider(
+                                width: $devToolsService.devToolsWidth,
+                                minWidth: 200,
+                                maxWidth: 800,
+                                side: .left
+                            )
+                            .frame(width: 6)
+                            webViewRepresentable
+                                .frame(maxWidth: .infinity)
+                        }
+                    }
+                }
             } else {
-                webViewRepresentable
+                VStack(spacing: 0) {
+                    navigationBar
+                    progressBar
+                    webViewRepresentable
+                }
+            }
+            keyboardShortcuts
+        }
+        .onChange(of: devToolsService.isFloating) { floating in
+            if floating {
+                openFloatingDevTools()
+            } else {
+                closeFloatingDevTools()
             }
         }
+        .onDisappear {
+            closeFloatingDevTools()
+        }
+    }
+
+    private func openFloatingDevTools() {
+        let delegate = FloatingWindowDelegate(devToolsService: devToolsService)
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 700, height: 500),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = "DevTools — \(pageTitle)"
+        window.center()
+        window.contentView = NSHostingView(
+            rootView: BrowserDevToolsView(devToolsService: devToolsService)
+        )
+        window.delegate = delegate
+        window.makeKeyAndOrderFront(nil)
+        devToolsFloatingWindow = window
+        floatingWindowDelegateInstance = delegate
+    }
+
+    private func closeFloatingDevTools() {
+        devToolsFloatingWindow?.close()
+        devToolsFloatingWindow = nil
+        floatingWindowDelegateInstance = nil
     }
 
     private var navigationBar: some View {
@@ -225,6 +308,37 @@ struct BrowserView: View {
     }
 }
 
+// MARK: - Keyboard Shortcuts
+
+extension BrowserView {
+    var keyboardShortcuts: some View {
+        ZStack {
+            Button("Inspect Element") { devToolsService.toggleInspectMode() }
+                .keyboardShortcut("c", modifiers: [.command, .shift])
+            Button("Console") { devToolsService.selectedTab = .console }
+                .keyboardShortcut("j", modifiers: [.command, .shift])
+            Button("Elements") { devToolsService.selectedTab = .elements; devToolsService.refreshDOM() }
+                .keyboardShortcut("e", modifiers: [.command, .shift])
+            Button("Network") { devToolsService.selectedTab = .network }
+                .keyboardShortcut("n", modifiers: [.command, .shift])
+            Button("Toggle DevTools") { devToolsOpen.toggle() }
+                .keyboardShortcut("i", modifiers: [.command, .option])
+            Button("Close DevTools") { devToolsOpen = false }
+                .keyboardShortcut(.escape, modifiers: [])
+            Button("Detach DevTools") { devToolsService.isFloating.toggle() }
+                .keyboardShortcut("d", modifiers: [.command, .shift])
+            Button("Dock Bottom") { devToolsService.dockingPosition = .bottom }
+                .keyboardShortcut("1", modifiers: [.command, .shift])
+            Button("Dock Right") { devToolsService.dockingPosition = .right }
+                .keyboardShortcut("2", modifiers: [.command, .shift])
+            Button("Dock Left") { devToolsService.dockingPosition = .left }
+                .keyboardShortcut("3", modifiers: [.command, .shift])
+        }
+        .opacity(0)
+        .frame(width: 0, height: 0)
+    }
+}
+
 struct WebViewRepresentable: NSViewRepresentable {
     let tabId: String
     @Binding var urlString: String
@@ -344,6 +458,19 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate {
         isNavigating = false
     }
 
+    func webView(_ webView: WKWebView, decidePolicyFor navigationResponse: WKNavigationResponse, decisionHandler: @escaping @Sendable (WKNavigationResponsePolicy) -> Void) {
+        decisionHandler(.allow)
+        guard let response = navigationResponse.response as? HTTPURLResponse else { return }
+        let devTools = parent.devToolsService
+        if let url = response.url?.absoluteString {
+            devTools.addResource(
+                url: url,
+                mimeType: response.mimeType ?? "",
+                statusCode: response.statusCode
+            )
+        }
+    }
+
     @MainActor
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping @MainActor @Sendable (WKNavigationActionPolicy) -> Void) {
         if navigationAction.navigationType == .linkActivated && navigationAction.targetFrame == nil {
@@ -359,5 +486,13 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate {
         if let url = webView.url?.absoluteString {
             parent.urlString = url
         }
+    }
+}
+
+private class FloatingWindowDelegate: NSObject, NSWindowDelegate {
+    weak var devToolsService: BrowserDevToolsService?
+    init(devToolsService: BrowserDevToolsService) { self.devToolsService = devToolsService }
+    func windowWillClose(_ notification: Notification) {
+        devToolsService?.isFloating = false
     }
 }

@@ -11,29 +11,13 @@ struct RESTApiTabView: View {
     @State private var response: HTTPResponse?
     @State private var isLoading: Bool = false
     @State private var errorMessage: String?
-    @State private var selectedTab: RequestTab = .params
-    @State private var responseTab: ResponseTab = .body
+    @State private var selectedTab: RESTApiRequestTab = .params
+    @State private var responseTab: RESTApiResponseTab = .body
     @State private var requestName: String = "New Request"
     @State private var isEditingName: Bool = false
     @State private var currentEndpointId: String?
     @State private var showSaveSheet: Bool = false
     @State private var selectedCollectionId: String?
-
-    enum RequestTab: String, CaseIterable, Identifiable {
-        case params = "Params"
-        case headers = "Headers"
-        case body = "Body"
-        case auth = "Auth"
-
-        var id: String { rawValue }
-    }
-
-    enum ResponseTab: String, CaseIterable, Identifiable {
-        case body = "Body"
-        case headers = "Headers"
-
-        var id: String { rawValue }
-    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -51,14 +35,48 @@ struct RESTApiTabView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(Color.bgPrimary)
-        .onAppear { loadEndpointIfNeeded() }
+        .onAppear { restoreState() }
+        .onDisappear { saveState() }
         .sheet(isPresented: $showSaveSheet) {
             saveSheet
         }
     }
 
-    private func loadEndpointIfNeeded() {
-        guard let requestId = restApiRequestId else { return }
+    private func restoreState() {
+        if let saved = editorVM.restApiTabStates[tabId] {
+            request = saved.request
+            response = saved.response
+            isLoading = saved.isLoading
+            errorMessage = saved.errorMessage
+            selectedTab = saved.selectedTab
+            responseTab = saved.responseTab
+            requestName = saved.requestName
+            isEditingName = saved.isEditingName
+            currentEndpointId = saved.currentEndpointId
+            showSaveSheet = saved.showSaveSheet
+            selectedCollectionId = saved.selectedCollectionId
+        } else if let requestId = restApiRequestId {
+            loadEndpoint(requestId)
+        }
+    }
+
+    private func saveState() {
+        editorVM.restApiTabStates[tabId] = RESTApiTabState(
+            request: request,
+            response: response,
+            isLoading: isLoading,
+            errorMessage: errorMessage,
+            selectedTab: selectedTab,
+            responseTab: responseTab,
+            requestName: requestName,
+            isEditingName: isEditingName,
+            currentEndpointId: currentEndpointId,
+            showSaveSheet: showSaveSheet,
+            selectedCollectionId: selectedCollectionId
+        )
+    }
+
+    private func loadEndpoint(_ requestId: String) {
         for collection in endpointStore.collections {
             if let endpoint = collection.endpoints.first(where: { $0.id == requestId }) {
                 request = endpoint.request
@@ -287,7 +305,7 @@ struct RESTApiTabView: View {
 
     private var requestTabs: some View {
         HStack(spacing: 0) {
-            ForEach(RequestTab.allCases) { tab in
+            ForEach(RESTApiRequestTab.allCases) { tab in
                 Button(action: { selectedTab = tab }) {
                     Text(tab.rawValue)
                         .font(.system(size: 11, weight: .medium))
@@ -553,7 +571,7 @@ struct RESTApiTabView: View {
 
     private var responseTabs: some View {
         HStack(spacing: 0) {
-            ForEach(ResponseTab.allCases) { tab in
+            ForEach(RESTApiResponseTab.allCases) { tab in
                 Button(action: { responseTab = tab }) {
                     Text(tab.rawValue)
                         .font(.system(size: 11, weight: .medium))

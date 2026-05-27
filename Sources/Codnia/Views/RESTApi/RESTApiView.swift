@@ -4,11 +4,10 @@ struct RESTApiView: View {
     @EnvironmentObject var viewModel: RESTApiViewModel
     @EnvironmentObject var editorVM: EditorViewModel
 
-    @State private var selectedCollectionId: String?
     @State private var renamingCollectionId: String?
 
     private var selectedCollection: EndpointCollection? {
-        guard let id = selectedCollectionId else { return nil }
+        guard let id = viewModel.selectedCollectionId else { return nil }
         return viewModel.collections.first { $0.id == id }
     }
     @State private var renamingCollectionName: String = ""
@@ -61,8 +60,8 @@ struct RESTApiView: View {
 
     private var header: some View {
         HStack(spacing: 8) {
-            if selectedCollectionId != nil {
-                Button(action: { selectedCollectionId = nil }) {
+            if viewModel.selectedCollectionId != nil {
+                Button(action: { viewModel.selectedCollectionId = nil }) {
                     HStack(spacing: 2) {
                         Image(systemName: "chevron.left")
                             .font(.system(size: 11, weight: .medium))
@@ -195,7 +194,7 @@ struct RESTApiView: View {
         .padding(.vertical, 5)
         .contentShape(Rectangle())
         .onTapGesture {
-            selectedCollectionId = collection.id
+            viewModel.selectedCollectionId = collection.id
         }
         .contextMenu {
             Button("Rename") {
@@ -274,7 +273,7 @@ struct RESTApiView: View {
             if viewModel.collections.count > 1 {
                 Divider()
                 ForEach(viewModel.collections) { collection in
-                    if collection.id != selectedCollectionId {
+                    if collection.id != viewModel.selectedCollectionId {
                         Button("Move to \"\(collection.name)\"") {
                             viewModel.endpointStore.moveEndpoint(endpoint, to: collection.id)
                         }

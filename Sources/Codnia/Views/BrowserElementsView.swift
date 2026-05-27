@@ -2,6 +2,7 @@ import SwiftUI
 
 struct BrowserElementsView: View {
     @ObservedObject var devToolsService: BrowserDevToolsService
+    @State private var splitRatio: CGFloat = 0.5
 
     var body: some View {
         VStack(spacing: 0) {
@@ -13,21 +14,21 @@ struct BrowserElementsView: View {
                     .progressViewStyle(CircularProgressViewStyle(tint: .textSecondary))
                 Spacer()
             } else if let tree = devToolsService.domTree {
-                VStack(spacing: 0) {
-                    ScrollView {
-                        LazyVStack(alignment: .leading, spacing: 0) {
-                            DOMNodeRow(node: tree, depth: 0, devToolsService: devToolsService)
-                        }
-                    }
-                    .background(Color.bgPrimary)
-
-                    if let selectedId = devToolsService.selectedDOMNodeId,
-                       let selected = findNode(id: selectedId, in: tree) {
-                        elementDetailPanel(selected)
+                HSplitView {
+                    domTreePanel(tree)
+                    if devToolsService.selectedDOMNodeId != nil {
+                        stylesPanel
+                            .frame(minWidth: 200)
                     }
                 }
+                .background(Color.bgPrimary)
             } else {
                 emptyState
+            }
+        }
+        .onChange(of: devToolsService.selectedDOMNodeId) { _ in
+            if devToolsService.selectedDOMNodeId != nil {
+                devToolsService.refreshStylesForSelected()
             }
         }
     }
@@ -39,6 +40,48 @@ struct BrowserElementsView: View {
         }
         return nil
     }
+
+    @ViewBuilder
+    private func domTreePanel(_ tree: BrowserDOMNode) -> some View {
+        VStack(spacing: 0) {
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    DOMNodeRow(node: tree, depth: 0, devToolsService: devToolsService)
+                }
+            }
+            .background(Color.bgPrimary)
+
+            if let selectedId = devToolsService.selectedDOMNodeId,
+               let selected = findNode(id: selectedId, in: tree) {
+                elementDetailPanel(selected)
+            }
+        }
+        .frame(minWidth: 200)
+        .layoutPriority(1)
+    }
+
+    @ViewBuilder
+    private var stylesPanel: some View {
+        VStack(spacing: 0) {
+            Picker("", selection: $devToolsService.selectedTab) {
+                Text("Styles").tag(BrowserDevToolsService.DevToolsTab.styles)
+                Text("Computed").tag(BrowserDevToolsService.DevToolsTab.computed)
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+
+            if devToolsService.selectedTab == .styles {
+                BrowserStylesView(devToolsService: devToolsService)
+            } else {
+                BrowserComputedView(devToolsService: devToolsService)
+            }
+        }
+        .background(Color.bgPrimary)
+    }
+
+    @State private var editingAttrName: String? = nil
+    @State private var editingAttrValue: String = ""
 
     @ViewBuilder
     private func elementDetailPanel(_ node: BrowserDOMNode) -> some View {
@@ -81,16 +124,32 @@ struct BrowserElementsView: View {
                                     .font(.system(size: 8, design: .monospaced))
                                     .foregroundColor(.accentBlue)
                                     .frame(width: 80, alignment: .trailing)
-                                Text(node.attributes[key] ?? "")
-                                    .font(.system(size: 8, design: .monospaced))
-                                    .foregroundColor(.textPrimary)
-                                    .textSelection(.enabled)
-                                    .lineLimit(3)
+                                if editingAttrName == key {
+                                    TextField("Value", text: $editingAttrValue)
+                                        .textFieldStyle(PlainTextFieldStyle())
+                                        .font(.system(size: 8, design: .monospaced))
+                                        .foregroundColor(.textPrimary)
+                                        .onSubmit {
+                                            let selector = node.nodeId.isEmpty ? node.tag : "#\(node.nodeId)"
+                                            devToolsService.setAttribute(selector: selector, name: key, value: editingAttrValue)
+                                            editingAttrName = nil
+                                        }
+                                } else {
+                                    Text(node.attributes[key] ?? "")
+                                        .font(.system(size: 8, design: .monospaced))
+                                        .foregroundColor(.textPrimary)
+                                        .textSelection(.enabled)
+                                        .lineLimit(3)
+                                        .onTapGesture(count: 2) {
+                                            editingAttrName = key
+                                            editingAttrValue = node.attributes[key] ?? ""
+                                        }
+                                }
                             }
                         }
                     }
 
-                    if let text = node.attributes["text"], !text.isEmpty {
+                    if let text = node.attributes["innerText"], !text.isEmpty {
                         Text("Text Content")
                             .font(.system(size: 9, weight: .semibold, design: .monospaced))
                             .foregroundColor(.textSecondary)
@@ -194,17 +253,17 @@ struct DOMNodeRow: View {
                 if node.tag != "#text" {
                     devToolsService.selectedDOMNodeId = node.id
                     devToolsService.highlightElement(node)
+                    let selector = node.nodeId.isEmpty ? node.tag : "#\(node.nodeId)"
+                    devToolsService.selectedElementSelector = selector
                 }
             }) {
                 HStack(spacing: 3) {
-                    // indent
                     ForEach(0..<depth, id: \.self) { _ in
                         Rectangle()
                             .fill(Color.borderDefault.opacity(0.3))
                             .frame(width: baseIndent)
                     }
 
-                    // disclosure arrow
                     if !node.children.isEmpty {
                         Image(systemName: "chevron.right")
                             .font(.system(size: 8, weight: .bold))
@@ -217,7 +276,6 @@ struct DOMNodeRow: View {
                             .frame(width: 10)
                     }
 
-                    // tag name
                     tagBadge
                 }
                 .padding(.vertical, 2)
@@ -228,7 +286,6 @@ struct DOMNodeRow: View {
             .buttonStyle(PlainButtonStyle())
             .id(node.id)
 
-            // children
             if isExpanded && !node.children.isEmpty {
                 ForEach(node.children) { child in
                     DOMNodeRow(node: child, depth: depth + 1, devToolsService: devToolsService)

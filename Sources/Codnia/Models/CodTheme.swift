@@ -80,6 +80,9 @@ extension CodTheme {
         CodTheme(name: "Gruvbox Dark", appearance: "dark", palette: CodThemePalette(
             bg: "#282828", fg: "#ebdbb2", accent: "#d79921", surface: "#3c3836", syntax: "#8ec07c"
         )),
+        CodTheme(name: "Chrome DevTools Dark", appearance: "dark", palette: CodThemePalette(
+            bg: "#1e1e1e", fg: "#cccccc", accent: "#569cd6", surface: "#252526", syntax: "#ce9178"
+        )),
 
         CodTheme(name: "Light+", appearance: "light", palette: CodThemePalette(
             bg: "#ffffff", fg: "#1e1e1e", accent: "#007acc", surface: "#f3f3f3", syntax: "#795e26"

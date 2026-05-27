@@ -26,6 +26,7 @@ public final class EditorViewModel: ObservableObject {
     @Published public var querySql: [String: String] = [:]
     @Published public var browserURLs: [String: String] = [:]
     @Published public var browserTitles: [String: String] = [:]
+    @Published var restApiTabStates: [String: RESTApiTabState] = [:]
     @Published var queryHistory: [String: [QueryHistoryItem]] = [:]
     private var autoSaveTimer: AnyCancellable?
     private var markdownPreviewTabs: Set<String> = []
@@ -558,6 +559,7 @@ public final class EditorViewModel: ObservableObject {
             queryHistory.removeValue(forKey: id)
             browserURLs.removeValue(forKey: id)
             browserTitles.removeValue(forKey: id)
+            restApiTabStates.removeValue(forKey: id)
 
             if activeTabId == id {
                 let newActiveId = tabs.last?.id ?? terminal.tabs.last?.id
