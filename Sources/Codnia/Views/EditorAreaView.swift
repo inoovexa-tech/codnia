@@ -113,7 +113,9 @@ struct EditorAreaView: View {
                             editorVM.markModified(tabId: activeTab.id)
                         },
                         searchResults: activeSearchResults,
-                        currentSearchIndex: activeSearchIndex
+                        currentSearchIndex: activeSearchIndex,
+                        tabId: activeTab.id,
+                        editorVM: editorVM
                     )
                     .environmentObject(settings)
                 }

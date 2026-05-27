@@ -32,6 +32,9 @@ public final class EditorViewModel: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     public var splitVM: SplitViewModel?
     public var fileContents: [String: String] = [:]
+    public var scrollPositions: [String: CGFloat] = [:]
+    public var selectedRanges: [String: NSRange] = [:]
+    public weak var activeTextView: NSTextView?
     @Published public var diffData: [String: [DiffLine]] = [:]
     @Published public var queryResults: [String: QueryPageResult] = [:]
     @Published public var querySql: [String: String] = [:]
@@ -530,6 +533,10 @@ public final class EditorViewModel: ObservableObject {
            let currentTabIdx = tabs.firstIndex(where: { $0.id == currentTabId }),
            tabs[currentTabIdx].type == .file || tabs[currentTabIdx].type == .diff {
             fileContents[currentTabId] = editorContent
+            if let tv = activeTextView {
+                scrollPositions[currentTabId] = tv.visibleRect.origin.y
+                selectedRanges[currentTabId] = tv.selectedRange()
+            }
         }
 
         activeTabId = id
@@ -572,6 +579,8 @@ public final class EditorViewModel: ObservableObject {
         if tabs.firstIndex(where: { $0.id == id }) != nil {
             tabs.removeAll { $0.id == id }
             fileContents.removeValue(forKey: id)
+            scrollPositions.removeValue(forKey: id)
+            selectedRanges.removeValue(forKey: id)
             diffData.removeValue(forKey: id)
             queryResults.removeValue(forKey: id)
             querySql.removeValue(forKey: id)

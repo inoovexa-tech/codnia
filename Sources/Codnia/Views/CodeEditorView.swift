@@ -6,6 +6,8 @@ struct CodeEditorView: View {
     let onChange: () -> Void
     var searchResults: [NSRange] = []
     var currentSearchIndex: Int = 0
+    let tabId: String
+    let editorVM: EditorViewModel
     @EnvironmentObject var settings: SettingsService
 
     var body: some View {
@@ -17,7 +19,9 @@ struct CodeEditorView: View {
                 language: language,
                 onChange: onChange,
                 searchResults: searchResults,
-                currentSearchIndex: currentSearchIndex
+                currentSearchIndex: currentSearchIndex,
+                tabId: tabId,
+                editorVM: editorVM
             )
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -33,6 +37,8 @@ struct EditorNSTextView: NSViewRepresentable {
     let onChange: () -> Void
     var searchResults: [NSRange] = []
     var currentSearchIndex: Int = 0
+    let tabId: String
+    let editorVM: EditorViewModel
 
     func makeNSView(context: Context) -> NSScrollView {
         let scrollView = NSScrollView()
@@ -88,6 +94,10 @@ struct EditorNSTextView: NSViewRepresentable {
             context.coordinator.rulerView = rulerView
         }
 
+        context.coordinator.configureScrollObserver(scrollView: scrollView)
+        editorVM.activeTextView = textView
+        restoreSavedState(textView: textView, scrollView: scrollView)
+
         return scrollView
     }
 
@@ -99,12 +109,21 @@ struct EditorNSTextView: NSViewRepresentable {
 
         let textChanged = textView.string != text
         if textChanged {
-            let selected = textView.selectedRange()
             textView.string = text
-            if selected.location <= text.count && selected.location >= 0 {
-                textView.setSelectedRange(selected)
+            if let savedRange = editorVM.selectedRanges[tabId],
+               savedRange.location <= text.count && savedRange.location >= 0 {
+                textView.setSelectedRange(savedRange)
+            }
+            if let savedScrollY = editorVM.scrollPositions[tabId] {
+                let point = NSPoint(x: 0, y: savedScrollY)
+                if let documentView = nsView.documentView {
+                    documentView.scroll(point)
+                }
             }
         }
+
+        context.coordinator.configureScrollObserver(scrollView: nsView)
+        editorVM.activeTextView = textView
 
         if languageChanged || textChanged {
             context.coordinator.applyHighlighting(textView)
@@ -126,22 +145,40 @@ struct EditorNSTextView: NSViewRepresentable {
     }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(text: $text, language: language, onChange: onChange)
+        Coordinator(text: $text, language: language, onChange: onChange, tabId: tabId, editorVM: editorVM)
+    }
+
+    private func restoreSavedState(textView: NSTextView, scrollView: NSScrollView) {
+        if let savedRange = editorVM.selectedRanges[tabId],
+           savedRange.location <= text.count && savedRange.location >= 0 {
+            textView.setSelectedRange(savedRange)
+        }
+        if let savedScrollY = editorVM.scrollPositions[tabId] {
+            let point = NSPoint(x: 0, y: savedScrollY)
+            if let documentView = scrollView.documentView {
+                documentView.scroll(point)
+            }
+        }
     }
 
     class Coordinator: NSObject {
         @Binding var text: String
         let onChange: () -> Void
+        let tabId: String
+        let editorVM: EditorViewModel
         var highlighter: SyntaxHighlighter?
         var currentLanguage: String = ""
         var rulerView: LineNumberRulerView?
         private var isHighlighting = false
+        private var scrollObserver: NSObjectProtocol?
         private var searchHighlightColor = NSColor(red: 255/255, green: 213/255, blue: 0/255, alpha: 0.3)
         private var currentHighlightColor = NSColor(red: 255/255, green: 140/255, blue: 0/255, alpha: 0.5)
 
-        init(text: Binding<String>, language: String, onChange: @escaping () -> Void) {
+        init(text: Binding<String>, language: String, onChange: @escaping () -> Void, tabId: String, editorVM: EditorViewModel) {
             self._text = text
             self.onChange = onChange
+            self.tabId = tabId
+            self.editorVM = editorVM
             self.currentLanguage = language
             self.highlighter = SyntaxHighlighter(language: language)
         }
@@ -186,6 +223,25 @@ struct EditorNSTextView: NSViewRepresentable {
             let rect = layoutManager.boundingRect(forGlyphRange: glyphRange, in: textView.textContainer ?? NSTextContainer())
             textView.scrollToVisible(rect)
         }
+
+        func configureScrollObserver(scrollView: NSScrollView) {
+            guard scrollObserver == nil else { return }
+            scrollObserver = NotificationCenter.default.addObserver(
+                forName: NSView.boundsDidChangeNotification,
+                object: scrollView.contentView,
+                queue: .main
+            ) { [weak self] _ in
+                guard let self = self else { return }
+                let scrollY = scrollView.contentView.bounds.origin.y
+                self.editorVM.scrollPositions[self.tabId] = scrollY
+            }
+        }
+
+        deinit {
+            if let observer = scrollObserver {
+                NotificationCenter.default.removeObserver(observer)
+            }
+        }
     }
 }
 
@@ -196,6 +252,22 @@ extension EditorNSTextView.Coordinator: NSTextViewDelegate {
         applyHighlighting(textView)
         rulerView?.needsDisplay = true
         onChange()
+    }
+
+    func textViewDidChangeSelection(_ notification: Notification) {
+        guard let textView = notification.object as? NSTextView else { return }
+        editorVM.selectedRanges[tabId] = textView.selectedRange()
+        let line = textView.string.isEmpty ? 1 : textView.string[...textView.string.index(
+            textView.string.startIndex,
+            offsetBy: min(textView.selectedRange().location, textView.string.count)
+        )].filter { $0 == "\n" }.count + 1
+        let column: Int = {
+            let loc = textView.selectedRange().location
+            let str = textView.string as NSString
+            let lineStart = str.lineRange(for: NSRange(location: loc, length: 0))
+            return loc - lineStart.location + 1
+        }()
+        editorVM.cursorPosition = "Ln \(line), Col \(column)"
     }
 }
 

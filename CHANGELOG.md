@@ -1,3 +1,12 @@
+## [0.17.0] — 2026-05-27
+
+### Added
+- Browser DevTools v2 — console improvements, Elements/Network/Storage/Sources/Application panels, docking, floating window, Chrome theme
+
+### Fixed
+- Database explorer showing wrong tables after switching databases
+- In-file search highlights and next/prev navigation not working in split panes
+
 ## [0.16.2] — 2026-05-22
 
 ### Fixed
