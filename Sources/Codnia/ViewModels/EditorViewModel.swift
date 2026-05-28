@@ -34,6 +34,7 @@ public final class EditorViewModel: ObservableObject {
     public var fileContents: [String: String] = [:]
     public var scrollPositions: [String: CGFloat] = [:]
     public var selectedRanges: [String: NSRange] = [:]
+    public var cursorPositions: [String: String] = [:]
     public weak var activeTextView: NSTextView?
     @Published public var diffData: [String: [DiffLine]] = [:]
     @Published public var queryResults: [String: QueryPageResult] = [:]
@@ -149,6 +150,8 @@ public final class EditorViewModel: ObservableObject {
                      self.workspace.projects[projIdx].worktrees[prevWtIdx].fileTabs = self.tabs
                      self.workspace.projects[projIdx].worktrees[prevWtIdx].terminalTabs = self.terminal.tabs
                      self.workspace.projects[projIdx].worktrees[prevWtIdx].activeTabId = self.activeTabId
+                     self.workspace.projects[projIdx].worktrees[prevWtIdx].tabScrollPositions = self.scrollPositions.mapValues { Double($0) }
+                     self.workspace.projects[projIdx].worktrees[prevWtIdx].tabSelectedRanges = self.selectedRanges.mapValues { "\($0.location),\($0.length)" }
                      self.workspace.projects[projIdx].worktrees[prevWtIdx].browserURLs = self.browserURLs
                      self.workspace.projects[projIdx].worktrees[prevWtIdx].browserTitles = self.browserTitles
                      self.workspace.saveProjects()
@@ -181,6 +184,12 @@ public final class EditorViewModel: ObservableObject {
         terminal.setWorktreeMapping(tabs: worktree.terminalTabs, worktreeId: worktree.id)
         terminal.refreshSessionsForRestoredTabs(workspace: workspace)
         activeTabId = worktree.activeTabId
+        scrollPositions = worktree.tabScrollPositions.reduce(into: [:]) { $0[$1.key] = CGFloat($1.value) }
+        selectedRanges = worktree.tabSelectedRanges.compactMapValues { str -> NSRange? in
+            let parts = str.split(separator: ",").compactMap { Int($0) }
+            guard parts.count == 2 else { return nil }
+            return NSRange(location: parts[0], length: parts[1])
+        }
         browserURLs = worktree.browserURLs
         browserTitles = worktree.browserTitles
 
@@ -253,6 +262,8 @@ public final class EditorViewModel: ObservableObject {
         workspace.projects[projIdx].worktrees[wtIdx].fileTabs = tabs
         workspace.projects[projIdx].worktrees[wtIdx].terminalTabs = terminal.tabs
         workspace.projects[projIdx].worktrees[wtIdx].activeTabId = activeTabId
+        workspace.projects[projIdx].worktrees[wtIdx].tabScrollPositions = scrollPositions.mapValues { Double($0) }
+        workspace.projects[projIdx].worktrees[wtIdx].tabSelectedRanges = selectedRanges.mapValues { "\($0.location),\($0.length)" }
         workspace.projects[projIdx].worktrees[wtIdx].browserURLs = browserURLs
         workspace.projects[projIdx].worktrees[wtIdx].browserTitles = browserTitles
         workspace.saveProjects()
@@ -534,6 +545,7 @@ public final class EditorViewModel: ObservableObject {
                 scrollPositions[currentTabId] = tv.visibleRect.origin.y
                 selectedRanges[currentTabId] = tv.selectedRange()
             }
+            cursorPositions[currentTabId] = cursorPosition
         }
 
         activeTabId = id
@@ -568,6 +580,7 @@ public final class EditorViewModel: ObservableObject {
             if tab.type == .file && !tab.path.isEmpty {
                 autoSaveTabId = tab.id
             }
+            cursorPosition = cursorPositions[id] ?? "Ln 1, Col 1"
             saveTabsToWorktree()
         }
     }
@@ -578,6 +591,7 @@ public final class EditorViewModel: ObservableObject {
             fileContents.removeValue(forKey: id)
             scrollPositions.removeValue(forKey: id)
             selectedRanges.removeValue(forKey: id)
+            cursorPositions.removeValue(forKey: id)
             diffData.removeValue(forKey: id)
             queryResults.removeValue(forKey: id)
             querySql.removeValue(forKey: id)
@@ -736,6 +750,9 @@ public final class EditorViewModel: ObservableObject {
 
     public func updateCursorPosition(line: Int, column: Int) {
         cursorPosition = "Ln \(line), Col \(column)"
+        if let id = activeTabId {
+            cursorPositions[id] = cursorPosition
+        }
     }
 
     public func moveTab(from source: Int, to destination: Int) {

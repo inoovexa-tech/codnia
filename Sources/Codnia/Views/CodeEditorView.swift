@@ -116,9 +116,8 @@ struct EditorNSTextView: NSViewRepresentable {
                 textView.setSelectedRange(savedRange)
             }
             if let savedScrollY = editorVM.scrollPositions[tabId] {
-                let point = NSPoint(x: 0, y: savedScrollY)
-                if let documentView = nsView.documentView {
-                    documentView.scroll(point)
+                DispatchQueue.main.async {
+                    nsView.contentView.bounds.origin = NSPoint(x: 0, y: savedScrollY)
                 }
             }
         }
@@ -155,9 +154,8 @@ struct EditorNSTextView: NSViewRepresentable {
             textView.setSelectedRange(savedRange)
         }
         if let savedScrollY = editorVM.scrollPositions[tabId] {
-            let point = NSPoint(x: 0, y: savedScrollY)
-            if let documentView = scrollView.documentView {
-                documentView.scroll(point)
+            DispatchQueue.main.async {
+                scrollView.contentView.bounds.origin = NSPoint(x: 0, y: savedScrollY)
             }
         }
     }
@@ -268,7 +266,10 @@ extension EditorNSTextView.Coordinator: NSTextViewDelegate {
             return loc - lineStart.location + 1
         }()
         let newPosition = "Ln \(line), Col \(column)"
-        if editorVM.cursorPosition != newPosition { editorVM.cursorPosition = newPosition }
+        if editorVM.cursorPosition != newPosition {
+            editorVM.cursorPosition = newPosition
+            editorVM.cursorPositions[tabId] = newPosition
+        }
     }
 }
 

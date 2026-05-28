@@ -11,6 +11,8 @@ public struct Worktree: Identifiable, Codable, Equatable, Sendable {
     public var activeTabId: String?
     public var tabSplitRoots: [String: SplitPane] = [:]
     public var tabActivePaneIds: [String: UUID] = [:]
+    public var tabScrollPositions: [String: Double] = [:]
+    public var tabSelectedRanges: [String: String] = [:]
     public var browserURLs: [String: String] = [:]
     public var browserTitles: [String: String] = [:]
     public var sideBrowserURL: String = ""
@@ -36,6 +38,8 @@ public struct Worktree: Identifiable, Codable, Equatable, Sendable {
         activeTabId: String? = nil,
         tabSplitRoots: [String: SplitPane] = [:],
         tabActivePaneIds: [String: UUID] = [:],
+        tabScrollPositions: [String: Double] = [:],
+        tabSelectedRanges: [String: String] = [:],
         browserURLs: [String: String] = [:],
         browserTitles: [String: String] = [:],
         sideBrowserURL: String = "",
@@ -53,6 +57,8 @@ public struct Worktree: Identifiable, Codable, Equatable, Sendable {
         self.activeTabId = activeTabId
         self.tabSplitRoots = tabSplitRoots
         self.tabActivePaneIds = tabActivePaneIds
+        self.tabScrollPositions = tabScrollPositions
+        self.tabSelectedRanges = tabSelectedRanges
         self.browserURLs = browserURLs
         self.browserTitles = browserTitles
         self.sideBrowserURL = sideBrowserURL
@@ -63,7 +69,7 @@ public struct Worktree: Identifiable, Codable, Equatable, Sendable {
 
     enum CodingKeys: String, CodingKey {
         case id, name, path, branch, isMain, fileTabs, terminalTabs, activeTabId
-        case tabSplitRoots, tabActivePaneIds, browserURLs, browserTitles
+        case tabSplitRoots, tabActivePaneIds, tabScrollPositions, tabSelectedRanges, browserURLs, browserTitles
         case sideBrowserURL, sideBrowserTitle, sideBrowserSide, sideBrowserExpanded
     }
 
@@ -79,6 +85,8 @@ public struct Worktree: Identifiable, Codable, Equatable, Sendable {
         activeTabId = try container.decodeIfPresent(String.self, forKey: .activeTabId)
         tabSplitRoots = try container.decodeIfPresent([String: SplitPane].self, forKey: .tabSplitRoots) ?? [:]
         tabActivePaneIds = try container.decodeIfPresent([String: UUID].self, forKey: .tabActivePaneIds) ?? [:]
+        tabScrollPositions = try container.decodeIfPresent([String: Double].self, forKey: .tabScrollPositions) ?? [:]
+        tabSelectedRanges = try container.decodeIfPresent([String: String].self, forKey: .tabSelectedRanges) ?? [:]
         browserURLs = try container.decodeIfPresent([String: String].self, forKey: .browserURLs) ?? [:]
         browserTitles = try container.decodeIfPresent([String: String].self, forKey: .browserTitles) ?? [:]
         sideBrowserURL = try container.decodeIfPresent(String.self, forKey: .sideBrowserURL) ?? ""
