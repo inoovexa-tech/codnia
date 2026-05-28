@@ -183,13 +183,18 @@ public final class GitService {
         var entries: [GitStatusEntry] = []
         for line in output.components(separatedBy: .newlines) where !line.isEmpty {
             let statusPart = line.prefix(2)
-            var filePart = line.dropFirst(3)
+            var rawFilePart = String(line.dropFirst(3))
 
-            if filePart.hasPrefix("\"") && filePart.hasSuffix("\"") {
-                filePart = filePart.dropFirst().dropLast()
+            if rawFilePart.hasPrefix("\"") && rawFilePart.hasSuffix("\"") {
+                rawFilePart = String(rawFilePart.dropFirst().dropLast())
+                rawFilePart = rawFilePart
+                    .replacingOccurrences(of: "\\\"", with: "\"")
+                    .replacingOccurrences(of: "\\\\", with: "\\")
+                    .replacingOccurrences(of: "\\n", with: "\n")
+                    .replacingOccurrences(of: "\\t", with: "\t")
             }
 
-            let filePath = String(filePart)
+            let filePath = rawFilePart
 
             let stagedStatus = statusPart.prefix(1)
             let workingStatus = statusPart.suffix(1)
@@ -270,38 +275,38 @@ public final class GitService {
         return result.success
     }
 
+    public func unstageAll(path: String) async -> Bool {
+        let result = await runGitWithResult(args: ["reset", "HEAD"], in: path)
+        return result.success
+    }
+
+    public func hasRemote(path: String) async -> Bool {
+        guard let output = await runGitOutput(args: ["remote"], in: path) else { return false }
+        return !output.trimmed().isEmpty
+    }
+
     // MARK: - Discard
 
     public func discardFileChanges(path: String, filePath: String) async -> Bool {
-        let fullPath = (path as NSString).appendingPathComponent(filePath)
-        var isDirectory: ObjCBool = false
-        let fileExists = FileManager.default.fileExists(atPath: fullPath, isDirectory: &isDirectory)
+        let trackedCheck = await runGitWithResult(args: ["ls-files", "--cached", "--", filePath], in: path)
+        let isTracked = trackedCheck.success && !trackedCheck.output.trimmed().isEmpty
 
-        if !fileExists {
+        if !isTracked {
+            let fullPath = (path as NSString).appendingPathComponent(filePath)
+            try? FileManager.default.removeItem(atPath: fullPath)
             return true
         }
 
-        let checkoutResult = await runGitWithResult(args: ["checkout", "--", filePath], in: path)
-        if checkoutResult.success {
-            return true
-        }
-
-        do {
-            if isDirectory.boolValue {
-                try FileManager.default.removeItem(atPath: fullPath)
-            } else {
-                try FileManager.default.removeItem(atPath: fullPath)
-            }
-            return true
-        } catch {
-            return false
-        }
+        let result = await runGitWithResult(args: ["checkout", "--", filePath], in: path)
+        return result.success
     }
 
     // MARK: - Commit
 
-    public func commit(path: String, message: String) async -> Bool {
-        let result = await runGitWithResult(args: ["commit", "-m", message], in: path)
+    public func commit(path: String, message: String, amend: Bool = false) async -> Bool {
+        var args = ["commit", "-m", message]
+        if amend { args.insert("--amend", at: 1) }
+        let result = await runGitWithResult(args: args, in: path)
         return result.success
     }
 

@@ -6,7 +6,6 @@ struct SourceControlView: View {
 
     @State private var newBranchName: String = ""
     @State private var showBranchDialog: Bool = false
-    @State private var mergeBranchName: String = ""
     @State private var selectedMergeBranch: String = ""
     @State private var showMergeDialog: Bool = false
     @State private var deleteWorktreeAfterMerge = false
@@ -168,22 +167,24 @@ struct SourceControlView: View {
             .buttonStyle(PlainButtonStyle())
 
             if gitVM.showCommitHistory {
-                ForEach(gitVM.commitHistory) { commit in
-                    commitRow(commit: commit)
+                ForEach(Array(gitVM.commitHistory.enumerated()), id: \.element.id) { index, commit in
+                    commitRow(commit: commit, isLast: index == gitVM.commitHistory.count - 1)
                 }
             }
         }
     }
 
-    private func commitRow(commit: GitService.CommitInfo) -> some View {
+    private func commitRow(commit: GitService.CommitInfo, isLast: Bool = false) -> some View {
         HStack(alignment: .top, spacing: 8) {
             VStack(spacing: 2) {
                 Circle()
                     .fill(Color.accentBlue)
                     .frame(width: 8, height: 8)
-                Rectangle()
-                    .fill(Color.borderDefault)
-                    .frame(width: 1, height: 24)
+                if !isLast {
+                    Rectangle()
+                        .fill(Color.borderDefault)
+                        .frame(width: 1, height: 24)
+                }
             }
             .padding(.leading, 14)
             .padding(.top, 6)
@@ -317,7 +318,12 @@ struct SourceControlView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    ForEach(gitVM.branches, id: \.self) { branch in
+                    let sortedBranches = gitVM.branches.sorted { a, b in
+                        if a == gitVM.currentBranch { return true }
+                        if b == gitVM.currentBranch { return false }
+                        return a.localizedStandardCompare(b) == .orderedAscending
+                    }
+                    ForEach(sortedBranches, id: \.self) { branch in
                         Button {
                             gitVM.checkoutBranch(name: branch)
                             showBranchDialog = false
@@ -390,6 +396,13 @@ struct SourceControlView: View {
 
     private var actionButtons: some View {
         HStack(spacing: 4) {
+            if gitVM.isLoading && !gitVM.isRefreshing {
+                ProgressView()
+                    .scaleEffect(0.6)
+                    .frame(width: 16, height: 16)
+                    .padding(.leading, 4)
+            }
+
             Button { gitVM.pull() } label: {
                 HStack(spacing: 3) {
                     Image(systemName: "arrow.down.to.line")
@@ -404,6 +417,7 @@ struct SourceControlView: View {
             }
             .buttonStyle(PlainButtonStyle())
             .foregroundColor(.textPrimary)
+            .disabled(gitVM.isLoading)
 
             Button { gitVM.push() } label: {
                 HStack(spacing: 3) {
@@ -418,7 +432,8 @@ struct SourceControlView: View {
                 .cornerRadius(4)
             }
             .buttonStyle(PlainButtonStyle())
-            .foregroundColor(.textPrimary)
+            .foregroundColor(gitVM.hasRemote ? .textPrimary : .textTertiary)
+            .disabled(gitVM.isLoading || !gitVM.hasRemote)
 
             Button { gitVM.fetch() } label: {
                 HStack(spacing: 3) {
@@ -434,6 +449,7 @@ struct SourceControlView: View {
             }
             .buttonStyle(PlainButtonStyle())
             .foregroundColor(.textPrimary)
+            .disabled(gitVM.isLoading)
 
             Spacer()
 
@@ -453,6 +469,7 @@ struct SourceControlView: View {
             }
             .buttonStyle(PlainButtonStyle())
             .foregroundColor(.textPrimary)
+            .disabled(gitVM.isLoading)
             .popover(isPresented: $showMergeDialog) {
                 mergePopover
             }
@@ -499,7 +516,6 @@ struct SourceControlView: View {
                     guard !selectedMergeBranch.isEmpty else { return }
                     gitVM.merge(branch: selectedMergeBranch, deleteWorktreeAfterMerge: deleteWorktreeAfterMerge)
                     selectedMergeBranch = ""
-                    mergeBranchName = ""
                     showMergeDialog = false
                     deleteWorktreeAfterMerge = false
                 } label: {
@@ -619,19 +635,6 @@ struct SourceControlView: View {
         .padding(.vertical, 8)
     }
 
-    private func discardAll() {
-        for entry in gitVM.unstagedEntries {
-            gitVM.discardFile(entry.filePath)
-        }
-    }
-
-    private func discardSelected() {
-        for filePath in selectedForDiscard {
-            gitVM.discardFile(filePath)
-        }
-        selectedForDiscard.removeAll()
-    }
-
     // MARK: - File Row
 
     private func fileRow(entry: GitStatusEntry, isStaged: Bool) -> some View {
@@ -685,6 +688,18 @@ struct SourceControlView: View {
                 .foregroundColor(.textTertiary)
                 .opacity(hoveredFileId == entry.id ? 0.8 : 0)
                 .help("Unstage")
+
+                Button {
+                    discardConfirmationFiles = [entry.filePath]
+                    showDiscardConfirmation = true
+                } label: {
+                    Image(systemName: "trash")
+                        .font(.system(size: 10))
+                }
+                .buttonStyle(PlainButtonStyle())
+                .foregroundColor(.red.opacity(0.7))
+                .opacity(hoveredFileId == entry.id ? 0.8 : 0)
+                .help("Discard staged changes")
             } else {
                 Button {
                     discardConfirmationFiles = [entry.filePath]
@@ -746,7 +761,7 @@ struct SourceControlView: View {
             Divider()
                 .foregroundColor(.borderDefault)
 
-            TextField("Commit message (Cmd+Enter to commit)",
+            TextField(commitPlaceholder,
                       text: $gitVM.commitMessage)
                 .textFieldStyle(PlainTextFieldStyle())
                 .font(.system(size: 12))
@@ -756,26 +771,51 @@ struct SourceControlView: View {
                 .cornerRadius(4)
                 .onSubmit { gitVM.commit() }
 
-            Button {
-                gitVM.commit()
-            } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: "checkmark.circle")
-                        .font(.system(size: 12))
-                    Text("Commit")
-                        .font(.system(size: 11, weight: .medium))
+            HStack(spacing: 6) {
+                Toggle(isOn: $gitVM.isAmending) {
+                    Text("Amend")
+                        .font(.system(size: 10))
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 6)
-                .background(commitButtonColor)
-                .cornerRadius(4)
+                .toggleStyle(.switch)
+                .controlSize(.small)
+
+                Spacer()
+
+                Button {
+                    gitVM.commit()
+                } label: {
+                    HStack(spacing: 4) {
+                        if gitVM.isCommitting {
+                            ProgressView()
+                                .scaleEffect(0.6)
+                                .frame(width: 10, height: 10)
+                        } else {
+                            Image(systemName: "checkmark.circle")
+                                .font(.system(size: 12))
+                        }
+                        Text(gitVM.isAmending ? "Amend" : "Commit")
+                            .font(.system(size: 11, weight: .medium))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 6)
+                    .background(commitButtonColor)
+                    .cornerRadius(4)
+                }
+                .buttonStyle(PlainButtonStyle())
+                .foregroundColor(.white)
+                .disabled(gitVM.isCommitting || gitVM.stagedEntries.isEmpty || gitVM.commitMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .keyboardShortcut(.return, modifiers: .command)
             }
-            .buttonStyle(PlainButtonStyle())
-            .foregroundColor(.white)
-            .disabled(gitVM.isCommitting || gitVM.stagedEntries.isEmpty || gitVM.commitMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
+    }
+
+    private var commitPlaceholder: String {
+        if gitVM.stagedEntries.isEmpty {
+            return "Stage changes to commit"
+        }
+        return "Commit message (⌘Enter)"
     }
 
     private var commitButtonColor: Color {

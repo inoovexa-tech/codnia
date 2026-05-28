@@ -26,6 +26,8 @@ public final class GitViewModel: ObservableObject {
     @Published public var commitHistory: [GitService.CommitInfo] = []
     @Published public var showCommitHistory: Bool = false
     @Published public var fileChangesCounts: [String: (added: Int, deleted: Int)] = [:]
+    @Published public var hasRemote: Bool = false
+    @Published public var isAmending: Bool = false
 
     private let git = GitService.shared
     private weak var workspace: WorkspaceService?
@@ -43,6 +45,7 @@ public final class GitViewModel: ObservableObject {
 
     deinit {
         refreshTask?.cancel()
+        autoDismissTask?.cancel()
     }
 
     private func observeWorktreeChanges() {
@@ -61,7 +64,7 @@ public final class GitViewModel: ObservableObject {
             .store(in: &cancellables)
 
         workspace.objectWillChange
-            .debounce(for: .seconds(5), scheduler: DispatchQueue.main)
+            .debounce(for: .seconds(1), scheduler: DispatchQueue.main)
             .sink { [weak self] in
                 self?.refreshIfNeeded()
             }
@@ -89,8 +92,9 @@ public final class GitViewModel: ObservableObject {
             async let branches = self.git.getBranches(path: worktreePath)
             async let history = self.git.getLog(path: worktreePath, count: 20)
             async let counts = self.git.getFileChangesCounts(path: worktreePath)
+            async let remote = self.git.hasRemote(path: worktreePath)
 
-            let (statusResult, branchResult, branchesResult, historyResult, countsResult) = await (status, branch, branches, history, counts)
+            let (statusResult, branchResult, branchesResult, historyResult, countsResult, remoteResult) = await (status, branch, branches, history, counts, remote)
 
             guard !Task.isCancelled else { return }
 
@@ -101,6 +105,7 @@ public final class GitViewModel: ObservableObject {
             self.branches = branchesResult
             self.commitHistory = historyResult
             self.fileChangesCounts = countsResult
+            self.hasRemote = remoteResult
             self.isLoading = false
             self.isRefreshing = false
             self.isAutoRefreshing = false
@@ -152,20 +157,13 @@ public final class GitViewModel: ObservableObject {
 
     public func unstageAll() {
         guard let path = worktreePath else { return }
-        let filesToUnstage = stagedEntries.map { $0.filePath }
         Task { [weak self] in
             guard let self = self else { return }
-            var allSuccess = true
-            for filePath in filesToUnstage {
-                let success = await self.git.unstageFile(path: path, filePath: filePath)
-                if !success {
-                    allSuccess = false
-                }
-            }
-            if allSuccess {
+            let success = await self.git.unstageAll(path: path)
+            if success {
                 self.refreshAll()
             } else {
-                self.actionError = "Failed to unstage some files"
+                self.actionError = "Failed to unstage all files"
             }
         }
     }
@@ -174,6 +172,9 @@ public final class GitViewModel: ObservableObject {
         guard let path = worktreePath else { return }
         Task { [weak self] in
             guard let self = self else { return }
+            if self.stagedEntries.contains(where: { $0.filePath == filePath }) {
+                _ = await self.git.unstageFile(path: path, filePath: filePath)
+            }
             let success = await self.git.discardFileChanges(path: path, filePath: filePath)
             if success {
                 self.actionMessage = "Discarded changes in \(filePath)"
@@ -244,11 +245,17 @@ public final class GitViewModel: ObservableObject {
         actionError = nil
 
         Task { [weak self] in
-            guard let self = self else { return }
-            let success = await self.git.commit(path: path, message: message)
-            self.isCommitting = false
+            guard let self = self else {
+                await MainActor.run { [weak self] in self?.isCommitting = false }
+                return
+            }
+            defer { self.isCommitting = false }
+
+            let success = await self.git.commit(path: path, message: message, amend: self.isAmending)
+
             if success {
                 self.commitMessage = ""
+                self.isAmending = false
                 self.actionMessage = "Committed successfully"
                 self.refreshAll()
             } else {
@@ -303,6 +310,10 @@ public final class GitViewModel: ObservableObject {
 
     public func push() {
         guard let path = worktreePath else { return }
+        guard hasRemote else {
+            actionError = "No remote configured"
+            return
+        }
         isLoading = true
         Task { [weak self] in
             guard let self = self else { return }
@@ -365,11 +376,19 @@ public final class GitViewModel: ObservableObject {
 
     private func scheduleAutoDismiss() {
         autoDismissTask?.cancel()
+        let currentMessage = actionMessage
+        let currentError = actionError
         autoDismissTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: 5_000_000_000)
             guard !Task.isCancelled else { return }
             await MainActor.run {
-                self?.clearMessages()
+                guard let self = self else { return }
+                if self.actionMessage != nil, self.actionMessage == currentMessage {
+                    self.actionMessage = nil
+                }
+                if self.actionError != nil, self.actionError == currentError {
+                    self.actionError = nil
+                }
             }
         }
     }
