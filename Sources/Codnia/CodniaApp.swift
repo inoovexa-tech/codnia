@@ -153,6 +153,15 @@ struct CodniaApp: App {
                 .keyboardShortcut("f", modifiers: .command)
             }
 
+            CommandMenu("Tasks") {
+                Button("New Task") {
+                    appDelegate.appState.tasksVM.addTask(title: "New task")
+                    appDelegate.appState.rightSidebarTab = .plugin("tasks")
+                    appDelegate.appState.rightSidebarExpanded = true
+                }
+                .keyboardShortcut("n", modifiers: [.command, .shift])
+            }
+
             CommandGroup(after: .appInfo) {
                 Button("Check for Updates...") {
                     appDelegate.updaterController.checkForUpdates(nil)

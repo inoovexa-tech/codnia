@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import OSLog
 
 @MainActor
 public final class TasksViewModel: ObservableObject {
@@ -9,6 +10,7 @@ public final class TasksViewModel: ObservableObject {
 
     private let workspace: WorkspaceService
     private var cancellables = Set<AnyCancellable>()
+    private let descriptionSaveSubject = PassthroughSubject<TaskItem, Never>()
 
     private var tasksFilePath: String? {
         guard let project = workspace.activeProject else { return nil }
@@ -47,6 +49,13 @@ public final class TasksViewModel: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 self?.loadFromDisk()
+            }
+            .store(in: &cancellables)
+
+        descriptionSaveSubject
+            .debounce(for: .milliseconds(500), scheduler: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.saveToDisk()
             }
             .store(in: &cancellables)
     }
@@ -131,6 +140,27 @@ public final class TasksViewModel: ObservableObject {
         saveToDisk()
     }
 
+    public func restoreTask(_ task: TaskItem) {
+        tasks.append(task)
+        saveToDisk()
+    }
+
+    public func removeTagFromAll(_ tag: String) {
+        for i in tasks.indices where tasks[i].tags.contains(tag) {
+            tasks[i].tags.removeAll { $0 == tag }
+            tasks[i].updatedAt = Date()
+        }
+        selectedTags.remove(tag)
+        saveToDisk()
+    }
+
+    public func updateDescription(_ task: TaskItem) {
+        guard let idx = tasks.firstIndex(where: { $0.id == task.id }) else { return }
+        tasks[idx].description = task.description
+        tasks[idx].updatedAt = Date()
+        descriptionSaveSubject.send(task)
+    }
+
     // MARK: - Persistence
 
     public func loadFromDisk() {
@@ -140,22 +170,42 @@ public final class TasksViewModel: ObservableObject {
         }
         let fm = FileManager.default
         guard fm.fileExists(atPath: path),
-              let data = fm.contents(atPath: path),
-              let decoded = try? JSONDecoder().decode([TaskItem].self, from: data)
+              let data = fm.contents(atPath: path)
         else {
             tasks = []
             return
         }
-        tasks = decoded
+        do {
+            tasks = try JSONDecoder().decode([TaskItem].self, from: data)
+        } catch {
+            let backupPath = path + ".backup"
+            if let backupData = fm.contents(atPath: backupPath),
+               let decoded = try? JSONDecoder().decode([TaskItem].self, from: backupData)
+            {
+                tasks = decoded
+                os_log("Codnia: Loaded tasks from backup — main file corrupted: %{public}@",
+                       log: .default, type: .error, error.localizedDescription)
+            } else {
+                tasks = []
+                os_log("Codnia: Failed to load tasks and no valid backup found: %{public}@",
+                       log: .default, type: .error, error.localizedDescription)
+            }
+        }
     }
 
     public func saveToDisk() {
         guard let path = tasksFilePath else { return }
         let fm = FileManager.default
         let dir = (path as NSString).deletingLastPathComponent
-        try? fm.createDirectory(atPath: dir, withIntermediateDirectories: true)
-        if let data = try? JSONEncoder().encode(tasks) {
-            try? data.write(to: URL(fileURLWithPath: path), options: .atomic)
+        do {
+            try fm.createDirectory(atPath: dir, withIntermediateDirectories: true)
+            let data = try JSONEncoder().encode(tasks)
+            try data.write(to: URL(fileURLWithPath: path), options: .atomic)
+            let backupPath = path + ".backup"
+            try data.write(to: URL(fileURLWithPath: backupPath), options: .atomic)
+        } catch {
+            os_log("Codnia: Failed to save tasks: %{public}@",
+                   log: .default, type: .error, error.localizedDescription)
         }
     }
 }

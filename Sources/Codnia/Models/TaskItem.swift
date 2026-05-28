@@ -9,6 +9,7 @@ public struct TaskItem: Identifiable, Codable, Equatable {
     public var isCompleted: Bool
     public var createdAt: Date
     public var updatedAt: Date
+    public var dueDate: Date?
 
     public init(
         id: String = UUID().uuidString,
@@ -18,7 +19,8 @@ public struct TaskItem: Identifiable, Codable, Equatable {
         priority: TaskPriority = .medium,
         isCompleted: Bool = false,
         createdAt: Date = Date(),
-        updatedAt: Date = Date()
+        updatedAt: Date = Date(),
+        dueDate: Date? = nil
     ) {
         self.id = id
         self.title = title
@@ -28,6 +30,7 @@ public struct TaskItem: Identifiable, Codable, Equatable {
         self.isCompleted = isCompleted
         self.createdAt = createdAt
         self.updatedAt = updatedAt
+        self.dueDate = dueDate
     }
 
     public static func == (lhs: TaskItem, rhs: TaskItem) -> Bool {

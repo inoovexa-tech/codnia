@@ -21,11 +21,40 @@ struct TasksView: View {
     @State private var isDraggingToEmptyArea: Bool = false
     @State private var renameTagTarget = ""
     @State private var renameTagTask: TaskItem?
+    @State private var deletedTask: TaskItem? = nil
+    @State private var showUndoToast = false
+    @State private var sortOption: SortOption = .manual
+
+    private enum SortOption: String, CaseIterable {
+        case manual = "Manual"
+        case priority = "Priority"
+        case created = "Created"
+        case dueDate = "Due Date"
+    }
 
     private var visibleTasks: [TaskItem] {
         var result = tasksVM.filteredTasks
-        if !showCompleted && tasksVM.searchText.isEmpty {
+        if !showCompleted {
             result = result.filter { !$0.isCompleted }
+        }
+        switch sortOption {
+        case .manual: break
+        case .priority:
+            let order: [TaskPriority] = [.urgent, .high, .medium, .low]
+            result.sort { a, b in
+                order.firstIndex(of: a.priority)! < order.firstIndex(of: b.priority)!
+            }
+        case .created:
+            result.sort { $0.createdAt > $1.createdAt }
+        case .dueDate:
+            result.sort { a, b in
+                switch (a.dueDate, b.dueDate) {
+                case (nil, nil): return false
+                case (nil, _): return false
+                case (_, nil): return true
+                case let (da?, db?): return da < db
+                }
+            }
         }
         return result
     }
@@ -34,9 +63,35 @@ struct TasksView: View {
         VStack(spacing: 0) {
             searchHeader
             tagFilterBar
+            progressBar
             taskList
             addTaskInput
         }
+        .onChange(of: expandedTaskId) { _ in
+            editTagInput = ""
+        }
+        .overlay(alignment: .bottom) {
+            if showUndoToast, let task = deletedTask {
+                HStack(spacing: 8) {
+                    Text("Deleted \"\(task.title)\"")
+                        .font(.system(size: 11))
+                        .foregroundColor(.textPrimary)
+                    Button("Undo") { restoreDeletedTask() }
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(.accentBlue)
+                        .buttonStyle(PlainButtonStyle())
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(Color.bgSecondary)
+                .cornerRadius(6)
+                .shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: -2)
+                .padding(.bottom, 8)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .onTapGesture { restoreDeletedTask() }
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: showUndoToast)
         .alert("Rename Tag", isPresented: $showingRenameTag) {
             TextField("Tag name", text: $renameTagText)
             Button("Rename") {
@@ -97,6 +152,14 @@ struct TasksView: View {
                         .cornerRadius(4)
                 }
                 .buttonStyle(PlainButtonStyle())
+                Picker("Sort", selection: $sortOption) {
+                    ForEach(SortOption.allCases, id: \.self) { opt in
+                        Text(opt.rawValue).tag(opt)
+                    }
+                }
+                .pickerStyle(.menu)
+                .font(.system(size: 10))
+                .frame(maxWidth: 60)
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 7)
@@ -123,15 +186,15 @@ struct TasksView: View {
                             }) {
                                 HStack(spacing: 3) {
                                     Circle()
-                                        .fill(isSelected ? Color.accentBlue : Color.clear)
+                                        .fill(colorForTag(tag))
                                         .frame(width: 6, height: 6)
                                     Text(tag)
                                         .font(.system(size: 11))
                                 }
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 3)
-                                .background(isSelected ? Color.accentBlue.opacity(0.15) : Color.bgTertiary)
-                                .foregroundColor(isSelected ? .accentBlue : .textSecondary)
+                                .background(isSelected ? colorForTag(tag).opacity(0.15) : Color.bgTertiary)
+                                .foregroundColor(isSelected ? colorForTag(tag) : .textSecondary)
                                 .cornerRadius(4)
                             }
                             .buttonStyle(PlainButtonStyle())
@@ -151,7 +214,7 @@ struct TasksView: View {
                                 }
                             }
                         }
-                        if tasksVM.selectedTags.count == tags.count && !tags.isEmpty {
+                        if !tasksVM.selectedTags.isEmpty && !tags.isEmpty {
                             Button(action: { tasksVM.selectedTags.removeAll() }) {
                                 Text("Clear")
                                     .font(.system(size: 10))
@@ -167,6 +230,38 @@ struct TasksView: View {
                 }
                 .background(Color.bgSecondary)
                 .overlay(Rectangle().frame(height: 1).foregroundColor(.borderDefault), alignment: .bottom)
+            }
+        }
+    }
+
+    // MARK: - Progress Bar
+
+    private var progressBar: some View {
+        let total = tasksVM.tasks.count
+        let completed = tasksVM.tasks.filter(\.isCompleted).count
+        let fraction = total > 0 ? Double(completed) / Double(total) : 0
+        return Group {
+            if total > 0 {
+                HStack(spacing: 6) {
+                    GeometryReader { geo in
+                        ZStack(alignment: .leading) {
+                            RoundedRectangle(cornerRadius: 2)
+                                .fill(Color.bgTertiary)
+                                .frame(height: 4)
+                            RoundedRectangle(cornerRadius: 2)
+                                .fill(Color.accentBlue)
+                                .frame(width: geo.size.width * fraction, height: 4)
+                        }
+                    }
+                    .frame(height: 4)
+                    Text("\(completed)/\(total)")
+                        .font(.system(size: 9))
+                        .foregroundColor(.textTertiary)
+                        .monospacedDigit()
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 4)
+                .background(Color.bgSecondary)
             }
         }
     }
@@ -275,11 +370,18 @@ struct TasksView: View {
                 .disabled(isCompleting)
 
                 if isEditing {
-                    TextField("Task title", text: $editTitle)
-                        .textFieldStyle(PlainTextFieldStyle())
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.textPrimary)
-                        .onSubmit { finishEditing(task) }
+                    VStack(alignment: .leading, spacing: 2) {
+                        TextField("Task title", text: $editTitle)
+                            .textFieldStyle(PlainTextFieldStyle())
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.textPrimary)
+                            .onSubmit { finishEditing(task) }
+                        TextField("Add description...", text: $editDescription, axis: .vertical)
+                            .textFieldStyle(PlainTextFieldStyle())
+                            .font(.system(size: 11))
+                            .foregroundColor(.textSecondary)
+                            .lineLimit(1...3)
+                    }
                 } else {
                     VStack(alignment: .leading, spacing: 1) {
                         HStack(spacing: 6) {
@@ -308,15 +410,15 @@ struct TasksView: View {
                                 ForEach(task.tags.prefix(3), id: \.self) { tag in
                                     Text(tag)
                                         .font(.system(size: 9))
-                                        .foregroundColor(.accentBlue)
+                                        .foregroundColor(colorForTag(tag))
                                         .padding(.horizontal, 4)
                                         .padding(.vertical, 1)
-                                        .background(Color.accentBlue.opacity(0.08))
+                                        .background(colorForTag(tag).opacity(0.12))
                                         .cornerRadius(3)
                                         .contextMenu {
                                             Button(action: {
                                                 renameTagTarget = tag
-                                                renameTagTask = task
+                                                renameTagTask = nil
                                                 renameTagText = tag
                                                 showingRenameTag = true
                                             }) {
@@ -392,7 +494,7 @@ struct TasksView: View {
                 }
                 Divider()
                 Button(role: .destructive, action: {
-                    withAnimation { tasksVM.deleteTask(id: task.id) }
+                    deleteWithUndo(task)
                 }) {
                     Label("Delete", systemImage: "trash")
                 }
@@ -427,7 +529,7 @@ struct TasksView: View {
                 set: { newVal in
                     var updated = task
                     updated.description = newVal
-                    tasksVM.updateTask(updated)
+                    tasksVM.updateDescription(updated)
                 }
             ), axis: .vertical)
                 .textFieldStyle(PlainTextFieldStyle())
@@ -443,17 +545,17 @@ struct TasksView: View {
                     HStack(spacing: 2) {
                         Text("#\(tag)")
                             .font(.system(size: 10))
-                            .foregroundColor(.accentBlue)
+                            .foregroundColor(colorForTag(tag))
                         Button(action: { removeTag(tag, from: task) }) {
                             Image(systemName: "xmark")
                                 .font(.system(size: 7))
-                                .foregroundColor(.textTertiary)
+                                .foregroundColor(colorForTag(tag))
                         }
                         .buttonStyle(PlainButtonStyle())
                     }
                     .padding(.horizontal, 5)
                     .padding(.vertical, 2)
-                    .background(Color.accentBlue.opacity(0.1))
+                    .background(colorForTag(tag).opacity(0.12))
                     .cornerRadius(3)
                 }
             }
@@ -500,11 +602,52 @@ struct TasksView: View {
                     }
                     .buttonStyle(PlainButtonStyle())
                 }
+            }
+
+            HStack(spacing: 6) {
+                Image(systemName: "calendar")
+                    .font(.system(size: 10))
+                    .foregroundColor(.textTertiary)
+                if let dueDate = task.dueDate {
+                    DatePicker("Due", selection: Binding(
+                        get: { dueDate },
+                        set: { newVal in
+                            var updated = task
+                            updated.dueDate = newVal
+                            tasksVM.updateTask(updated)
+                        }
+                    ), displayedComponents: .date)
+                    .datePickerStyle(.compact)
+                    .font(.system(size: 10))
+                    .labelsHidden()
+                    Button(action: {
+                        var updated = task
+                        updated.dueDate = nil
+                        tasksVM.updateTask(updated)
+                    }) {
+                        Image(systemName: "xmark.circle")
+                            .font(.system(size: 10))
+                            .foregroundColor(.textTertiary)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .help("Clear due date")
+                } else {
+                    Button(action: {
+                        var updated = task
+                        updated.dueDate = Date()
+                        tasksVM.updateTask(updated)
+                    }) {
+                        Text("Add due date")
+                            .font(.system(size: 10))
+                            .foregroundColor(.textTertiary)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
 
                 Spacer()
 
                 Button(action: {
-                    withAnimation { tasksVM.deleteTask(id: task.id) }
+                    deleteWithUndo(task)
                     expandedTaskId = nil
                 }) {
                     Image(systemName: "trash")
@@ -562,10 +705,10 @@ struct TasksView: View {
             tasksVM.toggleTask(id: task.id)
         } else {
             completingTaskIds.insert(task.id)
+            tasksVM.toggleTask(id: task.id)
             Task { @MainActor in
                 try? await Task.sleep(nanoseconds: 600_000_000)
-                withAnimation(.easeOut(duration: 0.25)) {
-                    tasksVM.toggleTask(id: task.id)
+                _ = withAnimation(.easeOut(duration: 0.25)) {
                     completingTaskIds.remove(task.id)
                 }
             }
@@ -573,6 +716,18 @@ struct TasksView: View {
     }
 
     // MARK: - Helpers
+
+    private let tagColorPalette: [Color] = [
+        Color(hex: "#5B8DEC"), Color(hex: "#E06C75"), Color(hex: "#98C379"),
+        Color(hex: "#E5C07B"), Color(hex: "#C678DD"), Color(hex: "#56B6C2"),
+        Color(hex: "#D19A66"), Color(hex: "#ABB2BF"), Color(hex: "#BE5046"),
+        Color(hex: "#61AFEF"),
+    ]
+
+    private func colorForTag(_ tag: String) -> Color {
+        let index = abs(tag.hashValue) % tagColorPalette.count
+        return tagColorPalette[index]
+    }
 
     private func priorityBadge(_ priority: TaskPriority) -> some View {
         Image(systemName: priorityIcon(priority))
@@ -641,11 +796,31 @@ struct TasksView: View {
     }
 
     private func removeTagFromAll(_ tag: String) {
-        for i in tasksVM.tasks.indices {
-            tasksVM.tasks[i].tags.removeAll { $0 == tag }
+        tasksVM.removeTagFromAll(tag)
+    }
+
+    private func deleteWithUndo(_ task: TaskItem) {
+        deletedTask = task
+        showUndoToast = true
+        tasksVM.deleteTask(id: task.id)
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 5_000_000_000)
+            if deletedTask?.id == task.id {
+                withAnimation {
+                    showUndoToast = false
+                    deletedTask = nil
+                }
+            }
         }
-        tasksVM.saveToDisk()
-        tasksVM.selectedTags.remove(tag)
+    }
+
+    private func restoreDeletedTask() {
+        guard let task = deletedTask else { return }
+        tasksVM.restoreTask(task)
+        withAnimation {
+            showUndoToast = false
+            deletedTask = nil
+        }
     }
 
     private func handleTaskDrop(providers: [NSItemProvider], items: [TaskItem]) -> Bool {
