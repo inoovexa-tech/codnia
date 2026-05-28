@@ -17,6 +17,8 @@ struct CodeEditorView: View {
                 text: $content,
                 fontSize: settings.fontSize,
                 showLineNumbers: settings.showLineNumbers,
+                wordWrap: settings.wordWrap,
+                tabSize: settings.tabSize,
                 language: language,
                 onChange: onChange,
                 searchResults: searchResults,
@@ -35,6 +37,7 @@ struct CodeEditorView: View {
 @MainActor
 class CodniaTextView: NSTextView {
     weak var editorCoordinator: EditorNSTextView.Coordinator?
+    private var optionClickPoint: NSPoint?
 
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
         let mods = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
@@ -61,9 +64,26 @@ class CodniaTextView: NSTextView {
         case ("g", [.command]):
             editorCoordinator?.handleGoToLine()
             return true
+        case ("w", [.command, .shift]):
+            editorCoordinator?.handleToggleWordWrap()
+            return true
         default:
             return super.performKeyEquivalent(with: event)
         }
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        if event.modifierFlags.contains(.option) {
+            let point = convert(event.locationInWindow, from: nil)
+            let index = characterIndexForInsertion(at: point)
+            var ranges = selectedRanges.compactMap { ($0 as? NSValue)?.rangeValue }
+            if !ranges.contains(where: { $0.location == index }) {
+                ranges.append(NSRange(location: index, length: 0))
+                setSelectedRanges(ranges.map { NSValue(range: $0) }, affinity: .downstream, stillSelecting: false)
+            }
+            return
+        }
+        super.mouseDown(with: event)
     }
 
     override func keyDown(with event: NSEvent) {
@@ -114,6 +134,8 @@ struct EditorNSTextView: NSViewRepresentable {
     @Binding var text: String
     let fontSize: Double
     let showLineNumbers: Bool
+    let wordWrap: Bool
+    let tabSize: Int
     let language: String
     let onChange: () -> Void
     var searchResults: [NSRange] = []
@@ -153,13 +175,17 @@ struct EditorNSTextView: NSViewRepresentable {
         textView.allowsUndo = true
 
         if let textContainer = textView.textContainer {
-            textContainer.widthTracksTextView = true
+            textContainer.widthTracksTextView = wordWrap
         }
 
         textView.isVerticallyResizable = true
-        textView.isHorizontallyResizable = false
+        textView.isHorizontallyResizable = !wordWrap
         textView.autoresizingMask = [.width]
         textView.postsFrameChangedNotifications = true
+        let ps = NSMutableParagraphStyle()
+        ps.defaultTabInterval = CGFloat(tabSize * 8)
+        textView.defaultParagraphStyle = ps
+        textView.typingAttributes[.paragraphStyle] = ps
 
         scrollView.documentView = textView
 
@@ -172,6 +198,7 @@ struct EditorNSTextView: NSViewRepresentable {
 
         if showLineNumbers {
             let rulerView = LineNumberRulerView(textView: textView, scrollView: scrollView)
+            rulerView.foldCoordinator = context.coordinator
             scrollView.verticalRulerView = rulerView
             scrollView.hasVerticalRuler = true
             scrollView.rulersVisible = true
@@ -187,6 +214,21 @@ struct EditorNSTextView: NSViewRepresentable {
 
     func updateNSView(_ nsView: NSScrollView, context: Context) {
         guard let textView = nsView.documentView as? NSTextView else { return }
+
+        context.coordinator.editorTabSize = tabSize
+
+        if let textContainer = textView.textContainer, textContainer.widthTracksTextView != wordWrap {
+            textContainer.widthTracksTextView = wordWrap
+        }
+        if textView.isHorizontallyResizable == wordWrap {
+            textView.isHorizontallyResizable = !wordWrap
+        }
+        let ps = NSMutableParagraphStyle()
+        ps.defaultTabInterval = CGFloat(tabSize * 8)
+        if textView.defaultParagraphStyle?.defaultTabInterval != ps.defaultTabInterval {
+            textView.defaultParagraphStyle = ps
+            textView.typingAttributes[.paragraphStyle] = ps
+        }
 
         let languageChanged = context.coordinator.currentLanguage != language
         context.coordinator.updateHighlighter(language: language)
@@ -215,6 +257,7 @@ struct EditorNSTextView: NSViewRepresentable {
 
         if showLineNumbers && nsView.verticalRulerView == nil {
             let rulerView = LineNumberRulerView(textView: textView, scrollView: nsView)
+            rulerView.foldCoordinator = context.coordinator
             nsView.verticalRulerView = rulerView
             nsView.hasVerticalRuler = true
             nsView.rulersVisible = true
@@ -259,10 +302,14 @@ struct EditorNSTextView: NSViewRepresentable {
         private let lineHighlightColor = NSColor.textSecondary.withAlphaComponent(0.06)
         private let bracketMatchColor = NSColor(red: 255/255, green: 200/255, blue: 0/255, alpha: 0.25)
 
+        var editorTabSize: Int = 4
+        var foldedContents: [String: String] = [:]
         private var currentLineRange: NSRange?
         private var bracketMatchRanges: [NSRange] = []
         private var storedSearchResults: [NSRange] = []
         private var storedSearchIndex: Int = 0
+        private var selectionMatchRanges: [NSRange] = []
+        private let selectionMatchHighlightColor = NSColor.textSecondary.withAlphaComponent(0.12)
 
         init(text: Binding<String>, language: String, onChange: @escaping () -> Void, tabId: String, editorVM: EditorViewModel) {
             self._text = text
@@ -313,6 +360,12 @@ struct EditorNSTextView: NSViewRepresentable {
                 }
             }
 
+            for range in selectionMatchRanges {
+                if range.location + range.length <= textStorage.length {
+                    textStorage.addAttribute(.backgroundColor, value: selectionMatchHighlightColor, range: range)
+                }
+            }
+
             for (index, range) in storedSearchResults.enumerated() {
                 if range.location + range.length <= textStorage.length {
                     let color = index == storedSearchIndex ? currentHighlightColor : searchHighlightColor
@@ -355,7 +408,30 @@ struct EditorNSTextView: NSViewRepresentable {
 
 extension EditorNSTextView.Coordinator: NSTextViewDelegate {
     func textView(_ textView: NSTextView, shouldChangeTextIn range: NSRange, replacementString: String?) -> Bool {
-        guard let string = replacementString, string.count == 1 else { return true }
+        guard let string = replacementString else { return true }
+
+        if string == "\n" {
+            let nsString = textView.string as NSString
+            let lineRange = nsString.lineRange(for: NSRange(location: range.location, length: 0))
+            let lineText = nsString.substring(with: lineRange)
+
+            var indent = ""
+            for ch in lineText {
+                if ch == " " || ch == "\t" { indent.append(ch) }
+                else { break }
+            }
+
+            let trimmed = lineText.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmed.hasSuffix("{") {
+                indent += String(repeating: " ", count: editorTabSize)
+            }
+
+            let insertion = "\n" + indent
+            textView.insertText(insertion, replacementRange: range)
+            return false
+        }
+
+        guard string.count == 1 else { return true }
 
         let pairs: [Character: Character] = ["(": ")", "[": "]", "{": "}", "\"": "\"", "'": "'", "`": "`"]
         guard let close = pairs[string.first!] else { return true }
@@ -412,7 +488,8 @@ extension EditorNSTextView.Coordinator: NSTextViewDelegate {
 
     private func updateSelectionHighlights(_ textView: NSTextView) {
         let nsString = textView.string as NSString
-        let cursorPos = textView.selectedRange().location
+        let selectedRange = textView.selectedRange()
+        let cursorPos = selectedRange.location
 
         if cursorPos <= nsString.length {
             currentLineRange = nsString.lineRange(for: NSRange(location: cursorPos, length: 0))
@@ -422,7 +499,32 @@ extension EditorNSTextView.Coordinator: NSTextViewDelegate {
 
         bracketMatchRanges = findMatchingBracket(textView, at: cursorPos)
 
+        if selectedRange.length > 0 {
+            let selectedText = nsString.substring(with: selectedRange)
+            if selectedText.rangeOfCharacter(from: .newlines) == nil && !selectedText.trimmingCharacters(in: .whitespaces).isEmpty {
+                selectionMatchRanges = findAllOccurrences(of: selectedText, in: textView.string)
+            } else {
+                selectionMatchRanges = []
+            }
+        } else {
+            selectionMatchRanges = []
+        }
+
         applyBackgroundHighlights(textView)
+    }
+
+    private func findAllOccurrences(of query: String, in text: String) -> [NSRange] {
+        guard !query.isEmpty else { return [] }
+        let nsString = text as NSString
+        var ranges: [NSRange] = []
+        var searchStart = 0
+        while searchStart < nsString.length {
+            let range = nsString.range(of: query, options: .caseInsensitive, range: NSRange(location: searchStart, length: nsString.length - searchStart))
+            if range.location == NSNotFound { break }
+            ranges.append(range)
+            searchStart = range.location + range.length
+        }
+        return ranges
     }
 
     private func findMatchingBracket(_ textView: NSTextView, at cursorPos: Int) -> [NSRange] {
@@ -582,6 +684,7 @@ extension EditorNSTextView.Coordinator {
 
     func handleIndent() {
         guard let textView = editorVM.activeTextView else { return }
+        let indent = String(repeating: " ", count: editorTabSize)
         let nsString = textView.string as NSString
         let range = textView.selectedRange()
         let startLine = nsString.lineRange(for: NSRange(location: range.location, length: 0))
@@ -591,22 +694,23 @@ extension EditorNSTextView.Coordinator {
         var pos = startLine.location
         while pos <= endLine.location {
             let lr = nsString.lineRange(for: NSRange(location: pos, length: 0))
-            result += "  "
+            result += indent
             result += nsString.substring(with: lr)
             pos = lr.location + lr.length
         }
 
-                    textView.insertText(result, replacementRange: NSUnionRange(startLine, endLine))
+        textView.insertText(result, replacementRange: NSUnionRange(startLine, endLine))
         let newEnd = startLine.location + result.count
         if range.length > 0 {
             textView.setSelectedRange(NSRange(location: startLine.location, length: newEnd - startLine.location))
         } else {
-            textView.setSelectedRange(NSRange(location: range.location + 2, length: 0))
+            textView.setSelectedRange(NSRange(location: range.location + editorTabSize, length: 0))
         }
     }
 
     func handleUnindent() {
         guard let textView = editorVM.activeTextView else { return }
+        let indent = String(repeating: " ", count: editorTabSize)
         let nsString = textView.string as NSString
         let range = textView.selectedRange()
         let startLine = nsString.lineRange(for: NSRange(location: range.location, length: 0))
@@ -617,8 +721,8 @@ extension EditorNSTextView.Coordinator {
         while pos <= endLine.location {
             let lr = nsString.lineRange(for: NSRange(location: pos, length: 0))
             var line = nsString.substring(with: lr)
-            if line.hasPrefix("  ") {
-                line = String(line.dropFirst(2))
+            if line.hasPrefix(indent) {
+                line = String(line.dropFirst(editorTabSize))
             } else if line.hasPrefix("\t") {
                 line = String(line.dropFirst(1))
             }
@@ -700,15 +804,73 @@ extension EditorNSTextView.Coordinator {
     func handleGoToLine() {
         editorVM.showGoToLine = true
     }
+
+    func handleToggleWordWrap() {
+        editorVM.toggleWordWrap()
+    }
+
+    func toggleFold(at lineNumber: Int) {
+        guard let textView = editorVM.activeTextView else { return }
+        let nsString = textView.string as NSString
+        let foldID = "\(tabId)-\(lineNumber)"
+
+        var lineStart = 0
+        var lineEnd = 0
+        var contentsEnd = 0
+        var currentLine = 1
+
+        nsString.getLineStart(&lineStart, end: &lineEnd, contentsEnd: &contentsEnd, for: NSRange(location: 0, length: 0))
+        while currentLine < lineNumber && lineStart < nsString.length {
+            currentLine += 1
+            let searchRange = NSRange(location: lineEnd, length: nsString.length - lineEnd)
+            if searchRange.length > 0 {
+                nsString.getLineStart(&lineStart, end: &lineEnd, contentsEnd: &contentsEnd, for: searchRange)
+            } else {
+                break
+            }
+        }
+        if currentLine != lineNumber { return }
+
+        let lineRange = NSRange(location: lineStart, length: lineEnd - lineStart)
+        let lineText = nsString.substring(with: lineRange)
+
+        guard let openBracePos = lineText.firstIndex(of: "{") else { return }
+        let braceGlobalPos = lineStart + lineText.distance(from: lineText.startIndex, to: openBracePos)
+
+        let closeBracePos = findMatch(in: nsString, from: braceGlobalPos, open: "{", close: "}", direction: 1)
+        guard let closePos = closeBracePos, closePos > braceGlobalPos else { return }
+
+        let foldRange = NSRange(location: braceGlobalPos, length: closePos - braceGlobalPos + 1)
+
+        var foldedSet = editorVM.foldedRanges[tabId] ?? []
+        if foldedSet.contains(foldRange) {
+            foldedSet.remove(foldRange)
+            editorVM.foldedRanges[tabId] = foldedSet
+            if let foldedContent = foldedContents[foldID] {
+                textView.insertText(foldedContent, replacementRange: foldRange)
+                foldedContents.removeValue(forKey: foldID)
+            }
+        } else {
+            let contentToHide = nsString.substring(with: foldRange)
+            foldedContents[foldID] = contentToHide
+            foldedSet.insert(foldRange)
+            editorVM.foldedRanges[tabId] = foldedSet
+            textView.insertText("{...}\n", replacementRange: foldRange)
+        }
+    }
+
 }
 
 // MARK: - Line Number Ruler
 
 class LineNumberRulerView: NSRulerView {
     weak var targetTextView: NSTextView?
+    weak var foldCoordinator: EditorNSTextView.Coordinator?
     private let gutterWidth: CGFloat = 48
     private let leftPadding: CGFloat = 8
     private let rightPadding: CGFloat = 6
+    private let foldIndicatorSize: CGFloat = 10
+    private var foldIndicatorRects: [Int: NSRect] = [:]
 
     init(textView: NSTextView, scrollView: NSScrollView) {
         self.targetTextView = textView
@@ -737,7 +899,19 @@ class LineNumberRulerView: NSRulerView {
         needsDisplay = true
     }
 
+    override func mouseDown(with event: NSEvent) {
+        let point = convert(event.locationInWindow, from: nil)
+        for (lineNumber, rect) in foldIndicatorRects {
+            if rect.contains(point) {
+                foldCoordinator?.toggleFold(at: lineNumber)
+                return
+            }
+        }
+        super.mouseDown(with: event)
+    }
+
     override func drawHashMarksAndLabels(in rect: NSRect) {
+        foldIndicatorRects = [:]
         guard let textView = targetTextView,
               let layoutManager = textView.layoutManager,
               let textContainer = textView.textContainer else { return }
@@ -751,6 +925,8 @@ class LineNumberRulerView: NSRulerView {
         var contentsEnd = 0
         var lineIndex = 1
 
+        let nsFont = textView.font ?? NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
+
         string.getLineStart(&lineStart, end: &lineEnd, contentsEnd: &contentsEnd, for: NSRange(location: 0, length: 0))
 
         while lineStart < string.length {
@@ -761,9 +937,11 @@ class LineNumberRulerView: NSRulerView {
             lineRect.origin.y += textView.textContainerOrigin.y
 
             if lineRect.maxY >= visibleRect.minY && lineRect.minY <= visibleRect.maxY {
-                let font = textView.font ?? NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
+                let lineContent = string.substring(with: NSRange(location: lineStart, length: lineEnd - lineStart))
+                let trimmed = lineContent.trimmingCharacters(in: .whitespacesAndNewlines)
+
                 let textFontAttributes: [NSAttributedString.Key: Any] = [
-                    .font: font,
+                    .font: nsFont,
                     .foregroundColor: NSColor.tertiaryLabelColor
                 ]
 
@@ -774,6 +952,26 @@ class LineNumberRulerView: NSRulerView {
 
                 let drawRect = NSRect(x: drawX, y: drawY, width: textSize.width, height: textSize.height)
                 lineNumber.draw(in: drawRect, withAttributes: textFontAttributes)
+
+                if trimmed.hasSuffix("{") || trimmed.hasPrefix("{") {
+                    let indicatorX: CGFloat = leftPadding
+                    let indicatorY = lineRect.minY + (lineRect.height - foldIndicatorSize) / 2
+                    let indicatorRect = NSRect(x: indicatorX, y: indicatorY, width: foldIndicatorSize, height: foldIndicatorSize)
+                    foldIndicatorRects[lineIndex] = indicatorRect
+
+                    let ctx = NSGraphicsContext.current!.cgContext
+                    ctx.setFillColor(NSColor.textSecondary.cgColor)
+                    ctx.setStrokeColor(NSColor.clear.cgColor)
+
+                    let midX = indicatorRect.midX
+                    let midY = indicatorRect.midY
+                    let halfSize = foldIndicatorSize / 2
+                    ctx.move(to: CGPoint(x: midX - halfSize + 2, y: midY - halfSize + 2))
+                    ctx.addLine(to: CGPoint(x: midX + halfSize - 2, y: midY))
+                    ctx.addLine(to: CGPoint(x: midX - halfSize + 2, y: midY + halfSize - 2))
+                    ctx.closePath()
+                    ctx.fillPath()
+                }
             }
 
             lineIndex += 1

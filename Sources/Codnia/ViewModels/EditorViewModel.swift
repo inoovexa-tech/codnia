@@ -37,6 +37,12 @@ public final class EditorViewModel: ObservableObject {
     }
     @Published public var goToLineInput: String = ""
     @Published public var trimTrailingWhitespaceOnSave: Bool = true
+    @Published public var detectedEncoding: String = "UTF-8"
+    @Published public var foldedRanges: [String: Set<NSRange>] = [:]
+
+    public func toggleWordWrap() {
+        settings.wordWrap.toggle()
+    }
 
     private let workspace: WorkspaceService
     private let settings: SettingsService
@@ -375,6 +381,7 @@ public final class EditorViewModel: ObservableObject {
         }
 
         let language = languageForExtension(ext)
+        detectedEncoding = fs.detectEncoding(path: path)
         let content = fs.readFile(path: path)
 
         if let existing = tabs.first(where: { $0.path == path }) {
