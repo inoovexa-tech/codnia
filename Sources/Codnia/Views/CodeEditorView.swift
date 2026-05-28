@@ -68,7 +68,6 @@ struct EditorNSTextView: NSViewRepresentable {
         textView.isGrammarCheckingEnabled = false
         textView.isContinuousSpellCheckingEnabled = false
         textView.textContainerInset = NSSize(width: 8, height: 8)
-        textView.delegate = context.coordinator
 
         if let textContainer = textView.textContainer {
             textContainer.widthTracksTextView = true
@@ -81,7 +80,9 @@ struct EditorNSTextView: NSViewRepresentable {
 
         scrollView.documentView = textView
 
-        textView.string = text
+        textView.textStorage?.setAttributedString(NSAttributedString(string: text))
+
+        textView.delegate = context.coordinator
 
         context.coordinator.updateHighlighter(language: language)
         context.coordinator.applyHighlighting(textView)
@@ -95,7 +96,7 @@ struct EditorNSTextView: NSViewRepresentable {
         }
 
         context.coordinator.configureScrollObserver(scrollView: scrollView)
-        editorVM.activeTextView = textView
+        if editorVM.activeTextView !== textView { editorVM.activeTextView = textView }
         restoreSavedState(textView: textView, scrollView: scrollView)
 
         return scrollView
@@ -109,7 +110,7 @@ struct EditorNSTextView: NSViewRepresentable {
 
         let textChanged = textView.string != text
         if textChanged {
-            textView.string = text
+            textView.textStorage?.setAttributedString(NSAttributedString(string: text))
             if let savedRange = editorVM.selectedRanges[tabId],
                savedRange.location <= text.count && savedRange.location >= 0 {
                 textView.setSelectedRange(savedRange)
@@ -123,7 +124,7 @@ struct EditorNSTextView: NSViewRepresentable {
         }
 
         context.coordinator.configureScrollObserver(scrollView: nsView)
-        editorVM.activeTextView = textView
+        if editorVM.activeTextView !== textView { editorVM.activeTextView = textView }
 
         if languageChanged || textChanged {
             context.coordinator.applyHighlighting(textView)
@@ -256,18 +257,18 @@ extension EditorNSTextView.Coordinator: NSTextViewDelegate {
 
     func textViewDidChangeSelection(_ notification: Notification) {
         guard let textView = notification.object as? NSTextView else { return }
-        editorVM.selectedRanges[tabId] = textView.selectedRange()
-        let line = textView.string.isEmpty ? 1 : textView.string[...textView.string.index(
-            textView.string.startIndex,
-            offsetBy: min(textView.selectedRange().location, textView.string.count)
-        )].filter { $0 == "\n" }.count + 1
+        let newRange = textView.selectedRange()
+        if editorVM.selectedRanges[tabId] == newRange { return }
+        editorVM.selectedRanges[tabId] = newRange
+        let nsString = textView.string as NSString
+        let line = nsString.length == 0 ? 1 : nsString.substring(to: min(newRange.location, nsString.length)).components(separatedBy: "\n").count
         let column: Int = {
-            let loc = textView.selectedRange().location
-            let str = textView.string as NSString
-            let lineStart = str.lineRange(for: NSRange(location: loc, length: 0))
+            let loc = newRange.location
+            let lineStart = nsString.lineRange(for: NSRange(location: loc, length: 0))
             return loc - lineStart.location + 1
         }()
-        editorVM.cursorPosition = "Ln \(line), Col \(column)"
+        let newPosition = "Ln \(line), Col \(column)"
+        if editorVM.cursorPosition != newPosition { editorVM.cursorPosition = newPosition }
     }
 }
 

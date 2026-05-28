@@ -321,9 +321,6 @@ public final class EditorViewModel: ObservableObject {
         searchHighlightRanges = []
         searchHighlightIndex = 0
         showInFileSearch = false
-        inFileSearchQuery = ""
-        inFileSearchResults = []
-        inFileSearchCurrentIndex = 0
         let name = URL(fileURLWithPath: path).lastPathComponent
         let ext = URL(fileURLWithPath: path).pathExtension.lowercased()
 
