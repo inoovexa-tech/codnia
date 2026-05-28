@@ -138,6 +138,11 @@ struct CodniaApp: App {
                     }
                 }
                 .keyboardShortcut("`", modifiers: .command)
+                Button("Toggle Zen Mode") {
+                    appDelegate.appState.isZenMode.toggle()
+                }
+                .keyboardShortcut("\r", modifiers: [.command, .shift])
+                Divider()
                 Button("Global Search") {
                     appDelegate.appState.showGlobalSearchModal.toggle()
                 }

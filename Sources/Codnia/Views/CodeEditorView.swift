@@ -112,6 +112,9 @@ class CodniaTextView: NSTextView {
                     editorCoordinator?.handleIndent()
                     return
                 }
+                if editorCoordinator?.expandSnippetIfNeeded() == true {
+                    return
+                }
             }
         }
 
@@ -486,6 +489,55 @@ extension EditorNSTextView.Coordinator: NSTextViewDelegate {
         updateSelectionHighlights(textView)
     }
 
+    func textView(_ textView: NSTextView, completions words: [String], forPartialWordRange charRange: NSRange, indexOfSelectedItem index: UnsafeMutablePointer<Int>?) -> [String] {
+        guard charRange.location + charRange.length <= (textView.string as NSString).length else { return words }
+
+        let nsString = textView.string as NSString
+        let partial = charRange.length > 0 ? nsString.substring(with: charRange) : ""
+        guard !partial.isEmpty else { return words }
+
+        var result = Set<String>()
+
+        for keyword in highlighter?.keywords ?? [] where keyword.lowercased().hasPrefix(partial.lowercased()) {
+            result.insert(keyword)
+        }
+
+        for snippetKey in Self.snippets.keys where snippetKey.lowercased().hasPrefix(partial.lowercased()) {
+            result.insert(snippetKey)
+        }
+
+        let text = textView.string as NSString
+        var searchStart = 0
+        while searchStart < text.length {
+            let range = text.range(of: partial, options: [.caseInsensitive], range: NSRange(location: searchStart, length: text.length - searchStart))
+            if range.location == NSNotFound { break }
+            let wordRange = text.range(of: partial, options: [.caseInsensitive], range: NSRange(location: range.location, length: text.length - range.location))
+            if wordRange.location != NSNotFound {
+                var start = wordRange.location
+                while start > 0 {
+                    let c = text.substring(with: NSRange(location: start - 1, length: 1))
+                    if c.rangeOfCharacter(from: .alphanumerics) == nil && c != "_" { break }
+                    start -= 1
+                }
+                var end = wordRange.location + wordRange.length
+                while end < text.length {
+                    let c = text.substring(with: NSRange(location: end, length: 1))
+                    if c.rangeOfCharacter(from: .alphanumerics) == nil && c != "_" { break }
+                    end += 1
+                }
+                if end > start {
+                    let fullWord = text.substring(with: NSRange(location: start, length: end - start))
+                    if fullWord.lowercased().hasPrefix(partial.lowercased()) {
+                        result.insert(fullWord)
+                    }
+                }
+            }
+            searchStart = range.location + range.length
+        }
+
+        return result.sorted()
+    }
+
     private func updateSelectionHighlights(_ textView: NSTextView) {
         let nsString = textView.string as NSString
         let selectedRange = textView.selectedRange()
@@ -578,6 +630,66 @@ extension EditorNSTextView.Coordinator: NSTextViewDelegate {
             pos += direction
         }
         return nil
+    }
+}
+
+// MARK: - Snippets Expansion
+
+extension EditorNSTextView.Coordinator {
+    static let snippets: [String: String] = [
+        "for": "for <#item#> in <#sequence#> {\n    $0\n}",
+        "fori": "for <#i#> in 0..<<#count#> {\n    $0\n}",
+        "if": "if <#condition#> {\n    $0\n}",
+        "else": "if <#condition#> {\n    $0\n} else {\n    \n}",
+        "elif": "else if <#condition#> {\n    $0\n}",
+        "func": "func <#name#>(<#parameters#>) -> <#returnType#> {\n    $0\n}",
+        "class": "class <#name#> {\n    $0\n}",
+        "struct": "struct <#name#> {\n    $0\n}",
+        "enum": "enum <#name#> {\n    $0\n}",
+        "switch": "switch <#value#> {\ncase <#pattern#>:\n    $0\ndefault:\n    break\n}",
+        "guard": "guard let <#value#> else { return }\n$0",
+        "closure": "{ <#parameters#> in\n    $0\n}",
+        "import": "import <#module#>",
+        "#pragma": "#pragma mark - $0",
+        "try": "do {\n    try $0\n} catch {\n    \n}",
+        "main": "func main() {\n    $0\n}\n\nmain()",
+        "init": "init(<#parameters#>) {\n    $0\n}",
+        "delegate": "weak var delegate: <#DelegateName#>?\n$0",
+        "lazy": "lazy var <#name#>: <#Type#> = {\n    $0\n}()",
+        "property": "var <#name#>: <#Type#> {\n    get {\n        $0\n    }\n    set {\n        \n    }\n}",
+        "singleton": "static let shared = <#ClassName#>()\nprivate init() {\n    $0\n}",
+    ]
+
+    func expandSnippetIfNeeded() -> Bool {
+        guard let textView = editorVM.activeTextView else { return false }
+        let nsString = textView.string as NSString
+        let cursorPos = textView.selectedRange().location
+        guard cursorPos > 0 else { return false }
+
+        var wordStart = cursorPos
+        while wordStart > 0 {
+            let char = nsString.substring(with: NSRange(location: wordStart - 1, length: 1))
+            if char.rangeOfCharacter(from: .alphanumerics) == nil && char != "_" {
+                break
+            }
+            wordStart -= 1
+        }
+
+        let wordLen = cursorPos - wordStart
+        guard wordLen > 0 else { return false }
+
+        let word = nsString.substring(with: NSRange(location: wordStart, length: wordLen))
+        guard let template = Self.snippets[word] else { return false }
+
+        let cleanedTemplate = (template as NSString).replacingOccurrences(of: "$0", with: "")
+        textView.insertText(cleanedTemplate, replacementRange: NSRange(location: wordStart, length: wordLen))
+
+        if let dollarRange = (template as NSString).range(of: "$0") as NSRange?, dollarRange.location != NSNotFound {
+            let cursorPosition = wordStart + dollarRange.location
+            textView.setSelectedRange(NSRange(location: cursorPosition, length: 0))
+        }
+
+        return true
     }
 }
 
