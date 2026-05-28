@@ -1,13 +1,13 @@
 import Foundation
 import SwiftUI
 
-public enum NoteSortOrder: String, CaseIterable {
+public enum NoteSortOrder: String, CaseIterable, Sendable {
     case name = "Name"
     case modifiedAt = "Last Modified"
     case createdAt = "Created"
 }
 
-public struct NoteEntry: Identifiable, Equatable {
+public struct NoteEntry: Identifiable, Equatable, Sendable {
     public let id: String
     public let name: String
     public let path: String
@@ -31,7 +31,7 @@ public struct NoteEntry: Identifiable, Equatable {
     }
 }
 
-public struct NoteTemplate: Identifiable, Codable {
+public struct NoteTemplate: Identifiable, Codable, Sendable {
     public let id: String
     public let name: String
     public let content: String
@@ -433,12 +433,29 @@ public final class NotesViewModel: ObservableObject {
             }
         }
 
-        let hashTags = content.components(separatedBy: .newlines)
-            .flatMap { line -> [String] in
-                let matches = line.regexMatches(pattern: "#([a-zA-Z0-9_-]+)")
-                return matches.map { String($0.dropFirst()) }
+        let lines = content.components(separatedBy: .newlines)
+        var inCodeBlock = false
+        var tags: Set<String> = []
+
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.hasPrefix("```") {
+                inCodeBlock.toggle()
+                continue
             }
-        return Array(Set(hashTags))
+            guard !inCodeBlock else { continue }
+
+            let matches = line.regexMatches(pattern: "#([a-zA-Z0-9_-]+)")
+            for match in matches {
+                let candidate = String(match.dropFirst())
+                if candidate.range(of: "^[0-9a-fA-F]{3,8}$", options: .regularExpression) != nil {
+                    continue
+                }
+                tags.insert(candidate)
+            }
+        }
+
+        return Array(tags).sorted()
     }
 
     private func extractFrontmatter(_ content: String) -> String? {
@@ -568,7 +585,7 @@ extension String {
     }
 }
 
-public struct NoteDirectory: Identifiable, Equatable {
+public struct NoteDirectory: Identifiable, Equatable, Sendable {
     public let id: String
     public let name: String
     public let path: String
@@ -588,7 +605,7 @@ public struct NoteDirectory: Identifiable, Equatable {
     }
 }
 
-public enum NotesError: Error, LocalizedError {
+public enum NotesError: Error, LocalizedError, Sendable {
     case emptyFileName
     case fileAlreadyExists
     case folderAlreadyExists
