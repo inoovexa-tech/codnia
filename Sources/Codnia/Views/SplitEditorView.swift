@@ -19,6 +19,10 @@ struct SplitEditorView: View {
                 inFileSearchOverlay
             }
 
+            if editorVM.showGoToLine {
+                goToLineOverlay
+            }
+
             if let activeTab = editorVM.currentTab,
                activeTab.type == .file,
                editorVM.isCurrentTabMarkdown || editorVM.isCurrentTabHTML {
@@ -90,6 +94,63 @@ struct SplitEditorView: View {
         .help(isShowing ? "Show code editor" : "Show \(isHTML ? "HTML" : "markdown") preview")
     }
 
+    private var goToLineOverlay: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 8) {
+                Image(systemName: "arrow.right.to.line")
+                    .font(.system(size: 11))
+                    .foregroundColor(.textTertiary)
+
+                TextField("Go to line number", text: $editorVM.goToLineInput)
+                    .font(.system(size: 12))
+                    .foregroundColor(.textPrimary)
+                    .textFieldStyle(PlainTextFieldStyle())
+                    .frame(width: 150)
+                    .onAppear {
+                        editorVM.goToLineInput = ""
+                    }
+                    .onSubmit {
+                        if let line = Int(editorVM.goToLineInput) {
+                            editorVM.goToLine(lineNumber: line)
+                        }
+                    }
+
+                Button(action: {
+                    if let line = Int(editorVM.goToLineInput) {
+                        editorVM.goToLine(lineNumber: line)
+                    }
+                }) {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 10, weight: .medium))
+                }
+                .buttonStyle(PlainButtonStyle())
+                .disabled(Int(editorVM.goToLineInput) == nil)
+
+                Button(action: {
+                    editorVM.showGoToLine = false
+                    editorVM.goToLineInput = ""
+                }) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 10))
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(Color.bgSecondary)
+            .cornerRadius(6)
+            .overlay(
+                RoundedRectangle(cornerRadius: 6)
+                    .stroke(Color.borderLight, lineWidth: 0.5)
+            )
+
+            Spacer()
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
+    }
+
     private var inFileSearchOverlay: some View {
         VStack(spacing: 0) {
             HStack(spacing: 8) {
@@ -97,11 +158,11 @@ struct SplitEditorView: View {
                     .font(.system(size: 11))
                     .foregroundColor(.textTertiary)
 
-                TextField("Find in file", text: $editorVM.inFileSearchQuery)
+                TextField("Find", text: $editorVM.inFileSearchQuery)
                     .font(.system(size: 12))
                     .foregroundColor(.textPrimary)
                     .textFieldStyle(PlainTextFieldStyle())
-                    .frame(width: 200)
+                    .frame(width: 160)
                     .focused($inFileSearchFocused)
                     .onAppear { inFileSearchFocused = true }
                     .onSubmit {
@@ -133,10 +194,52 @@ struct SplitEditorView: View {
                 .buttonStyle(PlainButtonStyle())
                 .disabled(editorVM.inFileSearchResults.isEmpty)
 
+                if editorVM.showReplace {
+                    TextField("Replace with", text: $editorVM.replaceQuery)
+                        .font(.system(size: 12))
+                        .foregroundColor(.textPrimary)
+                        .textFieldStyle(PlainTextFieldStyle())
+                        .frame(width: 130)
+
+                    Button(action: {
+                        if !editorVM.inFileSearchQuery.isEmpty {
+                            editorVM.replaceCurrent(find: editorVM.inFileSearchQuery, replace: editorVM.replaceQuery)
+                        }
+                    }) {
+                        Text("Replace")
+                            .font(.system(size: 11))
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .disabled(editorVM.inFileSearchResults.isEmpty)
+
+                    Button(action: {
+                        if !editorVM.inFileSearchQuery.isEmpty {
+                            editorVM.replaceAll(find: editorVM.inFileSearchQuery, replace: editorVM.replaceQuery)
+                        }
+                    }) {
+                        Text("Replace All")
+                            .font(.system(size: 11))
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .disabled(editorVM.inFileSearchQuery.isEmpty)
+                }
+
+                Button(action: {
+                    editorVM.showReplace.toggle()
+                }) {
+                    Image(systemName: "arrow.left.arrow.right")
+                        .font(.system(size: 10, weight: .medium))
+                }
+                .buttonStyle(PlainButtonStyle())
+                .foregroundColor(editorVM.showReplace ? .accentBlue : .textSecondary)
+                .help("Toggle replace")
+
                 Button(action: {
                     editorVM.showInFileSearch = false
                     editorVM.inFileSearchQuery = ""
                     editorVM.inFileSearchResults = []
+                    editorVM.showReplace = false
+                    editorVM.replaceQuery = ""
                 }) {
                     Image(systemName: "xmark")
                         .font(.system(size: 10))

@@ -15,6 +15,8 @@ public final class EditorViewModel: ObservableObject {
                 inFileSearchQuery = ""
                 inFileSearchResults = []
                 inFileSearchCurrentIndex = 0
+                showReplace = false
+                replaceQuery = ""
             }
         }
     }
@@ -24,6 +26,17 @@ public final class EditorViewModel: ObservableObject {
     @Published public var inFileSearchQuery: String = ""
     @Published public var inFileSearchResults: [NSRange] = []
     @Published public var inFileSearchCurrentIndex: Int = 0
+    @Published public var showReplace: Bool = false
+    @Published public var replaceQuery: String = ""
+    @Published public var showGoToLine: Bool = false {
+        didSet {
+            if !showGoToLine {
+                goToLineInput = ""
+            }
+        }
+    }
+    @Published public var goToLineInput: String = ""
+    @Published public var trimTrailingWhitespaceOnSave: Bool = true
 
     private let workspace: WorkspaceService
     private let settings: SettingsService
@@ -641,8 +654,19 @@ public final class EditorViewModel: ObservableObject {
             saveCurrentFileAs()
             return
         }
+        let contentToSave: String
+        if trimTrailingWhitespaceOnSave {
+            contentToSave = editorContent.components(separatedBy: .newlines)
+                .map { $0.trimmingTrailingWhitespace() }
+                .joined(separator: "\n")
+        } else {
+            contentToSave = editorContent
+        }
         do {
-            try fs.writeFile(path: tab.path, content: editorContent)
+            try fs.writeFile(path: tab.path, content: contentToSave)
+            if trimTrailingWhitespaceOnSave {
+                editorContent = contentToSave
+            }
             fileContents[tab.id] = editorContent
             if let idx = tabs.firstIndex(where: { $0.id == tab.id }) {
                 tabs[idx].isModified = false
@@ -761,5 +785,88 @@ public final class EditorViewModel: ObservableObject {
         let insertAt = max(0, min(destination, tabs.count))
         tabs.insert(tab, at: insertAt)
         saveTabsToWorktree()
+    }
+
+    public func goToLine(lineNumber: Int) {
+        guard lineNumber >= 1 else { return }
+        guard let textView = activeTextView else { return }
+        let nsString = textView.string as NSString
+        var lineStart = 0
+        var lineEnd = 0
+        var contentsEnd = 0
+        var currentLine = 1
+
+        nsString.getLineStart(&lineStart, end: &lineEnd, contentsEnd: &contentsEnd, for: NSRange(location: 0, length: 0))
+
+        while lineStart < nsString.length {
+            if currentLine == lineNumber {
+                textView.setSelectedRange(NSRange(location: lineStart, length: 0))
+                textView.scrollToVisible(NSRect(x: 0, y: textView.textContainerOrigin.y, width: 0, height: 0))
+                showGoToLine = false
+                return
+            }
+            currentLine += 1
+            let searchRange = NSRange(location: lineEnd, length: nsString.length - lineEnd)
+            if searchRange.length > 0 {
+                nsString.getLineStart(&lineStart, end: &lineEnd, contentsEnd: &contentsEnd, for: searchRange)
+            } else {
+                break
+            }
+        }
+
+        if currentLine == lineNumber {
+            textView.setSelectedRange(NSRange(location: nsString.length, length: 0))
+            showGoToLine = false
+        }
+    }
+
+    public func replaceCurrent(find: String, replace: String) {
+        guard !find.isEmpty, let textView = activeTextView else { return }
+        let range = textView.selectedRange()
+        let nsString = textView.string as NSString
+        let selectedText = range.length > 0 ? nsString.substring(with: range) : ""
+        if selectedText.lowercased() == find.lowercased() {
+            textView.insertText(replace, replacementRange: range)
+            let newPos = range.location + (replace as NSString).length
+            textView.setSelectedRange(NSRange(location: newPos, length: 0))
+        }
+        findInFileNext()
+    }
+
+    public func findInFileNext() {
+        guard !inFileSearchResults.isEmpty else { return }
+        inFileSearchCurrentIndex = (inFileSearchCurrentIndex + 1) % inFileSearchResults.count
+    }
+
+    public func replaceAll(find: String, replace: String) {
+        guard !find.isEmpty else { return }
+        let content = editorContent as NSString
+        var result = ""
+        var lastIndex = 0
+        var searchStart = 0
+        while searchStart < content.length {
+            let range = content.range(of: find, options: .caseInsensitive, range: NSRange(location: searchStart, length: content.length - searchStart))
+            if range.location == NSNotFound { break }
+            result += content.substring(with: NSRange(location: lastIndex, length: range.location - lastIndex))
+            result += replace
+            lastIndex = range.location + range.length
+            searchStart = range.location + range.length
+        }
+        result += content.substring(from: lastIndex)
+        editorContent = result
+        if let textView = activeTextView {
+            textView.textStorage?.setAttributedString(NSAttributedString(string: result))
+        }
+        computeSearchHighlightRanges(query: find)
+    }
+}
+
+private extension String {
+    func trimmingTrailingWhitespace() -> String {
+        if let last = last, last.isNewline {
+            let withoutNewline = dropLast()
+            return withoutNewline.trimmingCharacters(in: .whitespaces) + String(last)
+        }
+        return trimmingCharacters(in: .whitespaces)
     }
 }
