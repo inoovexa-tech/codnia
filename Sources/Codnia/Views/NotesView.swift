@@ -11,6 +11,8 @@ struct NotesView: View {
     @State private var selectedTemplateId: String?
     @State private var showNewFolderSheet: Bool = false
     @State private var newFolderName: String = ""
+    @State private var showCreateError: Bool = false
+    @State private var createErrorMessage: String = ""
 
     var body: some View {
         VStack(spacing: 0) {
@@ -54,6 +56,11 @@ struct NotesView: View {
             }
         } message: {
             Text("Enter a new name for the note.")
+        }
+        .alert("Error", isPresented: $showCreateError) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(createErrorMessage)
         }
     }
 
@@ -705,7 +712,8 @@ struct NotesView: View {
             notesVM.showNewNoteSheet = false
             newNoteName = ""
         } catch {
-            
+            createErrorMessage = (error as? NotesError)?.errorDescription ?? error.localizedDescription
+            showCreateError = true
         }
     }
 

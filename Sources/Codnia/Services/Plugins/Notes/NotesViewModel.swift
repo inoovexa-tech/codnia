@@ -65,8 +65,6 @@ public final class NotesViewModel: ObservableObject {
     private let maxRecentNotes = 10
 
     public init() {
-        loadFavorites()
-        loadRecents()
         loadTemplates()
     }
 
@@ -203,7 +201,7 @@ public final class NotesViewModel: ObservableObject {
             fileName += ".md"
         }
 
-        let dirPath = directory.isEmpty ? (workspacePath as NSString).appendingPathComponent(".codnia/notes") : directory
+        let dirPath = resolveNotesSubpath(directory)
         try fileSystem.createDirectory(path: dirPath)
 
         let filePath = (dirPath as NSString).appendingPathComponent(fileName)
@@ -470,7 +468,8 @@ public final class NotesViewModel: ObservableObject {
         let cleanName = name.trimmingCharacters(in: .whitespaces)
         guard !cleanName.isEmpty else { throw NotesError.emptyFileName }
 
-        let folderPath = (directory as NSString).appendingPathComponent(cleanName)
+        let parentDir = resolveNotesSubpath(directory)
+        let folderPath = (parentDir as NSString).appendingPathComponent(cleanName)
 
         if fileSystem.fileExists(atPath: folderPath) {
             throw NotesError.folderAlreadyExists
@@ -480,8 +479,11 @@ public final class NotesViewModel: ObservableObject {
         refreshNotes()
     }
 
-    private func loadFavorites() {}
-    private func loadRecents() {}
+    private func resolveNotesSubpath(_ subpath: String) -> String {
+        let notesRoot = (workspacePath as NSString).appendingPathComponent(".codnia/notes")
+        guard !subpath.isEmpty else { return notesRoot }
+        return (notesRoot as NSString).appendingPathComponent(subpath)
+    }
 }
 
 extension String {
@@ -503,8 +505,8 @@ public struct NoteDirectory: Identifiable, Equatable {
     public var directories: [NoteDirectory]
     public var notes: [NoteEntry]
 
-    public init(id: String = UUID().uuidString, name: String, path: String, directories: [NoteDirectory] = [], notes: [NoteEntry] = []) {
-        self.id = id
+    public init(name: String, path: String, directories: [NoteDirectory] = [], notes: [NoteEntry] = []) {
+        self.id = path
         self.name = name
         self.path = path
         self.directories = directories
