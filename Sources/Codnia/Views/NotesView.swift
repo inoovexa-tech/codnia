@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct NotesView: View {
     @EnvironmentObject var notesVM: NotesViewModel
@@ -217,9 +218,9 @@ struct NotesView: View {
         let hasSubdirs = !root.directories.isEmpty
 
         if hasSubdirs {
-            sectionHeader("Notes", icon: "folder", color: .textTertiary)
+            rootHeader("Notes")
             ForEach(root.directories) { dir in
-                AnyView(directoryRow(dir, indent: 0))
+                DirectoryRowView(dir: dir, indent: 0, notesVM: notesVM, editorVM: editorVM, onOpen: openNote)
                 Divider().background(Color.borderDefault)
             }
             if !root.notes.isEmpty {
@@ -229,7 +230,7 @@ struct NotesView: View {
                 }
             }
         } else {
-            sectionHeader("All Notes", icon: "folder", color: .textTertiary)
+            rootHeader("All Notes")
             ForEach(root.notes) { entry in
                 noteRow(entry)
                 Divider().background(Color.borderDefault)
@@ -237,52 +238,41 @@ struct NotesView: View {
         }
     }
 
-    private func directoryRow(_ dir: NoteDirectory, indent: Int) -> AnyView {
-        let isExpanded = notesVM.expandedDirectories.contains(dir.path)
-        return AnyView(VStack(spacing: 0) {
-            Button(action: {
-                notesVM.toggleDirectoryExpanded(dir.path)
-            }) {
-                HStack(spacing: 4) {
-                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                        .font(.system(size: 9))
-                        .foregroundColor(.textTertiary)
-                        .frame(width: 12)
-
-                    Image(systemName: "folder")
-                        .font(.system(size: 12))
-                        .foregroundColor(.textTertiary)
-                        .frame(width: 16)
-
-                    Text(dir.name)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.textPrimary)
-                        .lineLimit(1)
-
-                    Spacer()
-                }
-                .padding(.leading, CGFloat(8 + indent * 16))
-                .padding(.trailing, 10)
-                .padding(.vertical, 5)
-                .contentShape(Rectangle())
+    private func rootHeader(_ title: String) -> some View {
+        let isTargeted = Binding<Bool>(
+            get: { notesVM.dropTargetPath == notesVM.rootNotesPath },
+            set: { if $0 { notesVM.dropTargetPath = notesVM.rootNotesPath } else { notesVM.dropTargetPath = nil } }
+        )
+        return sectionHeader(title, icon: "folder", color: .textTertiary)
+            .background(notesVM.dropTargetPath == notesVM.rootNotesPath ? Color.accentBlue.opacity(0.1) : Color.clear)
+            .onDrop(of: [.text], isTargeted: isTargeted) { providers in
+                handleNoteDrop(providers: providers, targetDir: notesVM.rootNotesPath)
             }
-            .buttonStyle(PlainButtonStyle())
+    }
 
-            if isExpanded {
-                if !dir.directories.isEmpty {
-                    ForEach(dir.directories) { subDir in
-                        AnyView(directoryRow(subDir, indent: indent + 1))
-                        Divider().background(Color.borderDefault)
-                    }
-                }
-                if !dir.notes.isEmpty {
-                    ForEach(dir.notes) { entry in
-                        noteRow(entry, indent: indent + 1)
-                        Divider().background(Color.borderDefault)
-                    }
-                }
+    private func handleNoteDrop(providers: [NSItemProvider], targetDir: String) -> Bool {
+        guard let provider = providers.first else { return false }
+        provider.loadItem(forTypeIdentifier: UTType.text.identifier, options: nil) { [notesVM] item, _ in
+            let sourcePath: String
+            if let str = item as? String {
+                sourcePath = str
+            } else if let data = item as? Data, let str = String(data: data, encoding: .utf8) {
+                sourcePath = str
+            } else {
+                return
             }
-        })
+            guard sourcePath != targetDir else { return }
+            let sourceURL = URL(fileURLWithPath: sourcePath)
+            let fileName = sourceURL.lastPathComponent
+            let destination = URL(fileURLWithPath: targetDir).appendingPathComponent(fileName)
+            guard sourceURL.path != destination.path else { return }
+            if FileManager.default.fileExists(atPath: destination.path) { return }
+            try? FileManager.default.moveItem(at: sourceURL, to: destination)
+            DispatchQueue.main.async {
+                notesVM.refreshNotes()
+            }
+        }
+        return true
     }
 
     private func sectionHeader(_ title: String, icon: String, color: Color) -> some View {
@@ -301,107 +291,13 @@ struct NotesView: View {
     }
 
     private func noteRow(_ entry: NoteEntry, indent: Int = 0) -> some View {
-        let fileName = entry.name.replacingOccurrences(of: ".md", with: "").replacingOccurrences(of: ".markdown", with: "")
-        let displayName = entry.frontmatterTitle?.isEmpty == false ? entry.frontmatterTitle! : fileName
-        let isEditing = notesVM.editingNoteId == entry.id
-
-        return HStack(spacing: 4) {
-            Image(systemName: "doc.text")
-                .font(.system(size: 13))
-                .foregroundColor(.textSecondary)
-                .frame(width: 20)
-
-            if isEditing {
-                TextField("", text: $notesVM.editingNoteText, onCommit: {
-                    if let entry = notesVM.entries.first(where: { $0.id == notesVM.editingNoteId }) {
-                        try? notesVM.renameNote(entry, to: notesVM.editingNoteText)
-                    }
-                    notesVM.cancelEditing()
-                })
-                .textFieldStyle(PlainTextFieldStyle())
-                .font(.system(size: 12))
-                .onExitCommand { notesVM.cancelEditing() }
-            } else {
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(displayName)
-                        .font(.system(size: 12))
-                        .foregroundColor(.textPrimary)
-                        .lineLimit(1)
-
-                    if let preview = entry.preview, notesVM.searchText.isEmpty {
-                        Text(preview)
-                            .font(.system(size: 10))
-                            .foregroundColor(.textTertiary)
-                            .lineLimit(1)
-                    } else if displayName != fileName {
-                        Text(fileName)
-                            .font(.system(size: 10))
-                            .foregroundColor(.textTertiary)
-                            .lineLimit(1)
-                    }
-                }
-            }
-
-            Spacer()
-
-            Button(action: { notesVM.toggleFavorite(entry) }) {
-                Image(systemName: entry.isFavorite ? "star.fill" : "star")
-                    .font(.system(size: 11))
-                    .foregroundColor(entry.isFavorite ? .accentYellow : .textTertiary)
-            }
-            .buttonStyle(PlainButtonStyle())
-
-            if let date = entry.modifiedAt {
-                Text(formatDate(date))
-                    .font(.system(size: 9))
-                    .foregroundColor(.textTertiary)
-            }
-        }
-        .padding(.horizontal, 10)
-        .padding(.leading, CGFloat(indent * 16))
-        .padding(.vertical, isEditing ? 6 : 8)
-        .contentShape(Rectangle())
-        .onTapGesture {
-            if isEditing {
-                notesVM.cancelEditing()
-            } else {
-                openNote(entry)
-            }
-        }
-        .onDrag {
-            if let content = try? String(contentsOfFile: entry.path, encoding: .utf8) {
-                return NSItemProvider(object: content as NSString)
-            }
-            return NSItemProvider(object: entry.path as NSString)
-        }
-        .contextMenu {
-            Button(action: { openNote(entry) }) {
-                Label("Open", systemImage: "doc.text")
-            }
-            Button(action: {
-                notesVM.startEditing(entry)
-            }) {
-                Label("Rename", systemImage: "pencil")
-            }
-            Button(action: {
-                if let path = try? notesVM.duplicateNote(entry) {
-                    editorVM.openFile(path)
-                }
-            }) {
-                Label("Duplicate", systemImage: "doc.on.doc")
-            }
-            Divider()
-            Button(action: { notesVM.toggleFavorite(entry) }) {
-                Label(entry.isFavorite ? "Remove from Favorites" : "Add to Favorites", systemImage: entry.isFavorite ? "star.slash" : "star")
-            }
-            Divider()
-            Button(action: {
-                notesVM.noteToDelete = entry
-                notesVM.showDeleteConfirmation = true
-            }) {
-                Label("Delete", systemImage: "trash")
-            }
-        }
+        NoteRowView(
+            entry: entry,
+            indent: indent,
+            notesVM: notesVM,
+            editorVM: editorVM,
+            onOpen: openNote
+        )
     }
 
     private var actionBar: some View {
@@ -753,6 +649,10 @@ struct NotesView: View {
     }
 
     private func formatDate(_ date: Date) -> String {
+        Self.formatNoteDate(date)
+    }
+
+    fileprivate static func formatNoteDate(_ date: Date) -> String {
         let calendar = Calendar.current
         if calendar.isDateInToday(date) {
             let formatter = DateFormatter()
@@ -764,6 +664,201 @@ struct NotesView: View {
             let formatter = DateFormatter()
             formatter.dateStyle = .short
             return formatter.string(from: date)
+        }
+    }
+}
+
+private struct NoteRowView: View {
+    let entry: NoteEntry
+    let indent: Int
+    @ObservedObject var notesVM: NotesViewModel
+    @ObservedObject var editorVM: EditorViewModel
+    let onOpen: (NoteEntry) -> Void
+
+    var body: some View {
+        let fileName = entry.name.replacingOccurrences(of: ".md", with: "").replacingOccurrences(of: ".markdown", with: "")
+        let displayName = entry.frontmatterTitle?.isEmpty == false ? entry.frontmatterTitle! : fileName
+        let isEditing = notesVM.editingNoteId == entry.id
+
+        return HStack(spacing: 4) {
+            Image(systemName: "doc.text")
+                .font(.system(size: 13))
+                .foregroundColor(.textSecondary)
+                .frame(width: 20)
+
+            if isEditing {
+                TextField("", text: $notesVM.editingNoteText, onCommit: {
+                    if let entry = notesVM.entries.first(where: { $0.id == notesVM.editingNoteId }) {
+                        try? notesVM.renameNote(entry, to: notesVM.editingNoteText)
+                    }
+                    notesVM.cancelEditing()
+                })
+                .textFieldStyle(PlainTextFieldStyle())
+                .font(.system(size: 12))
+                .onExitCommand { notesVM.cancelEditing() }
+            } else {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(displayName)
+                        .font(.system(size: 12))
+                        .foregroundColor(.textPrimary)
+                        .lineLimit(1)
+
+                    if let preview = entry.preview, notesVM.searchText.isEmpty {
+                        Text(preview)
+                            .font(.system(size: 10))
+                            .foregroundColor(.textTertiary)
+                            .lineLimit(1)
+                    } else if displayName != fileName {
+                        Text(fileName)
+                            .font(.system(size: 10))
+                            .foregroundColor(.textTertiary)
+                            .lineLimit(1)
+                    }
+                }
+            }
+
+            Spacer()
+
+            Button(action: { notesVM.toggleFavorite(entry) }) {
+                Image(systemName: entry.isFavorite ? "star.fill" : "star")
+                    .font(.system(size: 11))
+                    .foregroundColor(entry.isFavorite ? .accentYellow : .textTertiary)
+            }
+            .buttonStyle(PlainButtonStyle())
+
+            if let date = entry.modifiedAt {
+                Text(NotesView.formatNoteDate(date))
+                    .font(.system(size: 9))
+                    .foregroundColor(.textTertiary)
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.leading, CGFloat(indent * 16))
+        .padding(.vertical, isEditing ? 6 : 8)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if isEditing {
+                notesVM.cancelEditing()
+            } else {
+                onOpen(entry)
+            }
+        }
+        .onDrag {
+            let provider = NSItemProvider(object: entry.path as NSString)
+            if let content = try? String(contentsOfFile: entry.path, encoding: .utf8) {
+                provider.registerObject(content as NSString, visibility: .all)
+            }
+            return provider
+        }
+        .contextMenu {
+            Button(action: { onOpen(entry) }) {
+                Label("Open", systemImage: "doc.text")
+            }
+            Button(action: {
+                notesVM.startEditing(entry)
+            }) {
+                Label("Rename", systemImage: "pencil")
+            }
+            Button(action: {
+                if let path = try? notesVM.duplicateNote(entry) {
+                    editorVM.openFile(path)
+                }
+            }) {
+                Label("Duplicate", systemImage: "doc.on.doc")
+            }
+            Divider()
+            Button(action: { notesVM.toggleFavorite(entry) }) {
+                Label(entry.isFavorite ? "Remove from Favorites" : "Add to Favorites", systemImage: entry.isFavorite ? "star.slash" : "star")
+            }
+            Divider()
+            Button(action: {
+                notesVM.noteToDelete = entry
+                notesVM.showDeleteConfirmation = true
+            }) {
+                Label("Delete", systemImage: "trash")
+            }
+        }
+    }
+}
+
+private struct DirectoryRowView: View {
+    let dir: NoteDirectory
+    let indent: Int
+    @ObservedObject var notesVM: NotesViewModel
+    @ObservedObject var editorVM: EditorViewModel
+    let onOpen: (NoteEntry) -> Void
+
+    @State private var isDropTarget = false
+
+    var body: some View {
+        let isExpanded = notesVM.expandedDirectories.contains(dir.path)
+        return VStack(spacing: 0) {
+            Button(action: {
+                notesVM.toggleDirectoryExpanded(dir.path)
+            }) {
+                HStack(spacing: 4) {
+                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                        .font(.system(size: 9))
+                        .foregroundColor(.textTertiary)
+                        .frame(width: 12)
+
+                    Image(systemName: "folder")
+                        .font(.system(size: 12))
+                        .foregroundColor(.textTertiary)
+                        .frame(width: 16)
+
+                    Text(dir.name)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.textPrimary)
+                        .lineLimit(1)
+
+                    Spacer()
+                }
+                .padding(.leading, CGFloat(8 + indent * 16))
+                .padding(.trailing, 10)
+                .padding(.vertical, 5)
+                .background(isDropTarget ? Color.accentBlue.opacity(0.12) : Color.clear)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(PlainButtonStyle())
+            .onDrop(of: [.text], isTargeted: $isDropTarget) { providers in
+                guard let provider = providers.first else { return false }
+                provider.loadItem(forTypeIdentifier: UTType.text.identifier, options: nil) { [notesVM] item, _ in
+                    let sourcePath: String
+                    if let str = item as? String {
+                        sourcePath = str
+                    } else if let data = item as? Data, let str = String(data: data, encoding: .utf8) {
+                        sourcePath = str
+                    } else {
+                        return
+                    }
+                    let sourceURL = URL(fileURLWithPath: sourcePath)
+                    let fileName = sourceURL.lastPathComponent
+                    let destination = URL(fileURLWithPath: dir.path).appendingPathComponent(fileName)
+                    guard sourceURL.path != destination.path else { return }
+                    if FileManager.default.fileExists(atPath: destination.path) { return }
+                    try? FileManager.default.moveItem(at: sourceURL, to: destination)
+                    DispatchQueue.main.async {
+                        notesVM.refreshNotes()
+                    }
+                }
+                return true
+            }
+
+            if isExpanded {
+                if !dir.directories.isEmpty {
+                    ForEach(dir.directories) { subDir in
+                        DirectoryRowView(dir: subDir, indent: indent + 1, notesVM: notesVM, editorVM: editorVM, onOpen: onOpen)
+                        Divider().background(Color.borderDefault)
+                    }
+                }
+                if !dir.notes.isEmpty {
+                    ForEach(dir.notes) { entry in
+                        NoteRowView(entry: entry, indent: indent + 1, notesVM: notesVM, editorVM: editorVM, onOpen: onOpen)
+                        Divider().background(Color.borderDefault)
+                    }
+                }
+            }
         }
     }
 }

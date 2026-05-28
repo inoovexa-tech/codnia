@@ -63,6 +63,7 @@ public final class NotesViewModel: ObservableObject {
     @Published public var sortOrder: NoteSortOrder = .name
     @Published public var editingNoteId: String?
     @Published public var editingNoteText: String = ""
+    @Published public var dropTargetPath: String?
 
     private let fileSystem = FileSystemService.shared
     private var workspacePath: String = ""
