@@ -1,6 +1,12 @@
 import Foundation
 import SwiftUI
 
+public enum NoteSortOrder: String, CaseIterable {
+    case name = "Name"
+    case modifiedAt = "Last Modified"
+    case createdAt = "Created"
+}
+
 public struct NoteEntry: Identifiable, Equatable {
     public let id: String
     public let name: String
@@ -11,6 +17,7 @@ public struct NoteEntry: Identifiable, Equatable {
     public var createdAt: Date?
     public var modifiedAt: Date?
     public var frontmatterTitle: String?
+    public var preview: String?
 
     public init(id: String = UUID().uuidString, name: String, path: String, isDirectory: Bool = false) {
         self.id = id
@@ -51,21 +58,23 @@ public final class NotesViewModel: ObservableObject {
     @Published public var showNewNoteSheet: Bool = false
     @Published public var showDeleteConfirmation: Bool = false
     @Published public var noteToDelete: NoteEntry?
-    @Published public var showingRenameAlert: Bool = false
-    @Published public var noteToRename: NoteEntry?
-    @Published public var renameText: String = ""
     @Published public var showTemplatePicker: Bool = false
     @Published public var expandedDirectories: Set<String> = []
+    @Published public var sortOrder: NoteSortOrder = .name
+    @Published public var editingNoteId: String?
+    @Published public var editingNoteText: String = ""
 
     private let fileSystem = FileSystemService.shared
     private var workspacePath: String = ""
     private let favoritesKey = "notes_favorites"
     private let recentsKey = "notes_recents"
     private let templatesKey = "notes_templates"
+    private let expandedDirsKey = "notes_expanded_dirs"
     private let maxRecentNotes = 10
 
     public init() {
         loadTemplates()
+        expandedDirectories = loadExpandedDirectories()
     }
 
     public func loadNotes(from path: String) {
@@ -97,6 +106,7 @@ public final class NotesViewModel: ObservableObject {
             allNotes[i].frontmatterTitle = extractFrontmatterTitle(from: allNotes[i].path)
             allNotes[i].createdAt = getFileCreationDate(path: allNotes[i].path)
             allNotes[i].modifiedAt = getFileModificationDate(path: allNotes[i].path)
+            allNotes[i].preview = extractPreview(from: allNotes[i].path)
         }
 
         let favorites = allNotes.filter { $0.isFavorite }
@@ -146,6 +156,15 @@ public final class NotesViewModel: ObservableObject {
                 let entryTags = extractTags(from: entry.path)
                 return !selectedTags.isDisjoint(with: Set(entryTags))
             }
+        }
+
+        switch sortOrder {
+        case .name:
+            result.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        case .modifiedAt:
+            result.sort { ($0.modifiedAt ?? .distantPast) > ($1.modifiedAt ?? .distantPast) }
+        case .createdAt:
+            result.sort { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
         }
 
         return result
@@ -483,6 +502,56 @@ public final class NotesViewModel: ObservableObject {
         let notesRoot = (workspacePath as NSString).appendingPathComponent(".codnia/notes")
         guard !subpath.isEmpty else { return notesRoot }
         return (notesRoot as NSString).appendingPathComponent(subpath)
+    }
+
+    public func toggleDirectoryExpanded(_ path: String) {
+        if expandedDirectories.contains(path) {
+            expandedDirectories.remove(path)
+        } else {
+            expandedDirectories.insert(path)
+        }
+        saveExpandedDirectories()
+    }
+
+    private func loadExpandedDirectories() -> Set<String> {
+        UserDefaults.standard.stringArray(forKey: expandedDirsKey).map(Set.init) ?? []
+    }
+
+    private func saveExpandedDirectories() {
+        UserDefaults.standard.set(Array(expandedDirectories), forKey: expandedDirsKey)
+    }
+
+    private func extractPreview(from path: String) -> String? {
+        guard let content = try? String(contentsOfFile: path, encoding: .utf8) else { return nil }
+        let body: String
+        if content.hasPrefix("---") {
+            if let fmEnd = content.range(of: "\n---\n") {
+                body = String(content[fmEnd.upperBound...])
+            } else {
+                body = content
+            }
+        } else {
+            body = content
+        }
+        for line in body.components(separatedBy: .newlines) {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if !trimmed.isEmpty {
+                let maxLen = 80
+                return trimmed.count > maxLen ? String(trimmed.prefix(maxLen)) + "…" : trimmed
+            }
+        }
+        return nil
+    }
+
+    public func cancelEditing() {
+        editingNoteId = nil
+        editingNoteText = ""
+    }
+
+    public func startEditing(_ entry: NoteEntry) {
+        let fileName = entry.name.replacingOccurrences(of: ".md", with: "").replacingOccurrences(of: ".markdown", with: "")
+        editingNoteId = entry.id
+        editingNoteText = fileName
     }
 }
 

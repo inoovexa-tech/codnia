@@ -43,20 +43,6 @@ struct NotesView: View {
         } message: {
             Text("Are you sure you want to delete \"\(notesVM.noteToDelete?.name ?? "")\"?")
         }
-        .alert("Rename Note", isPresented: $notesVM.showingRenameAlert) {
-            TextField("New name", text: $notesVM.renameText)
-            Button("Rename") {
-                if let entry = notesVM.noteToRename {
-                    try? notesVM.renameNote(entry, to: notesVM.renameText)
-                }
-            }
-            Button("Cancel", role: .cancel) {
-                notesVM.renameText = ""
-                notesVM.noteToRename = nil
-            }
-        } message: {
-            Text("Enter a new name for the note.")
-        }
         .alert("Error", isPresented: $showCreateError) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -255,11 +241,7 @@ struct NotesView: View {
         let isExpanded = notesVM.expandedDirectories.contains(dir.path)
         return AnyView(VStack(spacing: 0) {
             Button(action: {
-                if isExpanded {
-                    notesVM.expandedDirectories.remove(dir.path)
-                } else {
-                    notesVM.expandedDirectories.insert(dir.path)
-                }
+                notesVM.toggleDirectoryExpanded(dir.path)
             }) {
                 HStack(spacing: 4) {
                     Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
@@ -321,6 +303,7 @@ struct NotesView: View {
     private func noteRow(_ entry: NoteEntry, indent: Int = 0) -> some View {
         let fileName = entry.name.replacingOccurrences(of: ".md", with: "").replacingOccurrences(of: ".markdown", with: "")
         let displayName = entry.frontmatterTitle?.isEmpty == false ? entry.frontmatterTitle! : fileName
+        let isEditing = notesVM.editingNoteId == entry.id
 
         return HStack(spacing: 4) {
             Image(systemName: "doc.text")
@@ -328,17 +311,34 @@ struct NotesView: View {
                 .foregroundColor(.textSecondary)
                 .frame(width: 20)
 
-            VStack(alignment: .leading, spacing: 0) {
-                Text(displayName)
-                    .font(.system(size: 12))
-                    .foregroundColor(.textPrimary)
-                    .lineLimit(1)
-
-                if displayName != fileName {
-                    Text(fileName)
-                        .font(.system(size: 10))
-                        .foregroundColor(.textTertiary)
+            if isEditing {
+                TextField("", text: $notesVM.editingNoteText, onCommit: {
+                    if let entry = notesVM.entries.first(where: { $0.id == notesVM.editingNoteId }) {
+                        try? notesVM.renameNote(entry, to: notesVM.editingNoteText)
+                    }
+                    notesVM.cancelEditing()
+                })
+                .textFieldStyle(PlainTextFieldStyle())
+                .font(.system(size: 12))
+                .onExitCommand { notesVM.cancelEditing() }
+            } else {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(displayName)
+                        .font(.system(size: 12))
+                        .foregroundColor(.textPrimary)
                         .lineLimit(1)
+
+                    if let preview = entry.preview, notesVM.searchText.isEmpty {
+                        Text(preview)
+                            .font(.system(size: 10))
+                            .foregroundColor(.textTertiary)
+                            .lineLimit(1)
+                    } else if displayName != fileName {
+                        Text(fileName)
+                            .font(.system(size: 10))
+                            .foregroundColor(.textTertiary)
+                            .lineLimit(1)
+                    }
                 }
             }
 
@@ -359,10 +359,14 @@ struct NotesView: View {
         }
         .padding(.horizontal, 10)
         .padding(.leading, CGFloat(indent * 16))
-        .padding(.vertical, 6)
+        .padding(.vertical, isEditing ? 6 : 8)
         .contentShape(Rectangle())
         .onTapGesture {
-            openNote(entry)
+            if isEditing {
+                notesVM.cancelEditing()
+            } else {
+                openNote(entry)
+            }
         }
         .onDrag {
             if let content = try? String(contentsOfFile: entry.path, encoding: .utf8) {
@@ -375,9 +379,7 @@ struct NotesView: View {
                 Label("Open", systemImage: "doc.text")
             }
             Button(action: {
-                notesVM.noteToRename = entry
-                notesVM.renameText = fileName
-                notesVM.showingRenameAlert = true
+                notesVM.startEditing(entry)
             }) {
                 Label("Rename", systemImage: "pencil")
             }
@@ -404,7 +406,14 @@ struct NotesView: View {
 
     private var actionBar: some View {
         HStack(spacing: 0) {
-            Button(action: { notesVM.showNewNoteSheet = true }) {
+            Menu {
+                Button(action: { notesVM.showNewNoteSheet = true }) {
+                    Label("New Note", systemImage: "doc.text")
+                }
+                Button(action: { showNewFolderSheet = true }) {
+                    Label("New Folder", systemImage: "folder")
+                }
+            } label: {
                 HStack(spacing: 4) {
                     Image(systemName: "plus")
                     Text("New")
@@ -413,7 +422,33 @@ struct NotesView: View {
                 .foregroundColor(.textSecondary)
                 .frame(maxWidth: .infinity)
             }
-            .buttonStyle(PlainButtonStyle())
+            .menuStyle(.borderlessButton)
+
+            Rectangle()
+                .fill(Color.borderDefault)
+                .frame(width: 1, height: 20)
+
+            Menu {
+                ForEach(NoteSortOrder.allCases, id: \.rawValue) { order in
+                    Button(action: { notesVM.sortOrder = order }) {
+                        HStack {
+                            Text(order.rawValue)
+                            if notesVM.sortOrder == order {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                }
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "arrow.up.arrow.down")
+                    Text(notesVM.sortOrder.rawValue)
+                }
+                .font(.system(size: 10))
+                .foregroundColor(.textSecondary)
+                .frame(maxWidth: .infinity)
+            }
+            .menuStyle(.borderlessButton)
 
             Rectangle()
                 .fill(Color.borderDefault)
