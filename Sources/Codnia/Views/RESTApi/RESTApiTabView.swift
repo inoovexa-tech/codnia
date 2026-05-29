@@ -21,6 +21,7 @@ struct RESTApiTabView: View {
     @State private var currentTask: Task<Void, Never>?
     @State private var searchResponseText: String = ""
     @State private var showResponseSearch: Bool = false
+    @State private var formatErrorMessage: String?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -58,6 +59,7 @@ struct RESTApiTabView: View {
             currentEndpointId = saved.currentEndpointId
             showSaveSheet = saved.showSaveSheet
             selectedCollectionId = saved.selectedCollectionId
+            formatErrorMessage = saved.formatErrorMessage
         } else if let requestId = restApiRequestId {
             loadEndpoint(requestId)
         }
@@ -75,7 +77,8 @@ struct RESTApiTabView: View {
             isEditingName: isEditingName,
             currentEndpointId: currentEndpointId,
             showSaveSheet: showSaveSheet,
-            selectedCollectionId: selectedCollectionId
+            selectedCollectionId: selectedCollectionId,
+            formatErrorMessage: formatErrorMessage
         )
     }
 
@@ -471,22 +474,27 @@ struct RESTApiTabView: View {
                             .font(.system(size: 10))
                     }
                     .foregroundColor(.accentBlue)
-                    .help("Pretty-print JSON")
+                    .help("Pretty-print JSON (Cmd+Shift+F)")
+                    if let err = formatErrorMessage {
+                        Text(err)
+                            .font(.system(size: 10))
+                            .foregroundColor(.accentRed)
+                    }
                     Spacer()
                 }
                 .padding(.horizontal, 8)
             }
 
-            if request.body.type == .json || request.body.type == .raw {
+            if request.body.type == .json {
+                JSONBodyEditor(
+                    text: $request.body.jsonContent
+                )
+                .cornerRadius(4)
+                .padding(.horizontal, 8)
+            } else if request.body.type == .raw {
                 TextEditor(text: Binding(
-                    get: { request.body.type == .json ? request.body.jsonContent : request.body.rawContent },
-                    set: { newValue in
-                        if request.body.type == .json {
-                            request.body.jsonContent = newValue
-                        } else {
-                            request.body.rawContent = newValue
-                        }
-                    }
+                    get: { request.body.rawContent },
+                    set: { request.body.rawContent = $0 }
                 ))
                 .font(.system(size: 12, design: .monospaced))
                 .foregroundColor(.textPrimary)
@@ -501,12 +509,31 @@ struct RESTApiTabView: View {
     }
 
     private func formatJSONBody() {
-        guard let data = request.body.jsonContent.data(using: .utf8),
-              let json = try? JSONSerialization.jsonObject(with: data),
-              let prettyData = try? JSONSerialization.data(withJSONObject: json, options: [.prettyPrinted, .sortedKeys]),
-              let prettyString = String(data: prettyData, encoding: .utf8)
-        else { return }
-        request.body.jsonContent = prettyString
+        formatErrorMessage = nil
+        guard let data = request.body.jsonContent.data(using: .utf8) else {
+            formatErrorMessage = "Invalid UTF-8 encoding"
+            clearFormatError()
+            return
+        }
+        do {
+            let json = try JSONSerialization.jsonObject(with: data)
+            let prettyData = try JSONSerialization.data(withJSONObject: json, options: [.prettyPrinted, .sortedKeys])
+            guard let prettyString = String(data: prettyData, encoding: .utf8) else {
+                formatErrorMessage = "Failed to encode formatted JSON"
+                clearFormatError()
+                return
+            }
+            request.body.jsonContent = prettyString
+        } catch {
+            formatErrorMessage = "Invalid JSON: \(error.localizedDescription)"
+            clearFormatError()
+        }
+    }
+
+    private func clearFormatError() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+            self.formatErrorMessage = nil
+        }
     }
 
     private var authEditor: some View {

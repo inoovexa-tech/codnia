@@ -124,4 +124,5 @@ struct RESTApiTabState {
     var currentEndpointId: String? = nil
     var showSaveSheet: Bool = false
     var selectedCollectionId: String? = nil
+    var formatErrorMessage: String? = nil
 }
