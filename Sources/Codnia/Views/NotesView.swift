@@ -14,6 +14,7 @@ struct NotesView: View {
     @State private var newFolderName: String = ""
     @State private var showCreateError: Bool = false
     @State private var createErrorMessage: String = ""
+    @State private var showTagPicker = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -74,35 +75,97 @@ struct NotesView: View {
     }
 
     private var tagFilterBar: some View {
-        Group {
-            if !notesVM.allTags.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 4) {
-                        ForEach(notesVM.allTags, id: \.self) { tag in
-                            let isSelected = notesVM.selectedTags.contains(tag)
-                            Button(action: {
-                                if isSelected {
-                                    notesVM.selectedTags.remove(tag)
-                                } else {
-                                    notesVM.selectedTags.insert(tag)
+        let tags = notesVM.allTags
+        return Group {
+            if !tags.isEmpty {
+                if tags.count <= 10 {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 4) {
+                            ForEach(tags, id: \.self) { tag in
+                                let isSelected = notesVM.selectedTags.contains(tag)
+                                Button(action: {
+                                    if isSelected {
+                                        notesVM.selectedTags.remove(tag)
+                                    } else {
+                                        notesVM.selectedTags.insert(tag)
+                                    }
+                                }) {
+                                    HStack(spacing: 3) {
+                                        Circle()
+                                            .fill(isSelected ? Color.accentBlue : Color.clear)
+                                            .frame(width: 6, height: 6)
+                                        Text(tag)
+                                            .font(.system(size: 11))
+                                    }
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 3)
+                                    .background(isSelected ? Color.accentBlue.opacity(0.15) : Color.bgTertiary)
+                                    .foregroundColor(isSelected ? .accentBlue : .textSecondary)
+                                    .cornerRadius(4)
                                 }
-                            }) {
-                                HStack(spacing: 3) {
-                                    Circle()
-                                        .fill(isSelected ? Color.accentBlue : Color.clear)
-                                        .frame(width: 6, height: 6)
-                                    Text(tag)
-                                        .font(.system(size: 11))
-                                }
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 3)
-                                .background(isSelected ? Color.accentBlue.opacity(0.15) : Color.bgTertiary)
-                                .foregroundColor(isSelected ? .accentBlue : .textSecondary)
-                                .cornerRadius(4)
+                                .buttonStyle(PlainButtonStyle())
                             }
-                            .buttonStyle(PlainButtonStyle())
+                            if !notesVM.selectedTags.isEmpty {
+                                Button(action: { notesVM.selectedTags.removeAll() }) {
+                                    Text("Clear")
+                                        .font(.system(size: 10))
+                                        .foregroundColor(.textTertiary)
+                                        .padding(.horizontal, 6)
+                                        .padding(.vertical, 3)
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                            }
                         }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 5)
+                    }
+                    .background(Color.bgSecondary)
+                    .overlay(Rectangle().frame(height: 1).foregroundColor(.borderDefault), alignment: .bottom)
+                } else {
+                    HStack(spacing: 4) {
+                        Button(action: { showTagPicker = true }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "tag.fill")
+                                    .font(.system(size: 10))
+                                Text("\(notesVM.selectedTags.count)/\(tags.count) tags")
+                                    .font(.system(size: 11))
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.bgTertiary)
+                            .foregroundColor(.textSecondary)
+                            .cornerRadius(4)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .popover(isPresented: $showTagPicker, arrowEdge: .bottom) {
+                            tagPickerContent(tags: tags)
+                        }
+
                         if !notesVM.selectedTags.isEmpty {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 4) {
+                                    ForEach(Array(notesVM.selectedTags).sorted(), id: \.self) { tag in
+                                        HStack(spacing: 3) {
+                                            Circle()
+                                                .fill(Color.accentBlue)
+                                                .frame(width: 6, height: 6)
+                                            Text(tag).font(.system(size: 11))
+                                            Button(action: { notesVM.selectedTags.remove(tag) }) {
+                                                Image(systemName: "xmark").font(.system(size: 8))
+                                            }
+                                            .buttonStyle(PlainButtonStyle())
+                                            .foregroundColor(.textTertiary)
+                                        }
+                                        .padding(.horizontal, 6)
+                                        .padding(.vertical, 3)
+                                        .background(Color.accentBlue.opacity(0.15))
+                                        .foregroundColor(.accentBlue)
+                                        .cornerRadius(4)
+                                    }
+                                }
+                                .padding(.horizontal, 4)
+                            }
+
                             Button(action: { notesVM.selectedTags.removeAll() }) {
                                 Text("Clear")
                                     .font(.system(size: 10))
@@ -115,11 +178,47 @@ struct NotesView: View {
                     }
                     .padding(.horizontal, 8)
                     .padding(.vertical, 5)
+                    .background(Color.bgSecondary)
+                    .overlay(Rectangle().frame(height: 1).foregroundColor(.borderDefault), alignment: .bottom)
                 }
-                .background(Color.bgSecondary)
-                .overlay(Rectangle().frame(height: 1).foregroundColor(.borderDefault), alignment: .bottom)
             }
         }
+    }
+
+    private func tagPickerContent(tags: [String]) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 2) {
+                ForEach(tags, id: \.self) { tag in
+                    let isSelected = notesVM.selectedTags.contains(tag)
+                    Button(action: {
+                        if isSelected {
+                            notesVM.selectedTags.remove(tag)
+                        } else {
+                            notesVM.selectedTags.insert(tag)
+                        }
+                    }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                                .font(.system(size: 12))
+                                .foregroundColor(isSelected ? .accentBlue : .textTertiary)
+                            Circle()
+                                .fill(isSelected ? Color.accentBlue : Color.clear)
+                                .frame(width: 6, height: 6)
+                            Text(tag)
+                                .font(.system(size: 11))
+                                .foregroundColor(.textPrimary)
+                            Spacer()
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+            }
+            .padding(4)
+        }
+        .frame(width: 200, height: min(CGFloat(tags.count) * 28 + 8, 300))
     }
 
     private var notesListContent: some View {

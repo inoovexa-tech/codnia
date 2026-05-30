@@ -24,6 +24,7 @@ struct TasksView: View {
     @State private var deletedTask: TaskItem? = nil
     @State private var showUndoToast = false
     @State private var sortOption: SortOption = .manual
+    @State private var showTagPicker = false
 
     private enum SortOption: String, CaseIterable {
         case manual = "Manual"
@@ -173,48 +174,107 @@ struct TasksView: View {
         let tags = tasksVM.allTags
         return Group {
             if !tags.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 4) {
-                        ForEach(tags, id: \.self) { tag in
-                            let isSelected = tasksVM.selectedTags.contains(tag)
-                            Button(action: {
-                                if isSelected {
-                                    tasksVM.selectedTags.remove(tag)
-                                } else {
-                                    tasksVM.selectedTags.insert(tag)
-                                }
-                            }) {
-                                HStack(spacing: 3) {
-                                    Circle()
-                                        .fill(colorForTag(tag))
-                                        .frame(width: 6, height: 6)
-                                    Text(tag)
-                                        .font(.system(size: 11))
-                                }
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 3)
-                                .background(isSelected ? colorForTag(tag).opacity(0.15) : Color.bgTertiary)
-                                .foregroundColor(isSelected ? colorForTag(tag) : .textSecondary)
-                                .cornerRadius(4)
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                            .contextMenu {
+                if tags.count <= 10 {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 4) {
+                            ForEach(tags, id: \.self) { tag in
+                                let isSelected = tasksVM.selectedTags.contains(tag)
                                 Button(action: {
-                                    renameTagTarget = tag
-                                    renameTagTask = nil
-                                    renameTagText = tag
-                                    showingRenameTag = true
+                                    if isSelected {
+                                        tasksVM.selectedTags.remove(tag)
+                                    } else {
+                                        tasksVM.selectedTags.insert(tag)
+                                    }
                                 }) {
-                                    Label("Rename", systemImage: "pencil")
+                                    HStack(spacing: 3) {
+                                        Circle()
+                                            .fill(colorForTag(tag))
+                                            .frame(width: 6, height: 6)
+                                        Text(tag)
+                                            .font(.system(size: 11))
+                                    }
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 3)
+                                    .background(isSelected ? colorForTag(tag).opacity(0.15) : Color.bgTertiary)
+                                    .foregroundColor(isSelected ? colorForTag(tag) : .textSecondary)
+                                    .cornerRadius(4)
                                 }
-                                Button(role: .destructive, action: {
-                                    removeTagFromAll(tag)
-                                }) {
-                                    Label("Remove from all tasks", systemImage: "xmark")
+                                .buttonStyle(PlainButtonStyle())
+                                .contextMenu {
+                                    Button(action: {
+                                        renameTagTarget = tag
+                                        renameTagTask = nil
+                                        renameTagText = tag
+                                        showingRenameTag = true
+                                    }) {
+                                        Label("Rename", systemImage: "pencil")
+                                    }
+                                    Button(role: .destructive, action: {
+                                        removeTagFromAll(tag)
+                                    }) {
+                                        Label("Remove from all tasks", systemImage: "xmark")
+                                    }
                                 }
+                            }
+                            if !tasksVM.selectedTags.isEmpty && !tags.isEmpty {
+                                Button(action: { tasksVM.selectedTags.removeAll() }) {
+                                    Text("Clear")
+                                        .font(.system(size: 10))
+                                        .foregroundColor(.textTertiary)
+                                        .padding(.horizontal, 6)
+                                        .padding(.vertical, 3)
+                                }
+                                .buttonStyle(PlainButtonStyle())
                             }
                         }
-                        if !tasksVM.selectedTags.isEmpty && !tags.isEmpty {
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 5)
+                    }
+                    .background(Color.bgSecondary)
+                    .overlay(Rectangle().frame(height: 1).foregroundColor(.borderDefault), alignment: .bottom)
+                } else {
+                    HStack(spacing: 4) {
+                        Button(action: { showTagPicker = true }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "tag.fill")
+                                    .font(.system(size: 10))
+                                Text("\(tasksVM.selectedTags.count)/\(tags.count) tags")
+                                    .font(.system(size: 11))
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.bgTertiary)
+                            .foregroundColor(.textSecondary)
+                            .cornerRadius(4)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .popover(isPresented: $showTagPicker, arrowEdge: .bottom) {
+                            tagPickerContent
+                        }
+
+                        if !tasksVM.selectedTags.isEmpty {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 4) {
+                                    ForEach(Array(tasksVM.selectedTags).sorted(), id: \.self) { tag in
+                                        HStack(spacing: 3) {
+                                            Circle().fill(colorForTag(tag)).frame(width: 6, height: 6)
+                                            Text(tag).font(.system(size: 11))
+                                            Button(action: { tasksVM.selectedTags.remove(tag) }) {
+                                                Image(systemName: "xmark").font(.system(size: 8))
+                                            }
+                                            .buttonStyle(PlainButtonStyle())
+                                            .foregroundColor(.textTertiary)
+                                        }
+                                        .padding(.horizontal, 6)
+                                        .padding(.vertical, 3)
+                                        .background(colorForTag(tag).opacity(0.15))
+                                        .foregroundColor(colorForTag(tag))
+                                        .cornerRadius(4)
+                                    }
+                                }
+                                .padding(.horizontal, 4)
+                            }
+
                             Button(action: { tasksVM.selectedTags.removeAll() }) {
                                 Text("Clear")
                                     .font(.system(size: 10))
@@ -227,11 +287,48 @@ struct TasksView: View {
                     }
                     .padding(.horizontal, 8)
                     .padding(.vertical, 5)
+                    .background(Color.bgSecondary)
+                    .overlay(Rectangle().frame(height: 1).foregroundColor(.borderDefault), alignment: .bottom)
                 }
-                .background(Color.bgSecondary)
-                .overlay(Rectangle().frame(height: 1).foregroundColor(.borderDefault), alignment: .bottom)
             }
         }
+    }
+
+    private var tagPickerContent: some View {
+        let tags = tasksVM.allTags
+        return ScrollView {
+            VStack(alignment: .leading, spacing: 2) {
+                ForEach(tags, id: \.self) { tag in
+                    let isSelected = tasksVM.selectedTags.contains(tag)
+                    Button(action: {
+                        if isSelected {
+                            tasksVM.selectedTags.remove(tag)
+                        } else {
+                            tasksVM.selectedTags.insert(tag)
+                        }
+                    }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                                .font(.system(size: 12))
+                                .foregroundColor(isSelected ? colorForTag(tag) : .textTertiary)
+                            Circle()
+                                .fill(colorForTag(tag))
+                                .frame(width: 6, height: 6)
+                            Text(tag)
+                                .font(.system(size: 11))
+                                .foregroundColor(.textPrimary)
+                            Spacer()
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+            }
+            .padding(4)
+        }
+        .frame(width: 200, height: min(CGFloat(tags.count) * 28 + 8, 300))
     }
 
     // MARK: - Progress Bar
