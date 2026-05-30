@@ -191,7 +191,7 @@ struct ProjectRowExpanded: View {
                 .font(.system(size: 11, weight: .semibold))
                 .frame(width: 28, height: 28)
                 .background(isActive ? Color.accentBlue : Color.bgHover)
-                .foregroundColor(.white)
+                .foregroundColor(.textPrimary)
                 .cornerRadius(6)
         }
     }
@@ -213,7 +213,7 @@ struct ProjectRowExpanded: View {
                             HStack(spacing: 6) {
                                 Text(project?.name ?? "")
                                     .font(.system(size: 12, weight: .medium))
-                                    .foregroundColor(.white)
+                                    .foregroundColor(.textPrimary)
                                     .lineLimit(1)
 
                                 Spacer()

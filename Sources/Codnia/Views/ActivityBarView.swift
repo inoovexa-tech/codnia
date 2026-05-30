@@ -59,21 +59,6 @@ struct ActivityBarView: View {
                             .font(.system(size: 13))
                             .foregroundColor(tab == item.tab ? .textPrimary : .textTertiary)
                             .frame(width: 36, height: 36)
-                            .overlay(alignment: .topTrailing) {
-                                if item.id == "tasks" {
-                                    let count = tasksVM.tasks.filter { !$0.isCompleted }.count
-                                    if count > 0 {
-                                        Text("\(count)")
-                                            .font(.system(size: 8, weight: .bold))
-                                            .foregroundColor(.white)
-                                            .padding(.horizontal, 3)
-                                            .padding(.vertical, 1)
-                                            .background(Color.accentRed)
-                                            .clipShape(Capsule())
-                                            .offset(x: 4, y: -4)
-                                    }
-                                }
-                            }
                     }
                     .buttonStyle(PlainButtonStyle())
                     .help(item.title)

@@ -107,25 +107,30 @@ struct TabBarView: View {
                     .frame(width: 1)
                     .foregroundColor(.borderDefault)
 
-                Menu {
-                    menuItem("New File", shortcutKey: "newFile") { editorVM.newFile() }
-                    menuItem("New Terminal", shortcutKey: "newTerminal") { editorVM.createTerminalTab(type: .terminal) }
-                    Divider()
-                    if isDatabaseEnabled {
-                        menuItem("New SQL Query", shortcutKey: "newSQLQuery") { onNewSQLQuery() }
-                        Divider()
-                    }
-                    menuItem("OpenCode", shortcutKey: "openOpenCode") { editorVM.createTerminalTab(type: .opencode) }
-                    menuItem("Claude Code", shortcutKey: "openClaude") { editorVM.createTerminalTab(type: .claude) }
-                    menuItem("Codex", shortcutKey: "openCodex") { editorVM.createTerminalTab(type: .codex) }
-                } label: {
+                Button(action: { showTabDropdown = true }) {
                     Image(systemName: "plus")
                         .font(.system(size: 13))
+                        .foregroundColor(.textSecondary)
                         .frame(width: 28, height: 36)
                 }
-                .menuStyle(BorderlessButtonMenuStyle())
                 .buttonStyle(PlainButtonStyle())
-                .foregroundColor(.textSecondary)
+                .popover(isPresented: $showTabDropdown, arrowEdge: .top) {
+                    VStack(spacing: 0) {
+                        popoverItem("New File", shortcutKey: "newFile") { editorVM.newFile() }
+                        popoverItem("New Terminal", shortcutKey: "newTerminal") { editorVM.createTerminalTab(type: .terminal) }
+                        Color.borderDefault.frame(height: 1).padding(.horizontal, 8)
+                        if isDatabaseEnabled {
+                            popoverItem("New SQL Query", shortcutKey: "newSQLQuery") { onNewSQLQuery() }
+                            Color.borderDefault.frame(height: 1).padding(.horizontal, 8)
+                        }
+                        popoverItem("OpenCode", shortcutKey: "openOpenCode") { editorVM.createTerminalTab(type: .opencode) }
+                        popoverItem("Claude Code", shortcutKey: "openClaude") { editorVM.createTerminalTab(type: .claude) }
+                        popoverItem("Codex", shortcutKey: "openCodex") { editorVM.createTerminalTab(type: .codex) }
+                    }
+                    .background(Color.bgPrimary)
+                    .cornerRadius(8)
+                    .frame(width: 200)
+                }
                 .trackInteractiveFrame()
 
                 GeometryReader { geometry in
@@ -277,11 +282,15 @@ struct TabBarView: View {
     }
 
     @ViewBuilder
-    private func menuItem(_ label: String, shortcutKey: String, handler: @escaping () -> Void) -> some View {
-        Button(action: handler) {
+    private func popoverItem(_ label: String, shortcutKey: String, handler: @escaping () -> Void) -> some View {
+        Button(action: {
+            showTabDropdown = false
+            handler()
+        }) {
             HStack {
                 Text(label)
                     .font(.system(size: 13))
+                    .foregroundColor(.textPrimary)
                 Spacer()
                 if let shortcut = shortcutsService.shortcuts[shortcutKey], !shortcut.isEmpty {
                     Text(shortcut)
@@ -289,7 +298,10 @@ struct TabBarView: View {
                         .foregroundColor(.textSecondary)
                 }
             }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
         }
+        .buttonStyle(PlainButtonStyle())
     }
 }
 

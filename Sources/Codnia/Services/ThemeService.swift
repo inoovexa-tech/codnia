@@ -42,20 +42,20 @@ struct ThemeColors: Equatable {
         self.borderDefault = surface
         self.borderLight = Color(hex: blend(p.bg, p.surface, weight: isDark ? 0.5 : 0.4))
         self.textPrimary = fg
-        self.textSecondary = fg.opacity(0.55)
-        self.textTertiary = fg.opacity(0.35)
+        self.textSecondary = fg.opacity(isDark ? 0.55 : 0.75)
+        self.textTertiary = fg.opacity(isDark ? 0.35 : 0.55)
         self.accent = accent
         self.selectionBg = accent.opacity(0.25)
         self.lineHighlight = accent.opacity(0.05)
         self.syntaxKeyword = syntax
         self.syntaxString = p.syntax2.flatMap { Color(hex: $0) } ?? Color(hex: blend(p.syntax, p.accent, weight: isDark ? 0.6 : 0.5))
-        self.syntaxComment = p.comment.flatMap { Color(hex: $0) } ?? fg.opacity(0.4)
+        self.syntaxComment = p.comment.flatMap { Color(hex: $0) } ?? fg.opacity(isDark ? 0.4 : 0.55)
         self.syntaxNumber = p.syntax3.flatMap { Color(hex: $0) } ?? accent
         self.syntaxType = p.syntax3.flatMap { Color(hex: $0) } ?? Color(hex: blend(p.syntax, p.accent, weight: 0.5))
         self.syntaxFunction = p.syntax2.flatMap { Color(hex: $0) } ?? syntax
         self.syntaxProperty = p.syntax2.flatMap { Color(hex: $0) } ?? Color(hex: blend(p.syntax, p.accent, weight: isDark ? 0.3 : 0.25))
         self.syntaxConstant = accent
-        self.syntaxOperator = fg.opacity(0.7)
+        self.syntaxOperator = fg.opacity(isDark ? 0.7 : 0.85)
     }
 
     static func == (lhs: ThemeColors, rhs: ThemeColors) -> Bool {
