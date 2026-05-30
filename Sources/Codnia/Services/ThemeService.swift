@@ -50,10 +50,10 @@ struct ThemeColors: Equatable {
         self.syntaxKeyword = syntax
         self.syntaxString = p.syntax2.flatMap { Color(hex: $0) } ?? Color(hex: blend(p.syntax, p.accent, weight: isDark ? 0.6 : 0.5))
         self.syntaxComment = p.comment.flatMap { Color(hex: $0) } ?? fg.opacity(isDark ? 0.4 : 0.55)
-        self.syntaxNumber = p.syntax3.flatMap { Color(hex: $0) } ?? accent
+        self.syntaxNumber = p.syntax5.flatMap { Color(hex: $0) } ?? p.syntax3.flatMap { Color(hex: $0) } ?? accent
         self.syntaxType = p.syntax3.flatMap { Color(hex: $0) } ?? Color(hex: blend(p.syntax, p.accent, weight: 0.5))
-        self.syntaxFunction = p.syntax2.flatMap { Color(hex: $0) } ?? syntax
-        self.syntaxProperty = p.syntax2.flatMap { Color(hex: $0) } ?? Color(hex: blend(p.syntax, p.accent, weight: isDark ? 0.3 : 0.25))
+        self.syntaxFunction = p.syntax4.flatMap { Color(hex: $0) } ?? p.syntax2.flatMap { Color(hex: $0) } ?? syntax
+        self.syntaxProperty = p.syntax6.flatMap { Color(hex: $0) } ?? p.syntax2.flatMap { Color(hex: $0) } ?? Color(hex: blend(p.syntax, p.accent, weight: isDark ? 0.3 : 0.25))
         self.syntaxConstant = accent
         self.syntaxOperator = fg.opacity(isDark ? 0.7 : 0.85)
     }

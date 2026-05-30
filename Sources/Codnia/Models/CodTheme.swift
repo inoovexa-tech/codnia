@@ -9,6 +9,9 @@ struct CodThemePalette: Codable, Equatable {
     var syntax2: String?
     var syntax3: String?
     var comment: String?
+    var syntax4: String?
+    var syntax5: String?
+    var syntax6: String?
 }
 
 struct CodTheme: Codable, Identifiable, Equatable {
@@ -22,11 +25,13 @@ extension CodTheme {
     static let builtin: [CodTheme] = [
         CodTheme(name: "Codnia Dark", appearance: "dark", palette: CodThemePalette(
             bg: "#000000", fg: "#d4d4d4", accent: "#569cd6", surface: "#0e0e0e", syntax: "#569cd6",
-            syntax2: "#ce9178", syntax3: "#4ec9b0", comment: "#6a9955"
+            syntax2: "#ce9178", syntax3: "#4ec9b0", comment: "#6a9955",
+            syntax4: "#dcdcaa", syntax5: "#b5cea8", syntax6: "#9cdcfe"
         )),
         CodTheme(name: "Dark+", appearance: "dark", palette: CodThemePalette(
             bg: "#1e1e1e", fg: "#d4d4d4", accent: "#569cd6", surface: "#252526", syntax: "#569cd6",
-            syntax2: "#ce9178", syntax3: "#4ec9b0", comment: "#6a9955"
+            syntax2: "#ce9178", syntax3: "#4ec9b0", comment: "#6a9955",
+            syntax4: "#dcdcaa", syntax5: "#b5cea8", syntax6: "#9cdcfe"
         )),
         CodTheme(name: "Monokai", appearance: "dark", palette: CodThemePalette(
             bg: "#272822", fg: "#f8f8f2", accent: "#a6e22e", surface: "#2c2d2a", syntax: "#f92672",
