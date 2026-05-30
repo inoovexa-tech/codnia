@@ -153,14 +153,32 @@ struct TasksView: View {
                         .cornerRadius(4)
                 }
                 .buttonStyle(PlainButtonStyle())
-                Picker("Sort", selection: $sortOption) {
-                    ForEach(SortOption.allCases, id: \.self) { opt in
-                        Text(opt.rawValue).tag(opt)
+                Menu {
+                    ForEach(SortOption.allCases, id: \.rawValue) { opt in
+                        Button(action: { sortOption = opt }) {
+                            HStack {
+                                Text(opt.rawValue)
+                                if sortOption == opt {
+                                    Image(systemName: "checkmark")
+                                }
+                            }
+                        }
                     }
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrow.up.arrow.down")
+                            .font(.system(size: 10))
+                        Text(sortOption.rawValue)
+                            .font(.system(size: 11, weight: .medium))
+                    }
+                    .foregroundColor(.textSecondary)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Color.bgTertiary)
+                    .cornerRadius(4)
                 }
-                .pickerStyle(.menu)
-                .font(.system(size: 10))
-                .frame(maxWidth: 60)
+                .menuStyle(.borderlessButton)
+                .fixedSize()
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 7)
