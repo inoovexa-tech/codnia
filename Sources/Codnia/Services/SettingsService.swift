@@ -8,7 +8,6 @@ public final class SettingsService: ObservableObject {
     @Published public var defaultTabOnProjectOpen: String = "terminal"
     @Published public var editorTheme: String = "dark-pure"
     @Published public var autoSave: Bool = false
-    @Published public var showLineNumbers: Bool = true
     @Published public var tabSize: Int = 4
     @Published public var wordWrap: Bool = true
     @Published public var activityBarWidth: CGFloat = 320
@@ -44,7 +43,6 @@ public final class SettingsService: ObservableObject {
         defaultTabOnProjectOpen = defaults.string(forKey: prefix + "defaultTabOnProjectOpen") ?? "terminal"
         editorTheme = defaults.string(forKey: prefix + "editorTheme") ?? "Codnia Dark"
         autoSave = defaults.bool(forKey: prefix + "autoSave")
-        showLineNumbers = defaults.object(forKey: prefix + "showLineNumbers") as? Bool ?? true
         tabSize = defaults.integer(forKey: prefix + "tabSize")
         if tabSize == 0 { tabSize = 4 }
         wordWrap = defaults.bool(forKey: prefix + "wordWrap")
@@ -77,7 +75,6 @@ public final class SettingsService: ObservableObject {
             $defaultTabOnProjectOpen.map { _ in () }.eraseToAnyPublisher(),
             $editorTheme.map { _ in () }.eraseToAnyPublisher(),
             $autoSave.map { _ in () }.eraseToAnyPublisher(),
-            $showLineNumbers.map { _ in () }.eraseToAnyPublisher(),
             $tabSize.map { _ in () }.eraseToAnyPublisher(),
             $wordWrap.map { _ in () }.eraseToAnyPublisher(),
         ])
@@ -112,7 +109,6 @@ public final class SettingsService: ObservableObject {
         defaults.set(defaultTabOnProjectOpen, forKey: prefix + "defaultTabOnProjectOpen")
         defaults.set(editorTheme, forKey: prefix + "editorTheme")
         defaults.set(autoSave, forKey: prefix + "autoSave")
-        defaults.set(showLineNumbers, forKey: prefix + "showLineNumbers")
         defaults.set(tabSize, forKey: prefix + "tabSize")
         defaults.set(wordWrap, forKey: prefix + "wordWrap")
         defaults.set(Double(activityBarWidth), forKey: prefix + "activityBarWidth")

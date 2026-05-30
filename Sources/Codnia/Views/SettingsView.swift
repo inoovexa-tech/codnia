@@ -178,8 +178,6 @@ struct EditorSettingsSection: View {
             SettingsSectionHeader("Behavior")
             SettingsToggleRow(label: "Word Wrap", description: "Wrap lines at viewport width", isOn: $settings.wordWrap)
                 .onChange(of: settings.wordWrap) { _ in settings.save() }
-            SettingsToggleRow(label: "Line Numbers", description: "Show line numbers in gutter", isOn: $settings.showLineNumbers)
-                .onChange(of: settings.showLineNumbers) { _ in settings.save() }
 
             SettingsRow(label: "Tab Size", description: "Number of spaces per tab") {
                 Picker("", selection: $settings.tabSize) {

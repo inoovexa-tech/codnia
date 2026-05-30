@@ -15,7 +15,6 @@ struct CodeEditorView: View {
             EditorNSTextView(
                 text: $content,
                 fontSize: settings.fontSize,
-                showLineNumbers: settings.showLineNumbers,
                 language: language,
                 onChange: onChange,
                 searchResults: searchResults,
@@ -32,7 +31,6 @@ struct CodeEditorView: View {
 struct EditorNSTextView: NSViewRepresentable {
     @Binding var text: String
     let fontSize: Double
-    let showLineNumbers: Bool
     let language: String
     let onChange: () -> Void
     var searchResults: [NSRange] = []
@@ -87,14 +85,6 @@ struct EditorNSTextView: NSViewRepresentable {
         context.coordinator.updateHighlighter(language: language)
         context.coordinator.applyHighlighting(textView)
 
-        if showLineNumbers {
-            let rulerView = LineNumberRulerView(textView: textView, scrollView: scrollView)
-            scrollView.verticalRulerView = rulerView
-            scrollView.hasVerticalRuler = true
-            scrollView.rulersVisible = true
-            context.coordinator.rulerView = rulerView
-        }
-
         context.coordinator.configureScrollObserver(scrollView: scrollView)
         if editorVM.activeTextView !== textView { editorVM.activeTextView = textView }
         restoreSavedState(textView: textView, scrollView: scrollView)
@@ -129,19 +119,6 @@ struct EditorNSTextView: NSViewRepresentable {
             context.coordinator.applyHighlighting(textView)
         }
         context.coordinator.highlightSearchResults(textView, results: searchResults, currentIndex: currentSearchIndex)
-
-        if showLineNumbers && nsView.verticalRulerView == nil {
-            let rulerView = LineNumberRulerView(textView: textView, scrollView: nsView)
-            nsView.verticalRulerView = rulerView
-            nsView.hasVerticalRuler = true
-            nsView.rulersVisible = true
-            context.coordinator.rulerView = rulerView
-        } else if !showLineNumbers && nsView.verticalRulerView != nil {
-            nsView.verticalRulerView = nil
-            nsView.hasVerticalRuler = false
-            nsView.rulersVisible = false
-            context.coordinator.rulerView = nil
-        }
     }
 
     func makeCoordinator() -> Coordinator {
@@ -167,7 +144,6 @@ struct EditorNSTextView: NSViewRepresentable {
         let editorVM: EditorViewModel
         var highlighter: SyntaxHighlighter?
         var currentLanguage: String = ""
-        var rulerView: LineNumberRulerView?
         private var isHighlighting = false
         private var scrollObserver: NSObjectProtocol?
         private var searchHighlightColor = NSColor(red: 255/255, green: 213/255, blue: 0/255, alpha: 0.3)
@@ -249,7 +225,6 @@ extension EditorNSTextView.Coordinator: NSTextViewDelegate {
         guard let textView = notification.object as? NSTextView else { return }
         text = textView.string
         applyHighlighting(textView)
-        rulerView?.needsDisplay = true
         onChange()
     }
 
@@ -273,85 +248,4 @@ extension EditorNSTextView.Coordinator: NSTextViewDelegate {
     }
 }
 
-class LineNumberRulerView: NSRulerView {
-    weak var targetTextView: NSTextView?
-    private let gutterWidth: CGFloat = 48
-    private let leftPadding: CGFloat = 8
-    private let rightPadding: CGFloat = 6
 
-    init(textView: NSTextView, scrollView: NSScrollView) {
-        self.targetTextView = textView
-        super.init(scrollView: scrollView, orientation: .verticalRuler)
-        self.clientView = textView
-        self.ruleThickness = gutterWidth
-        self.reservedThicknessForMarkers = 0
-
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(textViewFrameChanged),
-            name: NSView.frameDidChangeNotification,
-            object: textView
-        )
-    }
-
-    required init(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-
-    deinit {
-        NotificationCenter.default.removeObserver(self)
-    }
-
-    @objc private func textViewFrameChanged(_ notification: Notification) {
-        needsDisplay = true
-    }
-
-    override func drawHashMarksAndLabels(in rect: NSRect) {
-        guard let textView = targetTextView,
-              let layoutManager = textView.layoutManager,
-              let textContainer = textView.textContainer else { return }
-
-        let visibleRect = textView.visibleRect
-        let string = textView.string as NSString
-        guard string.length > 0 else { return }
-
-        var lineStart = 0
-        var lineEnd = 0
-        var contentsEnd = 0
-        var lineIndex = 1
-
-        string.getLineStart(&lineStart, end: &lineEnd, contentsEnd: &contentsEnd, for: NSRange(location: 0, length: 0))
-
-        while lineStart < string.length {
-            let lineRangeForGlyph = NSRange(location: lineStart, length: lineEnd - lineStart)
-            let glyphRangeForLine = layoutManager.glyphRange(forCharacterRange: lineRangeForGlyph, actualCharacterRange: nil)
-
-            var lineRect = layoutManager.boundingRect(forGlyphRange: glyphRangeForLine, in: textContainer)
-            lineRect.origin.y += textView.textContainerOrigin.y
-
-            if lineRect.maxY >= visibleRect.minY && lineRect.minY <= visibleRect.maxY {
-                let font = textView.font ?? NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
-                let textFontAttributes: [NSAttributedString.Key: Any] = [
-                    .font: font,
-                    .foregroundColor: NSColor.tertiaryLabelColor
-                ]
-
-                let lineNumber = "\(lineIndex)"
-                let textSize = lineNumber.size(withAttributes: textFontAttributes)
-                let drawX = gutterWidth - rightPadding - textSize.width
-                let drawY = lineRect.minY + (lineRect.height - textSize.height) / 2
-
-                let drawRect = NSRect(x: drawX, y: drawY, width: textSize.width, height: textSize.height)
-                lineNumber.draw(in: drawRect, withAttributes: textFontAttributes)
-            }
-
-            lineIndex += 1
-            let searchRange = NSRange(location: lineEnd, length: string.length - lineEnd)
-            if searchRange.length > 0 {
-                string.getLineStart(&lineStart, end: &lineEnd, contentsEnd: &contentsEnd, for: searchRange)
-            } else {
-                break
-            }
-        }
-    }
-}
