@@ -6,44 +6,12 @@ public final class FileSystemService {
     private init() {}
 
     public func readFile(path: String) -> String {
-        guard FileManager.default.isReadableFile(atPath: path),
-              let data = FileManager.default.contents(atPath: path)
+        guard
+            FileManager.default.isReadableFile(atPath: path),
+            let data = FileManager.default.contents(atPath: path),
+            let text = String(data: data, encoding: .utf8)
         else { return "" }
-
-        let encodings: [String.Encoding] = [.utf8, .isoLatin1, .windowsCP1252, .ascii]
-        for enc in encodings {
-            if let text = String(data: data, encoding: enc) {
-                return text
-            }
-        }
-        return ""
-    }
-
-    public func detectEncoding(path: String) -> String {
-        guard FileManager.default.isReadableFile(atPath: path),
-              let data = FileManager.default.contents(atPath: path)
-        else { return "Unknown" }
-
-        if data.count >= 3 && data[0] == 0xEF && data[1] == 0xBB && data[2] == 0xBF {
-            return "UTF-8 BOM"
-        }
-        if data.count >= 2 && data[0] == 0xFF && data[1] == 0xFE {
-            return "UTF-16 LE"
-        }
-        if data.count >= 2 && data[0] == 0xFE && data[1] == 0xFF {
-            return "UTF-16 BE"
-        }
-
-        if String(data: data, encoding: .utf8) != nil {
-            return "UTF-8"
-        }
-        if String(data: data, encoding: .isoLatin1) != nil {
-            return "ISO-8859-1"
-        }
-        if String(data: data, encoding: .windowsCP1252) != nil {
-            return "Windows-1252"
-        }
-        return "Unknown"
+        return text
     }
 
     public func readBinaryFile(path: String) -> Data? {

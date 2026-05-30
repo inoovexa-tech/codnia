@@ -13,20 +13,18 @@ struct ContentView: View {
                     .allowsHitTesting(false)
 
                 HStack(spacing: 0) {
-                    if !appState.isZenMode {
-                        SidebarView(expanded: $settings.leftSidebarExpanded)
-                            .frame(width: settings.leftSidebarExpanded ? settings.leftSidebarWidth : 52)
-                            .background(Color.bgPrimary)
-                            .overlay(Rectangle().frame(width: 1).foregroundColor(.borderDefault), alignment: .trailing)
-                            .environmentObject(appState)
-                            .environmentObject(appState.workspaceVM)
-                            .environmentObject(appState.editorVM)
-                            .environmentObject(appState.terminalVM)
-                            .environmentObject(appState.gitVM)
-                            .environmentObject(settings)
-                    }
+                    SidebarView(expanded: $settings.leftSidebarExpanded)
+                        .frame(width: settings.leftSidebarExpanded ? settings.leftSidebarWidth : 52)
+                        .background(Color.bgPrimary)
+                        .overlay(Rectangle().frame(width: 1).foregroundColor(.borderDefault), alignment: .trailing)
+                        .environmentObject(appState)
+                        .environmentObject(appState.workspaceVM)
+                        .environmentObject(appState.editorVM)
+                        .environmentObject(appState.terminalVM)
+                        .environmentObject(appState.gitVM)
+                        .environmentObject(settings)
 
-                    if !appState.isZenMode && appState.browserExpanded && appState.browserSide == .left {
+                    if appState.browserExpanded && appState.browserSide == .left {
                         BrowserView(
                             tabId: "browser-panel",
                             urlString: $appState.browserURL,
@@ -63,7 +61,7 @@ struct ContentView: View {
                         .environmentObject(settings)
                         .environmentObject(appState.databaseService)
 
-                    if !appState.isZenMode && appState.browserExpanded && appState.browserSide == .right {
+                    if appState.browserExpanded && appState.browserSide == .right {
                         ResizableDivider(
                             width: $appState.browserWidth,
                             minWidth: 250,
@@ -91,7 +89,7 @@ struct ContentView: View {
                         .background(Color.bgSecondary)
                     }
 
-                    if !appState.isZenMode && appState.rightSidebarExpanded {
+                    if appState.rightSidebarExpanded {
                         ResizableDivider(
                             width: $settings.activityBarWidth,
                             minWidth: 320,
@@ -118,15 +116,6 @@ struct ContentView: View {
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-                if !appState.isZenMode {
-                    StatusBarView()
-                        .frame(height: 24)
-                        .background(Color.bgSecondary)
-                        .environmentObject(appState.editorVM)
-                        .environmentObject(appState.workspaceVM)
-                        .environmentObject(appState.settings)
-                }
             }
 
             TabBarView(

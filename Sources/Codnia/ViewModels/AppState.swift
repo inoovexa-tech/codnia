@@ -21,7 +21,6 @@ public final class AppState: ObservableObject {
     @Published var showGlobalSearchModal: Bool = false
     @Published var showAddProjectModal: Bool = false
 
-    @Published var isZenMode: Bool = false
     @Published var browserExpanded: Bool = false
     @Published var browserSide: BrowserSide = .right
     @Published var browserURL: String = ""

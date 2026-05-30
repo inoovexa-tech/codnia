@@ -64,11 +64,6 @@ public final class KeyboardShortcutsService: ObservableObject {
             "openClaude": "Cmd+Shift+C",
             "openCodex": "Cmd+Shift+X",
             "newSQLQuery": "Cmd+Shift+Q",
-            "duplicateSelection": "Cmd+D",
-            "toggleComment": "Cmd+/",
-            "selectLine": "Cmd+L",
-            "joinLines": "Cmd+J",
-            "goToLine": "Cmd+G",
         ]
     }
 }

@@ -1,7 +1,7 @@
 import Cocoa
 
 final class SyntaxHighlighter {
-    let keywords: Set<String>
+    private let keywords: Set<String>
     private let hasHashComments: Bool
 
     init(language: String) {
@@ -188,80 +188,6 @@ final class SyntaxHighlighter {
         case "yaml":
             ["true", "false", "yes", "no", "on", "off", "null", "~"]
 
-        case "dockerfile", "docker":
-            ["FROM", "RUN", "CMD", "ENTRYPOINT", "COPY", "ADD", "WORKDIR",
-             "ENV", "ARG", "LABEL", "EXPOSE", "VOLUME", "USER", "SHELL",
-             "HEALTHCHECK", "ONBUILD", "STOPSIGNAL", "MAINTAINER"]
-
-        case "elixir":
-            ["def", "defmodule", "defp", "defguard", "defmacro", "defmacrop",
-             "if", "else", "elsif", "unless", "case", "cond", "for", "with",
-             "do", "end", "true", "false", "nil", "fn", "when", "and", "or",
-             "not", "in", "raise", "try", "rescue", "catch", "after",
-             "import", "alias", "use", "require", "receive", "send",
-             "spawn", "pid", "module", "struct", "protocol", "impl",
-             "defimpl", "defprotocol", "defstruct", "defexception",
-             "quote", "unquote", "super", "__MODULE__", "__MODULE__"]
-
-        case "dart":
-            ["import", "export", "library", "part", "class", "enum", "extends",
-             "implements", "with", "mixin", "abstract", "base", "sealed",
-             "final", "interface", "mixin", "on", "typedef", "var", "final",
-             "const", "void", "int", "double", "num", "bool", "String",
-             "dynamic", "Null", "Never", "void", "if", "else", "for", "while",
-             "do", "switch", "case", "default", "break", "continue", "return",
-             "try", "catch", "finally", "throw", "rethrow", "assert",
-             "async", "await", "yield", "sync", "async*", "sync*",
-             "true", "false", "null", "this", "super", "new", "is", "as",
-             "show", "hide", "required", "factory", "covariant", "get", "set",
-             "operator", "static", "external", "late", "override"]
-
-        case "toml":
-            ["true", "false"]
-
-        case "scala":
-            ["import", "package", "class", "object", "trait", "enum", "case",
-             "extends", "with", "implements", "abstract", "sealed", "final",
-             "private", "protected", "public", "override", "implicit",
-             "def", "val", "var", "lazy", "type", "if", "else", "for",
-             "while", "do", "match", "case", "return", "throw", "try",
-             "catch", "finally", "new", "this", "super", "null", "true",
-             "false", "yield", "forSome", "macro", "inline", "infix",
-             "prefix", "postfix", "transparent"]
-
-        case "lua":
-            ["function", "local", "if", "then", "else", "elseif", "for",
-             "while", "do", "repeat", "until", "end", "return", "break",
-             "and", "or", "not", "in", "nil", "true", "false", "require",
-             "module", "self", "type", "ipairs", "pairs", "print",
-             "select", "unpack", "pcall", "xpcall", "error", "assert",
-             "tostring", "tonumber", "rawset", "rawget", "next",
-             "coroutine", "string", "table", "math", "io", "os"]
-
-        case "perl":
-            ["my", "our", "local", "state", "sub", "if", "else", "elsif",
-             "unless", "for", "foreach", "while", "until", "do", "given",
-             "when", "default", "return", "last", "next", "redo", "continue",
-             "die", "warn", "say", "print", "open", "close", "use", "require",
-             "package", "module", "our", "class", "extends", "implements",
-             "true", "false", "undef", "split", "join", "shift", "unshift",
-             "push", "pop", "map", "grep", "sort", "keys", "values", "each"]
-
-        case "r":
-            ["function", "if", "else", "for", "while", "repeat", "in",
-             "next", "break", "return", "TRUE", "FALSE", "NULL", "NA",
-             "Inf", "NaN", "library", "require", "source", "setwd",
-             "getwd", "install.packages", "data.frame", "list",
-             "c", "mean", "sum", "length", "nrow", "ncol", "names",
-             "rownames", "colnames", "subset", "transform", "aggregate",
-             "merge", "plot", "ggplot", "aes", "geom_point", "geom_line",
-             "lm", "glm", "summary", "head", "tail", "str", "class",
-             "typeof", "print", "cat", "paste", "paste0", "sprintf",
-             "grep", "grepl", "sub", "gsub", "lapply", "sapply", "apply"]
-
-        case "markdown":
-            []
-
         case "sql":
             ["SELECT", "select", "FROM", "from", "WHERE", "where",
              "INSERT", "insert", "INTO", "into", "VALUES", "values",
@@ -291,8 +217,7 @@ final class SyntaxHighlighter {
     }
 
     private static let hashCommentLanguages: Set<String> = [
-        "python", "ruby", "shell", "bash", "zsh", "yaml", "toml", "perl", "r",
-        "dockerfile", "docker", "elixir"
+        "python", "ruby", "shell", "bash", "zsh", "yaml", "toml", "perl", "r"
     ]
 }
 

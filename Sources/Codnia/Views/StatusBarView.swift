@@ -3,7 +3,6 @@ import SwiftUI
 struct StatusBarView: View {
     @EnvironmentObject var editorVM: EditorViewModel
     @EnvironmentObject var workspaceVM: WorkspaceService
-    @EnvironmentObject var settings: SettingsService
 
     var body: some View {
         HStack(spacing: 16) {
@@ -17,6 +16,10 @@ struct StatusBarView: View {
                         .font(.system(size: 11))
                 }
             }
+
+            Text("0 problems")
+                .font(.system(size: 11))
+                .foregroundColor(.textSecondary)
 
             Spacer()
 
@@ -49,11 +52,11 @@ struct StatusBarView: View {
                 .foregroundColor(.accentPurple)
             }
 
-            Text("Spaces: \(settings.tabSize)")
+            Text("Spaces: 4")
                 .font(.system(size: 11))
                 .foregroundColor(.textSecondary)
 
-            Text(editorVM.detectedEncoding)
+            Text("UTF-8")
                 .font(.system(size: 11))
                 .foregroundColor(.textSecondary)
 
