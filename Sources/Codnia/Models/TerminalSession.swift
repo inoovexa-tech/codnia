@@ -17,6 +17,8 @@ final class TerminalSession: ObservableObject, Identifiable {
     let arguments: [String]
     let tabType: TabType
 
+    var savedViewportPosition: Double?
+
     private(set) var refCount: Int = 0
 
     init(id: String = UUID().uuidString,
@@ -88,9 +90,14 @@ final class TerminalSession: ObservableObject, Identifiable {
     }
 }
 
-struct ViewportState: Codable {
-    var scrollOffset: CGFloat = 0
-    var selectionRange: String? = nil
+extension TerminalSession {
+    func saveViewportState() {
+        guard let terminal = terminal else { return }
+        savedViewportPosition = terminal.scrollPosition
+    }
 
-    init() {}
+    func restoreViewportState() {
+        guard let terminal = terminal, let position = savedViewportPosition else { return }
+        terminal.scroll(toPosition: position)
+    }
 }

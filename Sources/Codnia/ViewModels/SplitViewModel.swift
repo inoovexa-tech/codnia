@@ -17,6 +17,13 @@ public final class SplitViewModel: ObservableObject {
     public func switchToTab(_ tabId: String?, terminalVM: TerminalViewModel) {
         guard tabId != currentTabId else { return }
 
+        for leafId in root.allLeafIds {
+            guard let leaf = root.findLeaf(id: leafId),
+                  let sessionId = leaf.sessionId,
+                  let session = TerminalSessionManager.shared.getSession(by: sessionId) else { continue }
+            session.saveViewportState()
+        }
+
         if let currentId = currentTabId {
             tabSplitRoots[currentId] = root
             tabActivePaneIds[currentId] = activePaneId

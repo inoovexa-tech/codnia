@@ -51,10 +51,12 @@ class SessionViewportView: NSView {
               let terminal = session.terminal else { return }
         guard self.window != nil else { return }
         if terminal.superview != self {
+            session.saveViewportState()
             terminal.removeFromSuperview()
             addSubview(terminal)
             terminal.autoresizingMask = [.width, .height]
             terminal.isHidden = false
+            session.restoreViewportState()
         }
         terminal.frame = bounds
         terminal.needsDisplay = true

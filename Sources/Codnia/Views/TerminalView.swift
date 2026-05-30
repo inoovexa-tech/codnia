@@ -187,9 +187,16 @@ class TerminalManager {
 
     func show(id: String) {
         guard let terminal = terminals[id] else { return }
+        for (tid, _) in terminals {
+            guard let session = TerminalSessionManager.shared.getSession(by: tid) else { continue }
+            session.saveViewportState()
+        }
         terminal.superview?.subviews.forEach { $0.isHidden = true }
         terminal.isHidden = false
         terminal.frame = terminal.superview?.bounds ?? terminal.frame
+        if let session = TerminalSessionManager.shared.getSession(by: id) {
+            session.restoreViewportState()
+        }
         if let window = terminal.window ?? NSApplication.shared.keyWindow ?? NSApplication.shared.mainWindow {
             _ = window.makeFirstResponder(terminal)
         }
@@ -459,6 +466,11 @@ struct TerminalHostView: NSViewRepresentable {
             }
         }
 
+        for (id, _) in TerminalManager.shared.getAll() {
+            guard let session = TerminalSessionManager.shared.getSession(by: id) else { continue }
+            session.saveViewportState()
+        }
+
         if hasActiveTerminal, let activeTab = tabs.first(where: { $0.id == activeTabId }),
            let termId = activeTab.terminalId {
             for (id, terminal) in TerminalManager.shared.getAll() {
@@ -466,6 +478,9 @@ struct TerminalHostView: NSViewRepresentable {
             }
             if let terminal = TerminalManager.shared.get(for: termId) {
                 terminal.frame = nsView.bounds
+                if let session = TerminalSessionManager.shared.getSession(by: termId) {
+                    session.restoreViewportState()
+                }
                 if let window = terminal.window ?? NSApplication.shared.keyWindow ?? NSApplication.shared.mainWindow {
                     _ = window.makeFirstResponder(terminal)
                 }
