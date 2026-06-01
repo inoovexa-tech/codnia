@@ -11,6 +11,7 @@ public final class TasksViewModel: ObservableObject {
     private let workspace: WorkspaceService
     private var cancellables = Set<AnyCancellable>()
     private let descriptionSaveSubject = PassthroughSubject<TaskItem, Never>()
+    private var tasksFileObserver: DispatchSourceFileSystemObject?
 
     private var tasksFilePath: String? {
         guard let project = workspace.activeProject else { return nil }
@@ -49,6 +50,7 @@ public final class TasksViewModel: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 self?.loadFromDisk()
+                self?.updateFileObserver()
             }
             .store(in: &cancellables)
 
@@ -58,6 +60,43 @@ public final class TasksViewModel: ObservableObject {
                 self?.saveToDisk()
             }
             .store(in: &cancellables)
+
+        updateFileObserver()
+    }
+
+    deinit {
+        tasksFileObserver?.cancel()
+        tasksFileObserver = nil
+    }
+
+    // MARK: - File Observer
+
+    private func setupFileObserver(for path: String) {
+        tasksFileObserver?.cancel()
+
+        let fd = open(path, O_EVTONLY)
+        guard fd >= 0 else { return }
+
+        let source = DispatchSource.makeFileSystemObjectSource(
+            fileDescriptor: fd,
+            eventMask: [.write, .delete, .rename, .extend],
+            queue: DispatchQueue.main
+        )
+
+        source.setEventHandler { [weak self] in
+            self?.loadFromDisk()
+        }
+
+        source.setCancelHandler { close(fd) }
+        source.resume()
+        tasksFileObserver = source
+    }
+
+    private func updateFileObserver() {
+        tasksFileObserver?.cancel()
+        tasksFileObserver = nil
+        guard let path = tasksFilePath, FileManager.default.fileExists(atPath: path) else { return }
+        setupFileObserver(for: path)
     }
 
     // MARK: - CRUD
