@@ -49,7 +49,7 @@ struct ThemeColors: Equatable {
         self.lineHighlight = accent.opacity(0.05)
         self.syntaxKeyword = syntax
         self.syntaxString = p.syntax2.flatMap { Color(hex: $0) } ?? Color(hex: blend(p.syntax, p.accent, weight: isDark ? 0.6 : 0.5))
-        self.syntaxComment = p.comment.flatMap { Color(hex: $0) } ?? fg.opacity(isDark ? 0.4 : 0.55)
+        self.syntaxComment = Color(hex: isDark ? "#8b949e" : "#6e7681")
         self.syntaxNumber = p.syntax5.flatMap { Color(hex: $0) } ?? p.syntax3.flatMap { Color(hex: $0) } ?? accent
         self.syntaxType = p.syntax3.flatMap { Color(hex: $0) } ?? Color(hex: blend(p.syntax, p.accent, weight: 0.5))
         self.syntaxFunction = p.syntax4.flatMap { Color(hex: $0) } ?? p.syntax2.flatMap { Color(hex: $0) } ?? syntax
