@@ -217,7 +217,7 @@ final class SyntaxHighlighter {
     }
 
     private static let hashCommentLanguages: Set<String> = [
-        "python", "ruby", "shell", "bash", "zsh", "yaml", "toml", "perl", "r"
+        "python", "ruby", "shell", "bash", "zsh", "yaml", "toml", "perl", "r", "env"
     ]
 }
 

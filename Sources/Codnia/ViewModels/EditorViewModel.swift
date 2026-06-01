@@ -699,6 +699,7 @@ public final class EditorViewModel: ObservableObject {
         case "py": return "Python"
         case "go": return "Go"
         case "sh": return "Shell"
+        case "env": return "env"
         case "yaml", "yml": return "YAML"
         case "toml": return "TOML"
         case "png", "jpg", "jpeg", "gif", "bmp", "tiff", "webp": return "Image"
