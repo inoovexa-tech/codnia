@@ -520,6 +520,13 @@ struct TasksView: View {
                             }
                         }
 
+                        if !task.description.isEmpty {
+                            Text(task.description)
+                                .font(.system(size: 11))
+                                .foregroundColor(.textSecondary)
+                                .lineLimit(2)
+                        }
+
                         if !task.tags.isEmpty {
                             HStack(spacing: 3) {
                                 ForEach(task.tags.prefix(3), id: \.self) { tag in
@@ -643,7 +650,7 @@ struct TasksView: View {
                 get: { task.description },
                 set: { newVal in
                     var updated = task
-                    updated.description = newVal
+                    updated.description = newVal.replacingOccurrences(of: "\\n", with: "\n")
                     tasksVM.updateDescription(updated)
                 }
             ), axis: .vertical)
@@ -881,7 +888,7 @@ struct TasksView: View {
         if !trimmed.isEmpty {
             var updated = original
             updated.title = trimmed
-            updated.description = editDescription
+            updated.description = editDescription.replacingOccurrences(of: "\\n", with: "\n")
             tasksVM.updateTask(updated)
         }
         editingTaskId = nil
