@@ -6,6 +6,9 @@ public struct FileEntry: Identifiable, Codable, Equatable {
     public var path: String
     public var isDirectory: Bool
     public var isHidden: Bool
+    public var dateModified: Date?
+    public var fileSize: Int64?
+    public var kind: String?
     public var children: [FileEntry]?
 
     public init(
@@ -13,12 +16,18 @@ public struct FileEntry: Identifiable, Codable, Equatable {
         path: String,
         isDirectory: Bool,
         isHidden: Bool = false,
+        dateModified: Date? = nil,
+        fileSize: Int64? = nil,
+        kind: String? = nil,
         children: [FileEntry]? = nil
     ) {
         self.name = name
         self.path = path
         self.isDirectory = isDirectory
         self.isHidden = isHidden
+        self.dateModified = dateModified
+        self.fileSize = fileSize
+        self.kind = kind
         self.children = children
     }
 
