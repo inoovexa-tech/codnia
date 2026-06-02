@@ -5,6 +5,7 @@ import Combine
 public final class EditorViewModel: ObservableObject {
     @Published public var tabs: [Tab] = []
     @Published public var activeTabId: String? = nil
+    @Published public var tabOrder: [String] = []
     @Published public var cursorPosition: String = "Ln 1, Col 1"
     @Published public var currentLanguage: String = "Plain Text"
     @Published public var editorContent: String = ""
@@ -181,6 +182,10 @@ public final class EditorViewModel: ObservableObject {
         splitVM?.loadFromWorktree(worktree)
         tabs = worktree.fileTabs
         terminal.tabs = worktree.terminalTabs
+        tabOrder = worktree.tabOrder
+        if tabOrder.isEmpty && (!tabs.isEmpty || !terminal.tabs.isEmpty) {
+            tabOrder = (tabs + terminal.tabs).map(\.id)
+        }
         terminal.setWorktreeMapping(tabs: worktree.terminalTabs, worktreeId: worktree.id)
         terminal.refreshSessionsForRestoredTabs(workspace: workspace)
         activeTabId = worktree.activeTabId
@@ -259,6 +264,7 @@ public final class EditorViewModel: ObservableObject {
         }
 
         splitVM?.saveToWorktree(&workspace.projects[projIdx].worktrees[wtIdx])
+        workspace.projects[projIdx].worktrees[wtIdx].tabOrder = tabOrder
         workspace.projects[projIdx].worktrees[wtIdx].fileTabs = tabs
         workspace.projects[projIdx].worktrees[wtIdx].terminalTabs = terminal.tabs
         workspace.projects[projIdx].worktrees[wtIdx].activeTabId = activeTabId
@@ -270,7 +276,23 @@ public final class EditorViewModel: ObservableObject {
     }
 
     public var allTabs: [Tab] {
-        tabs + terminal.tabs
+        let combined = tabs + terminal.tabs
+        guard !tabOrder.isEmpty else { return combined }
+        var known: [Tab] = []
+        var unknown: [Tab] = []
+        for tab in combined {
+            if tabOrder.contains(tab.id) {
+                known.append(tab)
+            } else {
+                unknown.append(tab)
+            }
+        }
+        known.sort { a, b in
+            let aIdx = tabOrder.firstIndex(of: a.id) ?? Int.max
+            let bIdx = tabOrder.firstIndex(of: b.id) ?? Int.max
+            return aIdx < bIdx
+        }
+        return known + unknown
     }
 
     public var currentTab: Tab? {
@@ -293,25 +315,15 @@ public final class EditorViewModel: ObservableObject {
     }
 
     private func detectedLanguageName(from filename: String) -> String {
-        let ext = URL(fileURLWithPath: filename).pathExtension.lowercased()
-        switch ext {
-        case "swift": return "Swift"
-        case "ts", "tsx": return "TypeScript"
-        case "js", "jsx": return "JavaScript"
-        case "rs": return "Rust"
-        case "go": return "Go"
-        case "py": return "Python"
-        case "md", "markdown": return "Markdown"
-        case "json": return "JSON"
-        case "html", "htm": return "HTML"
-        case "css", "scss": return "CSS"
-        case "sh": return "Shell"
-        case "c", "h": return "C"
-        case "cpp", "hpp", "cc": return "C++"
-        case "java": return "Java"
-        case "kt": return "Kotlin"
-        default: return "Plain Text"
+        let baseName = (filename as NSString).lastPathComponent.lowercased()
+        switch baseName {
+        case "dockerfile", "containerfile": return "dockerfile"
+        case "makefile", "gnumakefile": return "makefile"
+        case ".env", ".envrc": return "env"
+        case ".gitignore", ".dockerignore", ".npmignore": return "gitignore"
+        default: break
         }
+        return languageForExtension(URL(fileURLWithPath: filename).pathExtension.lowercased())
     }
 
     public func openFileDialog() {
@@ -586,6 +598,7 @@ public final class EditorViewModel: ObservableObject {
     }
 
     public func closeTab(_ id: String) {
+        tabOrder.removeAll { $0 == id }
         if tabs.firstIndex(where: { $0.id == id }) != nil {
             tabs.removeAll { $0.id == id }
             fileContents.removeValue(forKey: id)
@@ -682,8 +695,7 @@ public final class EditorViewModel: ObservableObject {
     }
 
     public func detectLanguage(from filename: String) {
-        let ext = URL(fileURLWithPath: filename).pathExtension.lowercased()
-        currentLanguage = languageForExtension(ext)
+        currentLanguage = detectedLanguageName(from: filename)
     }
 
     public func languageForExtension(_ ext: String) -> String {
@@ -698,10 +710,25 @@ public final class EditorViewModel: ObservableObject {
         case "swift": return "Swift"
         case "py": return "Python"
         case "go": return "Go"
-        case "sh": return "Shell"
+        case "sh", "bash", "zsh": return "Shell"
+        case "rb": return "Ruby"
+        case "php": return "PHP"
+        case "java": return "Java"
+        case "kt", "kts": return "Kotlin"
+        case "c", "h": return "C"
+        case "cpp", "hpp", "cc", "cxx": return "C++"
+        case "cs": return "C#"
+        case "sql": return "SQL"
         case "env": return "env"
         case "yaml", "yml": return "YAML"
         case "toml": return "TOML"
+        case "ini", "cfg", "conf": return "ini"
+        case "properties": return "properties"
+        case "gitignore": return "gitignore"
+        case "dockerfile": return "dockerfile"
+        case "nginx": return "nginx"
+        case "mk", "makefile": return "makefile"
+        case "log": return "log"
         case "png", "jpg", "jpeg", "gif", "bmp", "tiff", "webp": return "Image"
         case "pdf": return "PDF"
         default: return "Plain Text"
@@ -761,6 +788,19 @@ public final class EditorViewModel: ObservableObject {
         let tab = tabs.remove(at: source)
         let insertAt = max(0, min(destination, tabs.count))
         tabs.insert(tab, at: insertAt)
+        saveTabsToWorktree()
+    }
+
+    public func moveAnyTab(from source: Int, to destination: Int) {
+        let all = allTabs
+        guard source < all.count, source != destination else { return }
+        if tabOrder.isEmpty {
+            tabOrder = all.map(\.id)
+        }
+        let tabId = all[source].id
+        tabOrder.remove(at: source)
+        let insertAt = max(0, min(destination, tabOrder.count))
+        tabOrder.insert(tabId, at: insertAt)
         saveTabsToWorktree()
     }
 }

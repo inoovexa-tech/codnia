@@ -220,7 +220,7 @@ public final class SearchService: ObservableObject {
         for case let fileURL as URL in enumerator {
             if results.count >= maxResults { break }
             let ext = fileURL.pathExtension.lowercased()
-            let textExts = Set(["txt", "md", "swift", "rs", "ts", "tsx", "js", "jsx", "json", "html", "css", "scss", "yaml", "yml", "toml", "sh", "py", "go", "c", "cpp", "h", "java"])
+            let textExts = Set(["txt", "md", "swift", "rs", "ts", "tsx", "js", "jsx", "json", "html", "css", "scss", "yaml", "yml", "toml", "ini", "cfg", "conf", "env", "sh", "bash", "zsh", "py", "rb", "php", "go", "c", "cpp", "h", "hpp", "java", "kt", "cs", "sql", "dockerfile", "nginx", "mk", "log", "properties"])
             guard textExts.contains(ext) else { continue }
             guard let data = try? Data(contentsOf: fileURL),
                   let text = String(data: data, encoding: .utf8)
@@ -248,7 +248,7 @@ public final class SearchService: ObservableObject {
         for case let fileURL as URL in enumerator {
             if results.count >= maxResults { break }
             let ext = fileURL.pathExtension.lowercased()
-            let textExts = Set(["txt", "md", "swift", "rs", "ts", "tsx", "js", "jsx", "json", "html", "css", "scss", "yaml", "yml", "toml", "sh", "py", "go", "c", "cpp", "h", "java"])
+            let textExts = Set(["txt", "md", "swift", "rs", "ts", "tsx", "js", "jsx", "json", "html", "css", "scss", "yaml", "yml", "toml", "ini", "cfg", "conf", "env", "sh", "bash", "zsh", "py", "rb", "php", "go", "c", "cpp", "h", "hpp", "java", "kt", "cs", "sql", "dockerfile", "nginx", "mk", "log", "properties"])
             guard textExts.contains(ext) else { continue }
             guard let data = try? Data(contentsOf: fileURL),
                   let text = String(data: data, encoding: .utf8)

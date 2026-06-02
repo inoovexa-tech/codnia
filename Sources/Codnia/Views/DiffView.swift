@@ -7,23 +7,44 @@ struct DiffView: View {
     @State private var selectedLineId: UUID? = nil
     @State private var showMinimap: Bool = true
 
-    // Detect language from file extension
     private var detectedLanguage: String {
+        let baseName = (fileName as NSString).lastPathComponent.lowercased()
+        switch baseName {
+        case "dockerfile", "containerfile": return "dockerfile"
+        case "makefile", "gnumakefile": return "makefile"
+        case ".env", ".envrc": return "env"
+        case ".gitignore", ".dockerignore", ".npmignore": return "gitignore"
+        default: break
+        }
         let ext = (fileName as NSString).pathExtension.lowercased()
         switch ext {
         case "swift": return "swift"
         case "py": return "python"
-        case "js": return "javascript"
+        case "js", "jsx": return "javascript"
         case "ts", "tsx": return "typescript"
         case "rs": return "rust"
         case "go": return "go"
-        case "java", "kt": return "java"
-        case "c", "cpp", "h", "cc": return "c"
+        case "java": return "java"
+        case "kt", "kts": return "kotlin"
+        case "c", "h": return "c"
+        case "cpp", "hpp", "cc", "cxx": return "cpp"
         case "cs": return "csharp"
         case "rb": return "ruby"
         case "php": return "php"
         case "sh", "bash", "zsh": return "shell"
         case "yaml", "yml": return "yaml"
+        case "toml": return "toml"
+        case "ini", "cfg", "conf": return "ini"
+        case "properties": return "properties"
+        case "env": return "env"
+        case "dockerfile": return "dockerfile"
+        case "nginx": return "nginx"
+        case "mk", "makefile": return "makefile"
+        case "log": return "log"
+        case "md", "markdown": return "markdown"
+        case "json": return "json"
+        case "html", "htm": return "html"
+        case "css", "scss": return "css"
         case "sql": return "sql"
         default: return ""
         }

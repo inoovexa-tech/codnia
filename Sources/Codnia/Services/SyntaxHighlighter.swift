@@ -3,11 +3,17 @@ import Cocoa
 final class SyntaxHighlighter {
     private let keywords: Set<String>
     private let hasHashComments: Bool
+    private let hasSemicolonComments: Bool
+    private let useKeyValueHighlighting: Bool
+    private let useSectionHighlighting: Bool
 
     init(language: String) {
         let lang = language.lowercased()
         self.keywords = Self.keywords(for: lang)
         self.hasHashComments = Self.hashCommentLanguages.contains(lang)
+        self.hasSemicolonComments = Self.semicolonCommentLanguages.contains(lang)
+        self.useKeyValueHighlighting = Self.keyValueLanguages.contains(lang)
+        self.useSectionHighlighting = Self.sectionLanguages.contains(lang)
     }
 
     func highlight(_ textStorage: NSTextStorage) {
@@ -34,8 +40,36 @@ final class SyntaxHighlighter {
         if hasHashComments {
             Self.hashComment.findAll(in: text, range: fullRange, store: &commentRanges, excluding: stringRanges)
         }
+        if hasSemicolonComments {
+            Self.semicolonComment.findAll(in: text, range: fullRange, store: &commentRanges, excluding: stringRanges)
+        }
 
-        let excludedRanges = stringRanges + commentRanges
+        var keyValueKeyRanges: [NSRange] = []
+        var keyValueValueRanges: [NSRange] = []
+        var sectionRanges: [NSRange] = []
+
+        if useKeyValueHighlighting {
+            Self.keyValueKeyPattern.enumerateMatches(in: text, range: fullRange) { result, _, _ in
+                guard let range = result?.range(at: 1), !range.overlaps(stringRanges + commentRanges) else { return }
+                keyValueKeyRanges.append(range)
+                textStorage.addAttribute(.foregroundColor, value: NSColor.syntaxProperty, range: range)
+            }
+            Self.keyValueValuePattern.enumerateMatches(in: text, range: fullRange) { result, _, _ in
+                guard let range = result?.range(at: 1), !range.overlaps(stringRanges + commentRanges) else { return }
+                keyValueValueRanges.append(range)
+                textStorage.addAttribute(.foregroundColor, value: NSColor.syntaxString, range: range)
+            }
+        }
+
+        if useSectionHighlighting {
+            Self.sectionPattern.enumerateMatches(in: text, range: fullRange) { result, _, _ in
+                guard let range = result?.range else { return }
+                sectionRanges.append(range)
+                textStorage.addAttribute(.foregroundColor, value: NSColor.syntaxType, range: range)
+            }
+        }
+
+        let excludedRanges = stringRanges + commentRanges + keyValueKeyRanges + keyValueValueRanges + sectionRanges
 
         Self.numberPattern.findAll(in: text, range: fullRange, excluding: excludedRanges) { range in
             textStorage.addAttribute(.foregroundColor, value: NSColor.syntaxNumber, range: range)
@@ -73,6 +107,7 @@ final class SyntaxHighlighter {
     private static let stringDouble       = try! NSRegularExpression(pattern: #""(?:[^"\\]|\\.)*""#, options: [])
     private static let stringSingle       = try! NSRegularExpression(pattern: #"'(?:[^'\\]|\\.)*'"#, options: [])
     private static let stringBacktick     = try! NSRegularExpression(pattern: #"`(?:[^`\\]|\\.)*`"#, options: [])
+    private static let semicolonComment   = try! NSRegularExpression(pattern: #";.*"#, options: [])
     private static let singleLineComment  = try! NSRegularExpression(pattern: #"//.*"#, options: [])
     private static let multiLineComment   = try! NSRegularExpression(pattern: #"/\*[\s\S]*?\*/"#, options: [])
     private static let hashComment        = try! NSRegularExpression(pattern: "#.*", options: [])
@@ -81,6 +116,9 @@ final class SyntaxHighlighter {
     private static let numberPattern      = try! NSRegularExpression(pattern: #"\b(?:0x[0-9a-fA-F]+|0b[01]+|\d+\.\d*(?:[eE][+-]?\d+)?|\d+)\b"#, options: [])
     private static let typePattern        = try! NSRegularExpression(pattern: #"\b[A-Z][a-zA-Z0-9_]*\b"#, options: [])
     private static let functionPattern    = try! NSRegularExpression(pattern: #"\b([a-zA-Z_][a-zA-Z0-9_]*)(?=\s*\()"#, options: [])
+    private static let keyValueKeyPattern = try! NSRegularExpression(pattern: #"^[ \t]*(?:export[ \t]+)?([A-Za-z_][A-Za-z0-9_.\-]*)[ \t]*(?==)"#, options: [.anchorsMatchLines])
+    private static let keyValueValuePattern = try! NSRegularExpression(pattern: #"^[ \t]*(?:export[ \t]+)?[A-Za-z_][A-Za-z0-9_.\-]*[ \t]*=[ \t]*([^\n#;]*)"#, options: [.anchorsMatchLines])
+    private static let sectionPattern     = try! NSRegularExpression(pattern: #"^[ \t]*\[[^\]]+\]"#, options: [.anchorsMatchLines])
 
     private static func buildKeywordPattern(_ keywords: Set<String>) -> NSRegularExpression {
         let escaped = keywords.map { NSRegularExpression.escapedPattern(for: $0) }.sorted().joined(separator: "|")
@@ -211,13 +249,67 @@ final class SyntaxHighlighter {
              "BEGIN", "begin", "COMMIT", "commit", "ROLLBACK", "rollback",
              "GRANT", "grant", "REVOKE", "revoke"]
 
+        case "env":
+            ["export"]
+
+        case "dockerfile":
+            ["FROM", "from", "RUN", "run", "CMD", "cmd", "LABEL", "label",
+             "MAINTAINER", "maintainer", "EXPOSE", "expose", "ENV", "env",
+             "ADD", "add", "COPY", "copy", "ENTRYPOINT", "entrypoint",
+             "VOLUME", "volume", "USER", "user", "WORKDIR", "workdir",
+             "ARG", "arg", "ONBUILD", "onbuild", "STOPSIGNAL", "stopsignal",
+             "HEALTHCHECK", "healthcheck", "SHELL", "shell", "AS", "as"]
+
+        case "makefile":
+            ["ifeq", "ifneq", "ifdef", "ifndef", "else", "endif",
+             "define", "endef", "include", "sinclude", "-include",
+             "override", "export", "unexport", "private", "vpath",
+             "notdir", "wildcard", "abspath", "realpath", "shell",
+             "call", "error", "warning", "info"]
+
+        case "nginx":
+            ["http", "server", "location", "listen", "server_name",
+             "proxy_pass", "proxy_set_header", "proxy_redirect",
+             "root", "index", "try_files", "if", "return", "set",
+             "include", "upstream", "events", "worker_processes",
+             "worker_connections", "keepalive_timeout", "sendfile",
+             "tcp_nopush", "tcp_nodelay", "gzip", "gzip_types",
+             "gzip_min_length", "access_log", "error_log",
+             "rewrite", "fastcgi_pass", "fastcgi_param",
+             "ssl_certificate", "ssl_certificate_key", "ssl_protocols",
+             "ssl_ciphers", "default_type", "charset", "types",
+             "expires", "add_header", "client_max_body_size",
+             "client_body_timeout", "keepalive_requests",
+             "server_tokens", "internal", "deny", "allow"]
+
+        case "ini", "conf", "toml", "properties":
+            ["true", "false", "yes", "no", "on", "off", "null", "nil"]
+
+        case "log":
+            ["ERROR", "WARN", "INFO", "DEBUG", "TRACE", "FATAL",
+             "error", "warn", "info", "debug", "trace", "fatal"]
+
         default:
             []
         }
     }
 
     private static let hashCommentLanguages: Set<String> = [
-        "python", "ruby", "shell", "bash", "zsh", "yaml", "toml", "perl", "r", "env"
+        "python", "ruby", "shell", "bash", "zsh", "yaml", "toml", "perl", "r",
+        "env", "dockerfile", "nginx", "conf", "properties", "gitignore",
+        "makefile", "log"
+    ]
+
+    private static let semicolonCommentLanguages: Set<String> = [
+        "ini", "conf"
+    ]
+
+    private static let keyValueLanguages: Set<String> = [
+        "env", "toml", "ini", "conf", "properties"
+    ]
+
+    private static let sectionLanguages: Set<String> = [
+        "toml", "ini", "conf"
     ]
 }
 
