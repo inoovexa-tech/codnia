@@ -202,12 +202,14 @@ public final class DatabaseConnectionService: ObservableObject {
         return try await provider.insertRow(handle: handle, table: table, columns: columns, values: values)
     }
 
-    public func deleteRow(configID: String, table: TableID, primaryKeyValues: [(column: String, value: String?)]) async -> Int {
+    public func deleteRow(configID: String, table: TableID, primaryKeyValues: [(column: String, value: String?)]) async throws -> Int {
         guard let config = config(withID: configID),
               let provider = providers[config.type],
               let handle = sessions[configID]?.handleID
-        else { return 0 }
-        return (try? await provider.deleteRow(handle: handle, table: table, primaryKeyValues: primaryKeyValues)) ?? 0
+        else {
+            throw DatabaseError.notConnected
+        }
+        return try await provider.deleteRow(handle: handle, table: table, primaryKeyValues: primaryKeyValues)
     }
 
     // MARK: - DDL Operations

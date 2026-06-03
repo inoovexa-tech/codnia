@@ -22,6 +22,7 @@ struct QueryResultTabView: View {
     @State private var stagedNewRows: [StagedNewRow] = []
     @State private var stagedDeletions: Set<Int> = []
     @State private var applyError: String?
+    @State private var deleteErrorMessage: String?
     @State private var executingTask: Task<Void, Never>? = nil
     @State private var showHistory = false
     @StateObject private var completionProvider = SQLCompletionProvider()
@@ -127,6 +128,14 @@ struct QueryResultTabView: View {
         }
         .onChange(of: selectedConnectionId) { _ in
             loadCompletionSchema()
+        }
+        .alert("Error Deleting Row", isPresented: .init(
+            get: { deleteErrorMessage != nil },
+            set: { if !$0 { deleteErrorMessage = nil } }
+        )) {
+            Button("OK") { deleteErrorMessage = nil }
+        } message: {
+            Text(deleteErrorMessage ?? "")
         }
         .frame(maxHeight: .infinity)
     }
@@ -509,9 +518,15 @@ struct QueryResultTabView: View {
                     }
                 }
                 if pkValues.isEmpty { continue }
-                let affected = await databaseService.deleteRow(configID: connectionId, table: tableId, primaryKeyValues: pkValues)
-                if affected > 0 {
-                    updatedRows.remove(at: rowIdx)
+                do {
+                    let affected = try await databaseService.deleteRow(configID: connectionId, table: tableId, primaryKeyValues: pkValues)
+                    if affected > 0 {
+                        updatedRows.remove(at: rowIdx)
+                    }
+                } catch {
+                    deleteErrorMessage = error.localizedDescription
+                    isApplying = false
+                    return
                 }
             }
 
