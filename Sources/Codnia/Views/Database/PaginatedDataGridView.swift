@@ -207,6 +207,14 @@ struct PaginatedDataGridView: View {
     private var headerView: some View {
         VStack(spacing: 0) {
             HStack(spacing: 0) {
+                if isEditable {
+                    Color.clear
+                        .frame(width: 28, height: 28)
+                        .overlay(
+                            Rectangle().fill(Color.borderDefault).frame(width: 1),
+                            alignment: .trailing
+                        )
+                }
                 ForEach(Array(columns.enumerated()), id: \.offset) { idx, col in
                     headerCell(column: col, type: idx < columnTypes.count ? columnTypes[idx] : "", index: idx)
                 }
@@ -227,40 +235,39 @@ struct PaginatedDataGridView: View {
                 .foregroundColor(.textSecondary)
                 .lineLimit(1)
                 .layoutPriority(1)
+            Text(type)
+                .font(.system(size: 9))
+                .foregroundColor(.textTertiary)
+                .lineLimit(1)
             if sortColumn == column {
                 Image(systemName: sortAscending ? "chevron.up" : "chevron.down")
                     .font(.system(size: 9))
                     .foregroundColor(.accentBlue)
             }
-            Spacer(minLength: 2)
-            Text(type)
-                .font(.system(size: 9))
-                .foregroundColor(.textTertiary)
-                .lineLimit(1)
-            if index < columns.count - 1 {
-                Rectangle()
-                    .fill(Color.borderDefault)
-                    .frame(width: 1)
-                    .frame(maxHeight: .infinity)
-                    .padding(.vertical, 4)
-                    .overlay(
-                        Color.clear.frame(width: 6)
-                            .contentShape(Rectangle())
-                            .gesture(DragGesture(minimumDistance: 1).onChanged { value in
-                                let newWidth = max(minColumnWidth, width + value.translation.width)
-                                columnWidths[column] = newWidth
-                            })
-                            .onHover { inside in
-                                if inside { NSCursor.resizeLeftRight.push() } else { NSCursor.pop() }
-                            },
-                        alignment: .trailing
-                    )
-            }
+            Spacer(minLength: 0)
         }
         .frame(width: width - 16, height: 28, alignment: .leading)
         .padding(.horizontal, 8)
         .contentShape(Rectangle())
         .onTapGesture { toggleSort(column: column) }
+        .overlay(
+            Rectangle()
+                .fill(Color.borderDefault)
+                .frame(width: 1)
+                .overlay(
+                    Color.clear
+                        .frame(width: 6)
+                        .contentShape(Rectangle())
+                        .gesture(DragGesture(minimumDistance: 1).onChanged { value in
+                            let newWidth = max(minColumnWidth, width + value.translation.width)
+                            columnWidths[column] = newWidth
+                        })
+                        .onHover { inside in
+                            if inside { NSCursor.resizeLeftRight.push() } else { NSCursor.pop() }
+                        }
+                ),
+            alignment: .trailing
+        )
     }
 
     private func typeIcon(for type: String) -> String {
@@ -355,6 +362,10 @@ struct PaginatedDataGridView: View {
         .overlay(
             deleted ? Rectangle().fill(Color.accentRed.opacity(0.35)).frame(height: 1) : nil,
             alignment: .center
+        )
+        .overlay(
+            Rectangle().fill(Color.borderDefault.opacity(0.5)).frame(height: 1),
+            alignment: .bottom
         )
         .onTapGesture {
             if editingRow == nil {
@@ -460,6 +471,10 @@ struct PaginatedDataGridView: View {
             }
         }
         .frame(width: width)
+        .overlay(
+            Rectangle().fill(Color.borderDefault.opacity(0.5)).frame(width: 1),
+            alignment: .trailing
+        )
     }
 
     // MARK: - Data Cell
@@ -520,6 +535,7 @@ struct PaginatedDataGridView: View {
                             .font(.system(size: 11, design: .monospaced))
                             .foregroundColor(.textTertiary.opacity(0.5))
                             .italic()
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     } else if isDateType(columnTypes[safe: colIdx] ?? "") && !isNull {
                         HStack(spacing: 3) {
                             Image(systemName: "calendar")
@@ -530,11 +546,13 @@ struct PaginatedDataGridView: View {
                                 .foregroundColor(textColor)
                                 .lineLimit(1)
                         }
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     } else {
                         Text(isNull ? "NULL" : val ?? "")
                             .font(.system(size: 12, design: .monospaced))
                             .foregroundColor(textColor)
                             .lineLimit(1)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -552,7 +570,11 @@ struct PaginatedDataGridView: View {
                 }
             }
         }
-        .frame(width: w - 16, alignment: .leading)
+        .frame(width: w, alignment: .leading)
+        .overlay(
+            Rectangle().fill(Color.borderDefault.opacity(0.5)).frame(width: 1),
+            alignment: .trailing
+        )
     }
 
     // MARK: - Edit Lifecycle
@@ -711,7 +733,8 @@ struct PaginatedDataGridView: View {
     private func columnWidth(for column: String) -> CGFloat {
         if let custom = columnWidths[column] { return custom }
         let count = max(1, columns.count)
-        return max(minColumnWidth, availableWidth / CGFloat(count))
+        let usable = isEditable ? max(minColumnWidth, availableWidth - 28) : availableWidth
+        return max(minColumnWidth, usable / CGFloat(count))
     }
 
     // MARK: - Column Detection
