@@ -1,3 +1,26 @@
+## [0.18.0] — 2026-05-30
+
+### Added
+- Notes system with folder-based sidebar, drag & drop reorganize, sort, inline rename, preview, and persistent expand/collapse
+- Enhanced tag parsing and Sendable conformance for Notes
+- Horizontal scrollbar or multiselect popover for tag filters in Tasks
+- REST API client enhancements: multi-header support, auth toggle, JSON formatting and syntax highlighting
+- Expanded theme palette with dedicated syntax colors (syntax2, syntax3, syntax4, syntax5, syntax6, comment)
+
+### Fixed
+- Terminal scroll position preservation when switching tabs
+- Theme: harmonized light theme colors, increased text opacity, fixed hardcoded white foregrounds, replaced Menu with themed popover
+- Tasks: sort menu sizing and selection display, general UX improvements
+- REST API client: various bug fixes and UX improvements
+- Git sidebar: various bug fixes and improvements
+- Notes: path resolution, error feedback, stubs, NoteDirectory id
+- Editor: save and restore scroll/cursor position per tab
+- Crash on NSTextView string initialization
+- Pure black background restored for Codnia Dark theme
+
+### Removed
+- Editor line numbers gutter (reverted Sprint 1—3 code editor improvements)
+
 ## [0.17.0] — 2026-05-27
 
 ### Added

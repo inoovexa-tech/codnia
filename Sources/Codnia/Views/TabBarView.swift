@@ -26,7 +26,7 @@ struct TabBarView: View {
     private static let tabWidth: CGFloat = 160
 
     private var allTabs: [Tab] {
-        editorVM.tabs + terminalVM.tabs
+        editorVM.allTabs
     }
 
     private var allWorktreesExpanded: Bool {
@@ -142,33 +142,18 @@ struct TabBarView: View {
                     HStack(spacing: 0) {
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(spacing: 0) {
-                                ForEach(Array(editorVM.tabs.enumerated()), id: \.element.id) { index, tab in
+                                ForEach(Array(allTabs.enumerated()), id: \.element.id) { index, tab in
                                     TabButton(
                                         tab: tab,
                                         index: index,
                                         isActive: tab.id == editorVM.activeTabId,
-                                        allTabs: editorVM.tabs,
+                                        allTabs: allTabs,
                                         onSelect: { editorVM.activateTab(tab.id) },
                                         onClose: { editorVM.closeTab(tab.id) },
-                                        moveAction: { editorVM.moveTab(from: $0, to: $1) },
+                                        moveAction: { editorVM.moveAnyTab(from: $0, to: $1) },
                                         draggedTabId: $draggedTabId,
-                                        onMoveLeft: index > 0 ? { editorVM.moveTab(from: index, to: index - 1) } : nil,
-                                        onMoveRight: index < editorVM.tabs.count - 1 ? { editorVM.moveTab(from: index, to: index + 1) } : nil
-                                    )
-                                    .trackInteractiveFrame()
-                                }
-                                ForEach(Array(terminalVM.tabs.enumerated()), id: \.element.id) { index, tab in
-                                    TabButton(
-                                        tab: tab,
-                                        index: index,
-                                        isActive: tab.id == editorVM.activeTabId,
-                                        allTabs: terminalVM.tabs,
-                                        onSelect: { editorVM.activateTab(tab.id) },
-                                        onClose: { editorVM.closeTab(tab.id) },
-                                        moveAction: { terminalVM.moveTab(from: $0, to: $1) },
-                                        draggedTabId: $draggedTabId,
-                                        onMoveLeft: index > 0 ? { terminalVM.moveTab(from: index, to: index - 1) } : nil,
-                                        onMoveRight: index < terminalVM.tabs.count - 1 ? { terminalVM.moveTab(from: index, to: index + 1) } : nil
+                                        onMoveLeft: index > 0 ? { editorVM.moveAnyTab(from: index, to: index - 1) } : nil,
+                                        onMoveRight: index < allTabs.count - 1 ? { editorVM.moveAnyTab(from: index, to: index + 1) } : nil
                                     )
                                     .trackInteractiveFrame()
                                 }

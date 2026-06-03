@@ -319,9 +319,11 @@ public final class EditorViewModel: ObservableObject {
         switch baseName {
         case "dockerfile", "containerfile": return "dockerfile"
         case "makefile", "gnumakefile": return "makefile"
-        case ".env", ".envrc": return "env"
         case ".gitignore", ".dockerignore", ".npmignore": return "gitignore"
         default: break
+        }
+        if baseName == ".env" || baseName == ".envrc" || baseName.hasPrefix(".env.") {
+            return "env"
         }
         return languageForExtension(URL(fileURLWithPath: filename).pathExtension.lowercased())
     }
@@ -373,7 +375,7 @@ public final class EditorViewModel: ObservableObject {
             return
         }
 
-        let language = languageForExtension(ext)
+        let language = detectedLanguageName(from: name)
         let content = fs.readFile(path: path)
 
         if let existing = tabs.first(where: { $0.path == path }) {
@@ -391,7 +393,6 @@ public final class EditorViewModel: ObservableObject {
         editorContent = content
         currentLanguage = language
         fileContents[tab.id] = content
-        detectLanguage(from: name)
         saveTabsToWorktree()
     }
 
@@ -414,13 +415,12 @@ public final class EditorViewModel: ObservableObject {
             return tab
         }
 
-        let language = languageForExtension(ext)
+        let language = detectedLanguageName(from: name)
         let content = fs.readFile(path: path)
 
         let tab = Tab(path: path, name: name, language: language, type: .file)
         tabs.append(tab)
         fileContents[tab.id] = content
-        detectLanguage(from: name)
         saveTabsToWorktree()
         return tab
     }

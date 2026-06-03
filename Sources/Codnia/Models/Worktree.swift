@@ -13,6 +13,7 @@ public struct Worktree: Identifiable, Codable, Equatable, Sendable {
     public var tabActivePaneIds: [String: UUID] = [:]
     public var tabScrollPositions: [String: Double] = [:]
     public var tabSelectedRanges: [String: String] = [:]
+    public var tabOrder: [String] = []
     public var browserURLs: [String: String] = [:]
     public var browserTitles: [String: String] = [:]
     public var sideBrowserURL: String = ""
@@ -42,6 +43,7 @@ public struct Worktree: Identifiable, Codable, Equatable, Sendable {
         tabSelectedRanges: [String: String] = [:],
         browserURLs: [String: String] = [:],
         browserTitles: [String: String] = [:],
+        tabOrder: [String] = [],
         sideBrowserURL: String = "",
         sideBrowserTitle: String = "",
         sideBrowserSide: String = "right",
@@ -61,6 +63,7 @@ public struct Worktree: Identifiable, Codable, Equatable, Sendable {
         self.tabSelectedRanges = tabSelectedRanges
         self.browserURLs = browserURLs
         self.browserTitles = browserTitles
+        self.tabOrder = tabOrder
         self.sideBrowserURL = sideBrowserURL
         self.sideBrowserTitle = sideBrowserTitle
         self.sideBrowserSide = sideBrowserSide
@@ -70,7 +73,7 @@ public struct Worktree: Identifiable, Codable, Equatable, Sendable {
     enum CodingKeys: String, CodingKey {
         case id, name, path, branch, isMain, fileTabs, terminalTabs, activeTabId
         case tabSplitRoots, tabActivePaneIds, tabScrollPositions, tabSelectedRanges, browserURLs, browserTitles
-        case sideBrowserURL, sideBrowserTitle, sideBrowserSide, sideBrowserExpanded
+        case tabOrder, sideBrowserURL, sideBrowserTitle, sideBrowserSide, sideBrowserExpanded
     }
 
     public init(from decoder: Decoder) throws {
@@ -89,6 +92,7 @@ public struct Worktree: Identifiable, Codable, Equatable, Sendable {
         tabSelectedRanges = try container.decodeIfPresent([String: String].self, forKey: .tabSelectedRanges) ?? [:]
         browserURLs = try container.decodeIfPresent([String: String].self, forKey: .browserURLs) ?? [:]
         browserTitles = try container.decodeIfPresent([String: String].self, forKey: .browserTitles) ?? [:]
+        tabOrder = try container.decodeIfPresent([String].self, forKey: .tabOrder) ?? []
         sideBrowserURL = try container.decodeIfPresent(String.self, forKey: .sideBrowserURL) ?? ""
         sideBrowserTitle = try container.decodeIfPresent(String.self, forKey: .sideBrowserTitle) ?? ""
         sideBrowserSide = try container.decodeIfPresent(String.self, forKey: .sideBrowserSide) ?? "right"

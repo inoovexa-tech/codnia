@@ -144,7 +144,6 @@ struct EditorNSTextView: NSViewRepresentable {
         let editorVM: EditorViewModel
         var highlighter: SyntaxHighlighter?
         var currentLanguage: String = ""
-        private var isHighlighting = false
         private var scrollObserver: NSObjectProtocol?
         private var searchHighlightColor = NSColor(red: 255/255, green: 213/255, blue: 0/255, alpha: 0.3)
         private var currentHighlightColor = NSColor(red: 255/255, green: 140/255, blue: 0/255, alpha: 0.5)
@@ -166,12 +165,14 @@ struct EditorNSTextView: NSViewRepresentable {
         }
 
         @MainActor func applyHighlighting(_ textView: NSTextView) {
-            guard !isHighlighting, let highlighter = highlighter,
+            guard let highlighter = highlighter,
                   let textStorage = textView.textStorage else { return }
-            isHighlighting = true
             highlighter.highlight(textStorage)
+            if let layoutManager = textView.layoutManager {
+                let fullRange = NSRange(location: 0, length: textStorage.length)
+                layoutManager.invalidateDisplay(forCharacterRange: fullRange)
+            }
             textView.needsDisplay = true
-            isHighlighting = false
         }
 
         @MainActor func highlightSearchResults(_ textView: NSTextView, results: [NSRange], currentIndex: Int) {
