@@ -71,10 +71,10 @@ public final class TasksViewModel: ObservableObject {
 
     // MARK: - File Observer
 
-    private func setupFileObserver(for path: String) {
+    private func setupDirectoryObserver(for dirPath: String) {
         tasksFileObserver?.cancel()
 
-        let fd = open(path, O_EVTONLY)
+        let fd = open(dirPath, O_EVTONLY)
         guard fd >= 0 else { return }
 
         let source = DispatchSource.makeFileSystemObjectSource(
@@ -95,8 +95,10 @@ public final class TasksViewModel: ObservableObject {
     private func updateFileObserver() {
         tasksFileObserver?.cancel()
         tasksFileObserver = nil
-        guard let path = tasksFilePath, FileManager.default.fileExists(atPath: path) else { return }
-        setupFileObserver(for: path)
+        guard let path = tasksFilePath else { return }
+        let dirPath = (path as NSString).deletingLastPathComponent
+        try? FileManager.default.createDirectory(atPath: dirPath, withIntermediateDirectories: true)
+        setupDirectoryObserver(for: dirPath)
     }
 
     // MARK: - CRUD

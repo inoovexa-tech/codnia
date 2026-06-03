@@ -29,6 +29,9 @@ struct ActivityBarView: View {
         .onChange(of: editorVM.activeTabId) { _ in
             syncSelectionWithEditor()
         }
+        .onChange(of: tab) { _ in
+            tasksVM.loadFromDisk()
+        }
     }
 
     private func syncSelectionWithEditor() {

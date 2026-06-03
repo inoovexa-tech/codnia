@@ -172,6 +172,14 @@ struct TasksView: View {
                         .cornerRadius(4)
                 }
                 .buttonStyle(PlainButtonStyle())
+                Button(action: { tasksVM.loadFromDisk() }) {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 11))
+                        .foregroundColor(.textTertiary)
+                }
+                .buttonStyle(PlainButtonStyle())
+                .help("Reload tasks from disk")
+
                 Menu {
                     ForEach(SortOption.allCases, id: \.rawValue) { opt in
                         Button(action: { sortOption = opt }) {
