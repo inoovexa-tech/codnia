@@ -1,3 +1,20 @@
+## [0.19.0] — 2026-06-03
+
+### Added
+- Tasks: autocomplete tag suggestions when adding tags
+- Editor: extended syntax highlighting to env, dockerfile, makefile, nginx, toml, ini, conf, log, properties, gitignore
+- Modal: redesigned Add Project picker with Finder-style sidebar and iCloud support
+- Tasks: support \n as newline in descriptions and show preview in collapsed view
+
+### Fixed
+- Tasks: reload tasks when switching tabs and manual refresh button
+- Editor: gray comment color, env detection for .env.* files, real-time highlight
+- Database: add row/column borders and align header/data columns
+- Database: surface row delete errors in alert
+- Tasks: auto-reload sidebar when tasks.json is modified externally
+- Editor: enable hash comment highlighting for .env files
+- Theme: force consistent gray comment color across all themes
+
 ## [0.18.0] — 2026-05-30
 
 ### Added
