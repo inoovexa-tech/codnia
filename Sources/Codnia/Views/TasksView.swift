@@ -25,6 +25,8 @@ struct TasksView: View {
     @State private var showUndoToast = false
     @State private var sortOption: SortOption = .manual
     @State private var showTagPicker = false
+    @FocusState private var tagInputFocused: Bool
+    @State private var highlightedTagIndex: Int = 0
 
     private enum SortOption: String, CaseIterable {
         case manual = "Manual"
@@ -60,6 +62,22 @@ struct TasksView: View {
         return result
     }
 
+    private var tagSuggestions: [String] {
+        let q = editTagInput.trimmingCharacters(in: .whitespaces).lowercased()
+        guard !q.isEmpty,
+              let taskId = expandedTaskId,
+              let task = tasksVM.tasks.first(where: { $0.id == taskId })
+        else { return [] }
+        let existing = Set(task.tags)
+        let prefixMatches = tasksVM.allTags.filter {
+            $0.lowercased().hasPrefix(q) && !existing.contains($0)
+        }
+        let containsMatches = tasksVM.allTags.filter {
+            !$0.lowercased().hasPrefix(q) && $0.lowercased().contains(q) && !existing.contains($0)
+        }
+        return Array((prefixMatches + containsMatches).prefix(5))
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             searchHeader
@@ -70,6 +88,7 @@ struct TasksView: View {
         }
         .onChange(of: expandedTaskId) { _ in
             editTagInput = ""
+            highlightedTagIndex = 0
         }
         .overlay(alignment: .bottom) {
             if showUndoToast, let task = deletedTask {
@@ -690,7 +709,11 @@ struct TasksView: View {
                     .textFieldStyle(PlainTextFieldStyle())
                     .font(.system(size: 11))
                     .foregroundColor(.textSecondary)
+                    .focused($tagInputFocused)
                     .onSubmit { addTag(to: task) }
+                    .onChange(of: editTagInput) { _ in
+                        highlightedTagIndex = 0
+                    }
                 Button(action: { addTag(to: task) }) {
                     Image(systemName: "plus.circle")
                         .font(.system(size: 11))
@@ -702,6 +725,12 @@ struct TasksView: View {
                 Text(task.createdAt.formatted(date: .abbreviated, time: .omitted))
                     .font(.system(size: 9))
                     .foregroundColor(.textTertiary)
+            }
+            .overlay(alignment: .topLeading) {
+                if tagInputFocused && !tagSuggestions.isEmpty {
+                    tagSuggestionList(for: task)
+                        .offset(y: 22)
+                }
             }
 
             HStack(spacing: 6) {
@@ -902,13 +931,49 @@ struct TasksView: View {
         tasksVM.updateTask(updated)
     }
 
-    private func addTag(to task: TaskItem) {
-        let tag = editTagInput.trimmingCharacters(in: .whitespaces).lowercased()
-        guard !tag.isEmpty, !task.tags.contains(tag) else { return }
+    private func addTag(to task: TaskItem, with tag: String? = nil) {
+        let value = (tag ?? editTagInput).trimmingCharacters(in: .whitespaces).lowercased()
+        guard !value.isEmpty, !task.tags.contains(value) else { return }
         var updated = task
-        updated.tags.append(tag)
+        updated.tags.append(value)
         tasksVM.updateTask(updated)
         editTagInput = ""
+        highlightedTagIndex = 0
+        DispatchQueue.main.async { tagInputFocused = true }
+    }
+
+    @ViewBuilder
+    private func tagSuggestionList(for task: TaskItem) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(Array(tagSuggestions.enumerated()), id: \.element) { idx, tag in
+                Button {
+                    addTag(to: task, with: tag)
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "tag.fill")
+                            .font(.system(size: 9))
+                            .foregroundColor(colorForTag(tag))
+                        Text(tag)
+                            .font(.system(size: 11))
+                            .foregroundColor(.textPrimary)
+                        Spacer(minLength: 4)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(highlightedTagIndex == idx ? Color.accentBlue.opacity(0.12) : Color.clear)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+        }
+        .frame(width: 180)
+        .background(Color.bgPrimary)
+        .overlay(
+            RoundedRectangle(cornerRadius: 4)
+                .stroke(Color.borderDefault, lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2)
     }
 
     private func removeTag(_ tag: String, from task: TaskItem) {
