@@ -19,27 +19,10 @@ struct ERDiagramView: View {
     @State private var customPositions: [String: CGPoint] = [:]
     @State private var draggingCardId: String?
     @State private var cardDragOffset: CGSize = .zero
-    @State private var searchText = ""
-    @State private var viewportSize: CGSize = .zero
-
-    private var filteredTableIds: Set<String> {
-        guard !searchText.trimmingCharacters(in: .whitespaces).isEmpty else { return [] }
-        let q = searchText.lowercased()
-        return Set(tables.filter { $0.name.lowercased().contains(q) }.map(\.id))
-    }
 
     private let tableWidth: CGFloat = 180
     private let rowHeight: CGFloat = 22
     private let headerHeight: CGFloat = 28
-
-    private var layoutStorageURL: URL? {
-        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first?
-            .appendingPathComponent("Codnia")
-            .appendingPathComponent("ERLayouts")
-        try? FileManager.default.createDirectory(at: dir!, withIntermediateDirectories: true)
-        let safeName = "\(databaseName)_\(schema)".replacingOccurrences(of: "[^a-zA-Z0-9_-]", with: "_", options: .regularExpression)
-        return dir?.appendingPathComponent("\(safeName).json")
-    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -75,9 +58,6 @@ struct ERDiagramView: View {
         .task {
             await loadSchema()
         }
-        .onDisappear {
-            saveLayout()
-        }
     }
 
     private var toolbar: some View {
@@ -85,20 +65,8 @@ struct ERDiagramView: View {
             Text("ER Diagram: \(schema)")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(.textPrimary)
-            if !tables.isEmpty {
-                SearchField(text: $searchText, placeholder: "Filter tables…")
-                    .frame(width: 180)
-                    .padding(.leading, 8)
-            }
             Spacer()
             HStack(spacing: 4) {
-                Button(action: zoomToFit) {
-                    Image(systemName: "arrow.down.right.and.arrow.up.left")
-                        .font(.system(size: 11))
-                }
-                .buttonStyle(PlainButtonStyle())
-                .help("Zoom to fit all tables")
-
                 Button(action: { scale = max(0.3, scale - 0.1) }) {
                     Image(systemName: "minus.magnifyingglass")
                         .font(.system(size: 12))
@@ -119,13 +87,6 @@ struct ERDiagramView: View {
                 }
                 .buttonStyle(PlainButtonStyle())
                 .padding(.leading, 4)
-
-                Button(action: resetLayout) {
-                    Image(systemName: "clear")
-                        .font(.system(size: 11))
-                }
-                .buttonStyle(PlainButtonStyle())
-                .help("Reset table positions to auto-layout")
 
                 Divider()
                     .frame(height: 16)
@@ -186,10 +147,8 @@ struct ERDiagramView: View {
     // MARK: - Diagram Content
 
     private var diagramContent: some View {
-        let activeSearch = !filteredTableIds.isEmpty
-        let allPositions = layoutTables()
-        let positions = activeSearch ? allPositions.filter { filteredTableIds.contains($0.table.id) } : allPositions
-        let arrowPaths = layoutArrows(positions: allPositions)
+        let positions = layoutTables()
+        let arrowPaths = layoutArrows(positions: positions)
         let contentBounds = boundingBox(positions: positions)
         let originOffset = CGSize(
             width: -contentBounds.minX + 80,
@@ -199,7 +158,6 @@ struct ERDiagramView: View {
         let cvHeight = max(400, contentBounds.height + 160)
 
         return GeometryReader { geo in
-            let _ = { viewportSize = geo.size }()
             ScrollView([.horizontal, .vertical]) {
                 ZStack(alignment: .topLeading) {
                     Canvas { context, size in
@@ -227,14 +185,6 @@ struct ERDiagramView: View {
                                 y: to.y - arrowLen * sin(angle + arrowAngle)
                             ))
                             context.stroke(arrowHead, with: .color(.accentBlue.opacity(0.5)), lineWidth: 1.5)
-
-                            let mid = CGPoint(x: (from.x + to.x) / 2, y: (from.y + to.y) / 2)
-                            let perp = CGPoint(x: -(to.y - from.y), y: to.x - from.x)
-                            let perpLen = sqrt(perp.x * perp.x + perp.y * perp.y)
-                            let offsetNorm = perpLen > 0 ? CGPoint(x: perp.x / perpLen * 12, y: perp.y / perpLen * 12) : CGPoint.zero
-
-                            context.draw(Text(arrow.sourceLabel).font(.system(size: 9, weight: .bold)).foregroundColor(.accentBlue), at: CGPoint(x: from.x + offsetNorm.x, y: from.y + offsetNorm.y))
-                            context.draw(Text(arrow.targetLabel).font(.system(size: 9, weight: .bold)).foregroundColor(.accentBlue), at: CGPoint(x: to.x + offsetNorm.x, y: to.y + offsetNorm.y))
                         }
                     }
                     .frame(width: cvWidth, height: cvHeight)
@@ -242,7 +192,6 @@ struct ERDiagramView: View {
                     ForEach(positions.indices, id: \.self) { i in
                         let tr = positions[i]
                         let cardOffset: CGSize = draggingCardId == tr.table.id ? cardDragOffset : .zero
-                        let isDimmed = activeSearch && !filteredTableIds.contains(tr.table.id)
 
                         TableCardView(
                             table: tr.table,
@@ -253,7 +202,6 @@ struct ERDiagramView: View {
                             tableWidth: tableWidth
                         )
                         .shadow(color: draggingCardId == tr.table.id ? .black.opacity(0.15) : .clear, radius: 4)
-                        .opacity(isDimmed ? 0.25 : 1)
                         .position(
                             x: tr.rect.midX + originOffset.width + cardOffset.width,
                             y: tr.rect.midY + originOffset.height + cardOffset.height
@@ -272,7 +220,6 @@ struct ERDiagramView: View {
                                     )
                                     draggingCardId = nil
                                     cardDragOffset = .zero
-                                    saveLayout()
                                 }
                         )
                     }
@@ -311,29 +258,6 @@ struct ERDiagramView: View {
         offset = .zero
         lastScale = 1.0
         lastOffset = .zero
-    }
-
-    private func resetLayout() {
-        customPositions = [:]
-        saveLayout()
-    }
-
-    private func saveLayout() {
-        guard let url = layoutStorageURL else { return }
-        let dict = customPositions.mapValues { ["x": $0.x as CGFloat, "y": $0.y as CGFloat] }
-        guard let data = try? JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted]) else { return }
-        try? data.write(to: url)
-    }
-
-    private func loadLayout() {
-        guard let url = layoutStorageURL,
-              let data = try? Data(contentsOf: url),
-              let dict = try? JSONSerialization.jsonObject(with: data) as? [String: [String: CGFloat]]
-        else { return }
-        customPositions = dict.compactMapValues { dict in
-            guard let x = dict["x"], let y = dict["y"] else { return nil }
-            return CGPoint(x: x, y: y)
-        }
     }
 
     // MARK: - Export
@@ -397,53 +321,38 @@ struct ERDiagramView: View {
         cgCtx.fill(CGRect(x: 0, y: 0, width: w, height: h))
 
         // Arrows
-            cgCtx.setStrokeColor(NSColor.accentBlue.withAlphaComponent(0.5).cgColor)
-            cgCtx.setLineWidth(1.5)
-            for arrow in arrowPaths {
-                let fx = arrow.from.x + originOffset.width
-                let fy = arrow.from.y + originOffset.height
-                let tx = arrow.to.x + originOffset.width
-                let ty = arrow.to.y + originOffset.height
-                let from = CGPoint(x: fx, y: h - fy)
-                let to = CGPoint(x: tx, y: h - ty)
+        cgCtx.setStrokeColor(NSColor.accentBlue.withAlphaComponent(0.5).cgColor)
+        cgCtx.setLineWidth(1.5)
+        for arrow in arrowPaths {
+            let fx = arrow.from.x + originOffset.width
+            let fy = arrow.from.y + originOffset.height
+            let tx = arrow.to.x + originOffset.width
+            let ty = arrow.to.y + originOffset.height
+            let from = CGPoint(x: fx, y: h - fy)
+            let to = CGPoint(x: tx, y: h - ty)
 
-                cgCtx.beginPath()
-                cgCtx.move(to: from)
-                cgCtx.addLine(to: to)
-                cgCtx.strokePath()
+            cgCtx.beginPath()
+            cgCtx.move(to: from)
+            cgCtx.addLine(to: to)
+            cgCtx.strokePath()
 
-                let angle = atan2(to.y - from.y, to.x - from.x)
-                let arrowLen: CGFloat = 10
-                let arrowAngle: CGFloat = .pi / 6
+            let angle = atan2(to.y - from.y, to.x - from.x)
+            let arrowLen: CGFloat = 10
+            let arrowAngle: CGFloat = .pi / 6
 
-                cgCtx.beginPath()
-                cgCtx.move(to: to)
-                cgCtx.addLine(to: CGPoint(
-                    x: to.x - arrowLen * cos(angle - arrowAngle),
-                    y: to.y - arrowLen * sin(angle - arrowAngle)
-                ))
-                cgCtx.move(to: to)
-                cgCtx.addLine(to: CGPoint(
-                    x: to.x - arrowLen * cos(angle + arrowAngle),
-                    y: to.y - arrowLen * sin(angle + arrowAngle)
-                ))
-                cgCtx.strokePath()
-
-                let perpX = -(to.y - from.y)
-                let perpY = to.x - from.x
-                let perpLen = sqrt(perpX * perpX + perpY * perpY)
-                let offsetX = perpLen > 0 ? perpX / perpLen * 14 : CGFloat(0)
-                let offsetY = perpLen > 0 ? perpY / perpLen * 14 : CGFloat(0)
-
-                let srcLabel = arrow.sourceLabel as NSString
-                let srcAttrs: [NSAttributedString.Key: Any] = [.font: NSFont.systemFont(ofSize: 11, weight: .bold), .foregroundColor: NSColor.accentBlue]
-                let srcSize = srcLabel.size(withAttributes: srcAttrs)
-                srcLabel.draw(at: CGPoint(x: from.x + offsetX - srcSize.width / 2, y: from.y + offsetY - srcSize.height / 2), withAttributes: srcAttrs)
-
-                let tgtLabel = arrow.targetLabel as NSString
-                let tgtSize = tgtLabel.size(withAttributes: srcAttrs)
-                tgtLabel.draw(at: CGPoint(x: to.x + offsetX - tgtSize.width / 2, y: to.y + offsetY - tgtSize.height / 2), withAttributes: srcAttrs)
-            }
+            cgCtx.beginPath()
+            cgCtx.move(to: to)
+            cgCtx.addLine(to: CGPoint(
+                x: to.x - arrowLen * cos(angle - arrowAngle),
+                y: to.y - arrowLen * sin(angle - arrowAngle)
+            ))
+            cgCtx.move(to: to)
+            cgCtx.addLine(to: CGPoint(
+                x: to.x - arrowLen * cos(angle + arrowAngle),
+                y: to.y - arrowLen * sin(angle + arrowAngle)
+            ))
+            cgCtx.strokePath()
+        }
 
         // Tables
         for tableRect in positions {
@@ -547,8 +456,6 @@ struct ERDiagramView: View {
     private struct ArrowPath {
         let from: CGPoint
         let to: CGPoint
-        let sourceLabel: String
-        let targetLabel: String
     }
 
     private func loadSchema() async {
@@ -566,7 +473,6 @@ struct ERDiagramView: View {
         foreignKeys = await databaseService.fetchForeignKeys(configID: configID, schema: schema)
             .filter { fk in tables.contains(where: { $0.name == fk.table }) }
 
-        loadLayout()
         isLoading = false
     }
 
@@ -600,20 +506,9 @@ struct ERDiagramView: View {
                   let toTable = positions.first(where: { $0.table.name == fk.foreignTable })
             else { continue }
 
-            if !filteredTableIds.isEmpty,
-               (!filteredTableIds.contains(fromTable.table.id) || !filteredTableIds.contains(toTable.table.id)) {
-                continue
-            }
-
             let fromPoint = CGPoint(x: fromTable.rect.maxX, y: fromTable.rect.midY)
             let toPoint = CGPoint(x: toTable.rect.minX, y: toTable.rect.midY)
-
-            let srcCols = columns[fk.table] ?? []
-            let isSrcPK = srcCols.contains { $0.name == fk.column && ($0.name.lowercased() == "id" || $0.name.hasSuffix("_id")) }
-            let sourceLabel = isSrcPK ? "1" : "N"
-            let targetLabel = "1"
-
-            arrows.append(ArrowPath(from: fromPoint, to: toPoint, sourceLabel: sourceLabel, targetLabel: targetLabel))
+            arrows.append(ArrowPath(from: fromPoint, to: toPoint))
         }
         return arrows
     }
@@ -635,25 +530,6 @@ struct ERDiagramView: View {
     private func canvasHeight(positions: [TableRect]) -> CGFloat {
         let bounds = boundingBox(positions: positions)
         return max(400, bounds.height + 160)
-    }
-
-    private func zoomToFit() {
-        let allPositions = layoutTables()
-        let bounds = boundingBox(positions: allPositions)
-        guard bounds.width > 0 && bounds.height > 0 else { return }
-        let padding: CGFloat = 80
-        let targetW = viewportSize.width - padding
-        let targetH = viewportSize.height - padding
-        guard targetW > 0 && targetH > 0 else { return }
-        let scaleX = targetW / bounds.width
-        let scaleY = targetH / bounds.height
-        scale = min(scaleX, scaleY, 3.0)
-        offset = CGSize(
-            width: -(bounds.midX * scale - viewportSize.width / 2),
-            height: -(bounds.midY * scale - viewportSize.height / 2)
-        )
-        lastScale = scale
-        lastOffset = offset
     }
 }
 
@@ -721,42 +597,5 @@ struct TableCardView: View {
             RoundedRectangle(cornerRadius: 4)
                 .stroke(Color.borderDefault, lineWidth: 1)
         )
-    }
-}
-
-struct SearchField: NSViewRepresentable {
-    @Binding var text: String
-    var placeholder: String
-
-    func makeNSView(context: Context) -> NSSearchField {
-        let field = NSSearchField()
-        field.placeholderString = placeholder
-        field.bezelStyle = .roundedBezel
-        field.target = context.coordinator
-        field.action = #selector(Coordinator.changed)
-        field.delegate = context.coordinator
-        return field
-    }
-
-    func updateNSView(_ nsView: NSSearchField, context: Context) {
-        nsView.stringValue = text
-    }
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(text: $text)
-    }
-
-    class Coordinator: NSObject, NSSearchFieldDelegate {
-        @Binding var text: String
-        init(text: Binding<String>) { _text = text }
-
-        @objc func changed(_ sender: NSSearchField) {
-            text = sender.stringValue
-        }
-
-        func controlTextDidChange(_ obj: Notification) {
-            guard let field = obj.object as? NSSearchField else { return }
-            text = field.stringValue
-        }
     }
 }

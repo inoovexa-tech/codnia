@@ -1,32 +1,3 @@
-## [0.20.0] — 2026-06-04
-
-### Added
-- Browser: full persistence per worktree (cookies, localStorage, sessionStorage, IndexedDB, cache, service workers) — login state and site data survive app restart
-- Browser: bookmarks with star button, folders, drag-friendly sidebar view, double-click to open
-- Browser: full history (5000 entries, grouped by Today/Yesterday/date) with search
-- Browser: download manager with progress, pause/resume via URLSession, reveal in Finder
-- Browser: saved logins with Keychain-backed passwords and auto-save prompt (opt-in via Settings)
-- Browser: find-in-page bar (⌘F) with up/down navigation and match count
-- Browser: zoom controls (50–200%, ⌘=, ⌘-, ⌘0) with per-domain memory
-- Browser: take page screenshot (PNG, save dialog)
-- Browser: save page as PDF (save dialog)
-- Browser: hard reload (⌘⇧R) bypassing cache
-- Browser: tracker blocking via WKContentRuleList (GA, GTM, DoubleClick, Facebook) — opt-in
-- Browser: third-party cookie blocking — opt-in
-- Browser: dark mode CSS injection for sites that don't support it natively
-- Browser: custom user agent override
-- Browser: BrowserPlugin sidebar with Bookmarks, History, Downloads, and Logins tabs
-- DevTools: "Copy as cURL" from network entry context menu
-- DevTools: host filter dropdown in network panel
-- Settings: new Browser section (persistence, downloads path, auto-save, zoom, etc.)
-
-### Changed
-- BrowserView: refactored toolbar to extracted BrowserToolbarView with new buttons
-- Database keychain helper renamed to DatabaseKeychainHelper to allow sharing Keychain helper with browser
-
-### Fixed
-- Browser cookie/session storage now persists across app launches (was discarded before)
-
 ## [0.19.0] — 2026-06-03
 
 ### Added

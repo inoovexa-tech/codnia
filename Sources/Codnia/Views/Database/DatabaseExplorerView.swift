@@ -21,24 +21,6 @@ struct DatabaseExplorerView: View {
     @State private var showIndexManagement = false
     @State private var indexManagementConfigID = ""
     @State private var indexManagementTable = TableID(schema: "", table: "")
-    @State private var showTableProperties = false
-    @State private var tablePropertiesConfigID = ""
-    @State private var tablePropertiesTable = TableID(schema: "", table: "")
-    @State private var showRoutineEditor = false
-    @State private var routineEditorConfigID = ""
-    @State private var routineEditorSchema = ""
-    @State private var routineEditorName = ""
-    @State private var routineEditorType: RoutineType = .view
-    @State private var showConstraintManagement = false
-    @State private var constraintManagementConfigID = ""
-    @State private var constraintManagementTable = TableID(schema: "", table: "")
-    @State private var constraintManagementSchema = ""
-    @State private var showDependencies = false
-    @State private var dependenciesConfigID = ""
-    @State private var dependenciesTable = TableID(schema: "", table: "")
-    @State private var showTableEditor = false
-    @State private var tableEditorConfigID = ""
-    @State private var tableEditorTable = TableID(schema: "", table: "")
     @State private var showDropAlert = false
     @State private var dropConfigID = ""
     @State private var dropTarget = ""
@@ -48,15 +30,6 @@ struct DatabaseExplorerView: View {
     @State private var dropErrorMessage: String?
     @State private var searchText = ""
     @State private var rowCounts: [String: Int] = [:]
-    @State private var tableGroups: [String: [TableGroup]] = [:]
-    @State private var showCreateGroup = false
-    @State private var createGroupSchema = ""
-    @State private var createGroupConfigID = ""
-    @State private var renameGroupId: String?
-    @State private var renameGroupSchema = ""
-    @State private var renameGroupName = ""
-    @State private var renameGroupConfigID = ""
-
     @State private var loadingRowCounts = Set<String>()
 
     var body: some View {
@@ -117,41 +90,6 @@ struct DatabaseExplorerView: View {
             IndexManagementView(configID: indexManagementConfigID, table: indexManagementTable)
                 .environmentObject(databaseService)
         }
-        .sheet(isPresented: $showTableProperties) {
-            TablePropertiesView(configID: tablePropertiesConfigID, table: tablePropertiesTable)
-                .environmentObject(databaseService)
-        }
-        .sheet(isPresented: $showRoutineEditor) {
-            RoutineEditorView(
-                configID: routineEditorConfigID,
-                schema: routineEditorSchema,
-                name: routineEditorName,
-                type: routineEditorType
-            )
-            .environmentObject(databaseService)
-        }
-        .sheet(isPresented: $showConstraintManagement) {
-            ConstraintManagementView(
-                configID: constraintManagementConfigID,
-                table: constraintManagementTable,
-                schema: constraintManagementSchema
-            )
-            .environmentObject(databaseService)
-        }
-        .sheet(isPresented: $showDependencies) {
-            DependenciesView(
-                configID: dependenciesConfigID,
-                table: dependenciesTable
-            )
-            .environmentObject(databaseService)
-        }
-        .sheet(isPresented: $showTableEditor) {
-            TableEditorView(
-                configID: tableEditorConfigID,
-                table: tableEditorTable
-            )
-            .environmentObject(databaseService)
-        }
         .alert("Drop \(dropType)", isPresented: $showDropAlert, actions: {
             if dropType == "Table" {
                 Toggle("CASCADE (drop dependent objects)", isOn: $dropCascade)
@@ -171,51 +109,8 @@ struct DatabaseExplorerView: View {
                     .foregroundColor(.red)
             }
         })
-        .alert("New Group", isPresented: $showCreateGroup, actions: {
-            TextField("Group name", text: $renameGroupName)
-            Button("Cancel", role: .cancel) {
-                renameGroupName = ""
-            }
-            Button("Create") {
-                let name = renameGroupName.trimmingCharacters(in: .whitespaces)
-                if !name.isEmpty {
-                    createGroup(name: name, schema: createGroupSchema)
-                    cachedChildren.removeValue(forKey: "section:tables:\(createGroupConfigID):\(createGroupSchema)")
-                }
-                renameGroupName = ""
-            }
-        }, message: {
-            Text("Enter a name for the new table group")
-        })
-        .alert("Rename Group", isPresented: .init(get: { renameGroupId != nil }, set: { if !$0 { renameGroupId = nil } }), actions: {
-            TextField("Group name", text: $renameGroupName)
-            Button("Cancel", role: .cancel) {
-                renameGroupId = nil
-                renameGroupSchema = ""
-                renameGroupName = ""
-            }
-            Button("Rename") {
-                let name = renameGroupName.trimmingCharacters(in: .whitespaces)
-                if let id = renameGroupId, !name.isEmpty {
-                    renameGroup(id: id, name: name, schema: renameGroupSchema)
-                    cachedChildren.removeValue(forKey: "section:tables:\(renameGroupConfigID):\(renameGroupSchema)")
-                }
-                renameGroupId = nil
-                renameGroupSchema = ""
-                renameGroupName = ""
-                renameGroupConfigID = ""
-            }
-        })
         .onChange(of: databaseService.schemaVersion) { _ in
             refreshAllCaches()
-        }
-        .onAppear {
-            loadSession()
-            loadGroups()
-        }
-        .onDisappear {
-            saveSession()
-            saveGroups()
         }
     }
 
@@ -563,20 +458,6 @@ struct DatabaseExplorerView: View {
                         Button("View DDL") {
                             viewDDL(configID: configID, table: TableID(schema: t.schema, table: t.name), name: t.name)
                         }
-                        Button("Edit Table") {
-                            tableEditorConfigID = configID
-                            tableEditorTable = TableID(schema: t.schema, table: t.name)
-                            showTableEditor = true
-                        }
-                        if t.tableType == .view || t.tableType == .materializedView {
-                            Button("Edit \(t.tableType == .view ? "View" : "Materialized View")") {
-                                routineEditorConfigID = configID
-                                routineEditorSchema = t.schema
-                                routineEditorName = t.name
-                                routineEditorType = .view
-                                showRoutineEditor = true
-                            }
-                        }
                         Divider()
                         Button("ER Diagram") {
                             let dbName = databaseName ?? databaseService.config(withID: configID)?.name ?? configID
@@ -595,35 +476,6 @@ struct DatabaseExplorerView: View {
                             indexManagementTable = TableID(schema: t.schema, table: t.name)
                             showIndexManagement = true
                         }
-                        Button("Manage Constraints") {
-                            constraintManagementConfigID = configID
-                            constraintManagementTable = TableID(schema: t.schema, table: t.name)
-                            constraintManagementSchema = t.schema
-                            showConstraintManagement = true
-                        }
-                        Button("Dependencies") {
-                            dependenciesConfigID = configID
-                            dependenciesTable = TableID(schema: t.schema, table: t.name)
-                            showDependencies = true
-                        }
-                        Button("Properties") {
-                            tablePropertiesConfigID = configID
-                            tablePropertiesTable = TableID(schema: t.schema, table: t.name)
-                            showTableProperties = true
-                        }
-                        Divider()
-                        Divider()
-                        Menu("Add to Group") {
-                            let groups = tableGroups[t.schema] ?? []
-                            if groups.isEmpty {
-                                Text("No groups")
-                            }
-                            ForEach(groups, id: \.id) { g in
-                                Button(g.name) {
-                                    addTableToGroup(tableId: t.id, groupId: g.id, schema: t.schema, configID: configID)
-                                }
-                            }
-                        }
                         Divider()
                         Button("Copy Name") {
                             NSPasteboard.general.clearContents()
@@ -640,14 +492,6 @@ struct DatabaseExplorerView: View {
                             showDropAlert = true
                         }
                     case .function(let f):
-                        Button("Edit Function") {
-                            routineEditorConfigID = configID
-                            routineEditorSchema = f.schema
-                            routineEditorName = f.name
-                            routineEditorType = .function
-                            showRoutineEditor = true
-                        }
-                        Divider()
                         Button("Copy Name") {
                             NSPasteboard.general.clearContents()
                             NSPasteboard.general.setString(f.name, forType: .string)
@@ -663,14 +507,6 @@ struct DatabaseExplorerView: View {
                             showDropAlert = true
                         }
                     case .procedure(let p):
-                        Button("Edit Procedure") {
-                            routineEditorConfigID = configID
-                            routineEditorSchema = p.schema
-                            routineEditorName = p.name
-                            routineEditorType = .procedure
-                            showRoutineEditor = true
-                        }
-                        Divider()
                         Button("Copy Name") {
                             NSPasteboard.general.clearContents()
                             NSPasteboard.general.setString(p.name, forType: .string)
@@ -691,15 +527,6 @@ struct DatabaseExplorerView: View {
                                 createTableConfigID = configID
                                 createTableSchema = sec.schema
                                 showCreateTable = true
-                            }
-                            Button("New Group") {
-                                createGroupConfigID = configID
-                                createGroupSchema = sec.schema
-                                showCreateGroup = true
-                            }
-                            Divider()
-                            Button("Export Schema DDL…") {
-                                exportSchemaDDL(configID: configID, schema: sec.schema)
                             }
                             Divider()
                             Button("ER Diagram") {
@@ -726,16 +553,6 @@ struct DatabaseExplorerView: View {
                                 dropErrorMessage = nil
                                 showDropAlert = true
                             }
-                        }
-                    case .tableGroup(let g, let schema):
-                        Button("Rename Group") {
-                            renameGroupId = g.id
-                            renameGroupSchema = schema
-                            renameGroupName = g.name
-                            renameGroupConfigID = configID
-                        }
-                        Button("Remove Group", role: .destructive) {
-                            removeGroup(g.id, schema: schema)
                         }
                     default:
                         EmptyView()
@@ -919,24 +736,13 @@ struct DatabaseExplorerView: View {
                 DBTreeEntry.schemaSection(SchemaSection(sectionType: .materializedViews, schema: s.name)),
                 DBTreeEntry.schemaSection(SchemaSection(sectionType: .functions, schema: s.name)),
                 DBTreeEntry.schemaSection(SchemaSection(sectionType: .procedures, schema: s.name)),
-                DBTreeEntry.schemaSection(SchemaSection(sectionType: .triggers, schema: s.name)),
-                DBTreeEntry.schemaSection(SchemaSection(sectionType: .sequences, schema: s.name)),
             ]
 
         case .schemaSection(let sec):
             switch sec.sectionType {
             case .tables:
-                let allTables = await databaseService.fetchTables(configID: configID, schema: sec.schema)
-                let tables = allTables.filter { $0.tableType == .table }
-                let groups = self.tableGroups[sec.schema] ?? []
-                let groupedIds = Set(groups.flatMap { $0.tableIds })
-                var entries: [DBTreeEntry] = []
-                for g in groups {
-                    entries.append(.tableGroup(g, schema: sec.schema))
-                }
-                let ungrouped = tables.filter { !groupedIds.contains($0.id) }
-                entries.append(contentsOf: ungrouped.map { DBTreeEntry.table($0) })
-                result = entries
+                let tables = await databaseService.fetchTables(configID: configID, schema: sec.schema)
+                result = tables.filter { $0.tableType == .table }.map { DBTreeEntry.table($0) }
             case .views:
                 let tables = await databaseService.fetchTables(configID: configID, schema: sec.schema)
                 result = tables.filter { $0.tableType == .view }.map { DBTreeEntry.table($0) }
@@ -949,12 +755,6 @@ struct DatabaseExplorerView: View {
             case .procedures:
                 let procs = await databaseService.fetchProcedures(configID: configID, schema: sec.schema)
                 result = procs.map { DBTreeEntry.procedure($0) }
-            case .triggers:
-                let trigs = await databaseService.fetchTriggers(configID: configID, schema: sec.schema)
-                result = trigs.map { DBTreeEntry.trigger($0) }
-            case .sequences:
-                let seqs = await databaseService.fetchSequences(configID: configID, schema: sec.schema)
-                result = seqs.map { DBTreeEntry.sequence($0) }
             }
 
         case .table(let t):
@@ -963,11 +763,6 @@ struct DatabaseExplorerView: View {
                 table: TableID(schema: t.schema, table: t.name)
             )
             result = columns.map { DBTreeEntry.column($0, tableName: t.name) }
-
-        case .tableGroup(let g, let schema):
-            let allTables = await databaseService.fetchTables(configID: configID, schema: schema)
-            let groupTables = allTables.filter { g.tableIds.contains($0.id) }
-            result = groupTables.map { DBTreeEntry.table($0) }
 
         default:
             result = []
@@ -1008,107 +803,6 @@ struct DatabaseExplorerView: View {
         Task { @MainActor in
             let result = await databaseService.execute(configID: configID, sql: sql)
             editorVM.queryResults[tab.id] = result
-        }
-    }
-
-    private var sessionStorageURL: URL? {
-        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first?
-            .appendingPathComponent("Codnia")
-            .appendingPathComponent("Sessions")
-        try? FileManager.default.createDirectory(at: dir!, withIntermediateDirectories: true)
-        return dir?.appendingPathComponent("explorer_state.json")
-    }
-
-    private func saveSession() {
-        guard let url = sessionStorageURL else { return }
-        let dict: [String: Any] = [
-            "expandedItems": Array(expandedItems)
-        ]
-        guard let data = try? JSONSerialization.data(withJSONObject: dict) else { return }
-        try? data.write(to: url)
-    }
-
-    private func loadSession() {
-        guard let url = sessionStorageURL,
-              let data = try? Data(contentsOf: url),
-              let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let items = dict["expandedItems"] as? [String]
-        else { return }
-        expandedItems = Set(items)
-    }
-
-    private var groupsStorageURL: URL? {
-        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first?
-            .appendingPathComponent("Codnia")
-            .appendingPathComponent("Sessions")
-        try? FileManager.default.createDirectory(at: dir!, withIntermediateDirectories: true)
-        return dir?.appendingPathComponent("table_groups.json")
-    }
-
-    private func saveGroups() {
-        guard let url = groupsStorageURL,
-              let data = try? JSONEncoder().encode(tableGroups)
-        else { return }
-        try? data.write(to: url)
-    }
-
-    private func loadGroups() {
-        guard let url = groupsStorageURL,
-              let data = try? Data(contentsOf: url),
-              let decoded = try? JSONDecoder().decode([String: [TableGroup]].self, from: data)
-        else { return }
-        tableGroups = decoded
-    }
-
-    private func createGroup(name: String, schema: String) {
-        let g = TableGroup(name: name)
-        var groups = tableGroups[schema] ?? []
-        groups.append(g)
-        tableGroups[schema] = groups
-        saveGroups()
-    }
-
-    private func removeGroup(_ id: String, schema: String) {
-        var groups = tableGroups[schema] ?? []
-        groups.removeAll { $0.id == id }
-        tableGroups[schema] = groups.isEmpty ? nil : groups
-        saveGroups()
-    }
-
-    private func renameGroup(id: String, name: String, schema: String) {
-        guard var groups = tableGroups[schema],
-              let idx = groups.firstIndex(where: { $0.id == id })
-        else { return }
-        groups[idx].name = name
-        tableGroups[schema] = groups
-        saveGroups()
-    }
-
-    private func addTableToGroup(tableId: String, groupId: String, schema: String, configID: String) {
-        guard var groups = tableGroups[schema],
-              let idx = groups.firstIndex(where: { $0.id == groupId })
-        else { return }
-        if !groups[idx].tableIds.contains(tableId) {
-            groups[idx].tableIds.append(tableId)
-        }
-        tableGroups[schema] = groups
-        saveGroups()
-        cachedChildren.removeValue(forKey: "section:tables:\(configID):\(schema)")
-    }
-
-    private func exportSchemaDDL(configID: String, schema: String) {
-        Task {
-            let ddl = await databaseService.exportSchemaDDL(configID: configID, schema: schema)
-            guard !ddl.isEmpty else { return }
-            let panel = NSSavePanel()
-            panel.title = "Export Schema DDL"
-            panel.nameFieldStringValue = "\(schema).sql"
-            panel.allowedContentTypes = [.plainText]
-            panel.canCreateDirectories = true
-            NSApp.activate(ignoringOtherApps: true)
-            let response = panel.runModal()
-            guard response == .OK, let url = panel.url else { return }
-            try? ddl.write(to: url, atomically: true, encoding: .utf8)
         }
     }
 
@@ -1277,17 +971,11 @@ struct DatabaseExplorerView: View {
             case .materializedViews: return "rectangle.stack"
             case .functions: return "f.cursive"
             case .procedures: return "gearshape.2"
-            case .triggers: return "bolt"
-            case .sequences: return "list.number"
             }
         case .table: return "tablecells"
         case .column(let col, _): return typeSFSymbol(for: col.dataType)
         case .function: return "f.cursive"
         case .procedure: return "gearshape.2"
-        case .trigger: return "bolt"
-        case .sequence: return "list.number"
-        case .constraint: return "lock"
-        case .tableGroup: return "folder"
         }
     }
 
@@ -1332,17 +1020,11 @@ struct DatabaseExplorerView: View {
             case .materializedViews: return .accentBlue
             case .functions: return .accentPurple
             case .procedures: return .accentOrange
-            case .triggers: return .accentYellow
-            case .sequences: return .accentGreen
             }
         case .table: return .accentBlue
         case .column: return .textTertiary
         case .function: return .accentPurple
         case .procedure: return .accentOrange
-        case .trigger: return .accentYellow
-        case .sequence: return .accentGreen
-        case .constraint: return .accentBlue
-        case .tableGroup: return .accentOrange
         }
     }
 

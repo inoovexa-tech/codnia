@@ -32,48 +32,6 @@ public protocol DatabaseProvider: AnyObject, Sendable {
     func createIndex(handle: String, table: TableID, name: String, columns: [String], unique: Bool) async throws
     func dropIndex(handle: String, indexName: String, table: TableID) async throws
 
-    // MARK: - Triggers
-
-    func fetchTriggers(handle: String, schema: String) async throws -> [TriggerInfo]
-    func dropTrigger(handle: String, schema: String, trigger: String, table: String) async throws
-
-    // MARK: - Sequences
-
-    func fetchSequences(handle: String, schema: String) async throws -> [SequenceInfo]
-    func dropSequence(handle: String, schema: String, sequence: String) async throws
-
-    // MARK: - Constraints
-
-    func fetchConstraints(handle: String, table: TableID) async throws -> [ConstraintInfo]
-    func dropConstraint(handle: String, table: TableID, constraint: String) async throws
-    func addForeignKey(handle: String, table: TableID, name: String, columns: [String], refTable: TableID, refColumns: [String], onDelete: String?, onUpdate: String?) async throws
-
-    // MARK: - Table Properties
-
-    func fetchTableStats(handle: String, table: TableID) async throws -> TableStats
-
-    // MARK: - Routine Source
-
-    func fetchRoutineSource(handle: String, schema: String, name: String, type: RoutineType) async throws -> String
-    func updateRoutine(handle: String, schema: String, name: String, type: RoutineType, source: String) async throws
-
-    // MARK: - Dependencies
-
-    func fetchDependencies(handle: String, schema: String, table: String) async throws -> [String]
-
-    // MARK: - Table Operations
-
-    func renameTable(handle: String, table: TableID, newName: String) async throws
-    func moveTable(handle: String, table: TableID, newSchema: String) async throws
-    func copyTable(handle: String, table: TableID, newName: String, copyData: Bool) async throws
-
-    // MARK: - Transactions
-
-    func beginTransaction(handle: String) async throws
-    func commitTransaction(handle: String) async throws
-    func rollbackTransaction(handle: String) async throws
-    var supportsTransactions: Bool { get }
-
     // MARK: - Identifier Quoting
 
     func quoteIdentifier(_ name: String) -> String
@@ -82,27 +40,6 @@ public protocol DatabaseProvider: AnyObject, Sendable {
 
     func cancel(handle: String) async throws
     func setBackendPID(handle: String, pid: Int)
-}
-
-extension DatabaseProvider {
-    public var supportsTransactions: Bool { true }
-    public func fetchTriggers(handle: String, schema: String) async throws -> [TriggerInfo] { [] }
-    public func dropTrigger(handle: String, schema: String, trigger: String, table: String) async throws { throw DDLMethodError.notImplemented("dropTrigger") }
-    public func fetchSequences(handle: String, schema: String) async throws -> [SequenceInfo] { [] }
-    public func dropSequence(handle: String, schema: String, sequence: String) async throws { throw DDLMethodError.notImplemented("dropSequence") }
-    public func fetchConstraints(handle: String, table: TableID) async throws -> [ConstraintInfo] { [] }
-    public func dropConstraint(handle: String, table: TableID, constraint: String) async throws { throw DDLMethodError.notImplemented("dropConstraint") }
-    public func addForeignKey(handle: String, table: TableID, name: String, columns: [String], refTable: TableID, refColumns: [String], onDelete: String?, onUpdate: String?) async throws { throw DDLMethodError.notImplemented("addForeignKey") }
-    public func fetchTableStats(handle: String, table: TableID) async throws -> TableStats { TableStats() }
-    public func fetchRoutineSource(handle: String, schema: String, name: String, type: RoutineType) async throws -> String { throw DDLMethodError.notImplemented("fetchRoutineSource") }
-    public func updateRoutine(handle: String, schema: String, name: String, type: RoutineType, source: String) async throws { throw DDLMethodError.notImplemented("updateRoutine") }
-    public func fetchDependencies(handle: String, schema: String, table: String) async throws -> [String] { [] }
-    public func renameTable(handle: String, table: TableID, newName: String) async throws { throw DDLMethodError.notImplemented("renameTable") }
-    public func moveTable(handle: String, table: TableID, newSchema: String) async throws { throw DDLMethodError.notImplemented("moveTable") }
-    public func copyTable(handle: String, table: TableID, newName: String, copyData: Bool) async throws { throw DDLMethodError.notImplemented("copyTable") }
-    public func beginTransaction(handle: String) async throws { throw DDLMethodError.notImplemented("beginTransaction") }
-    public func commitTransaction(handle: String) async throws { throw DDLMethodError.notImplemented("commitTransaction") }
-    public func rollbackTransaction(handle: String) async throws { throw DDLMethodError.notImplemented("rollbackTransaction") }
 }
 
 public struct NewColumnInfo: Sendable {
