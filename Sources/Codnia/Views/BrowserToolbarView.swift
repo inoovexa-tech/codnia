@@ -10,11 +10,7 @@ struct BrowserToolbarView: View {
     @Binding var canGoBack: Bool
     @Binding var canGoForward: Bool
     @Binding var estimatedProgress: Double
-    @Binding var findVisible: Bool
-
-    @ObservedObject var bookmarkService: BrowserBookmarkService
     @ObservedObject var downloadService: BrowserDownloadService
-    @ObservedObject var settings: SettingsService
 
     let webViewCoordinator: WebViewCoordinator?
     let onClose: () -> Void
@@ -23,14 +19,6 @@ struct BrowserToolbarView: View {
     let onPinToTab: (() -> Void)?
 
     @FocusState.Binding var urlFieldFocused: Bool
-    @State private var showZoomMenu: Bool = false
-    @State private var showBookmarkSheet: Bool = false
-
-    private var isBookmarked: Bool {
-        guard !urlString.isEmpty else { return false }
-        return bookmarkService.isBookmarked(url: urlString)
-    }
-
     private var activeDownloadsCount: Int {
         downloadService.downloads.filter { $0.state == .downloading || $0.state == .pending }.count
     }
@@ -113,50 +101,6 @@ struct BrowserToolbarView: View {
                 }
             }
 
-            Button(action: toggleBookmark) {
-                Image(systemName: isBookmarked ? "star.fill" : "star")
-                    .font(.system(size: 10))
-                    .frame(width: 22, height: 22)
-                    .foregroundColor(isBookmarked ? .accentYellow : .textTertiary)
-            }
-            .buttonStyle(PlainButtonStyle())
-            .help(isBookmarked ? "Remove bookmark" : "Add bookmark")
-
-            Button(action: {
-                webViewCoordinator?.snapshot()
-            }) {
-                Image(systemName: "camera")
-                    .font(.system(size: 10))
-                    .frame(width: 22, height: 22)
-                    .foregroundColor(.textTertiary)
-            }
-            .buttonStyle(PlainButtonStyle())
-            .help("Take screenshot")
-            .disabled(urlString.isEmpty)
-
-            Button(action: {
-                webViewCoordinator?.pdf()
-            }) {
-                Image(systemName: "printer")
-                    .font(.system(size: 10))
-                    .frame(width: 22, height: 22)
-                    .foregroundColor(.textTertiary)
-            }
-            .buttonStyle(PlainButtonStyle())
-            .help("Save as PDF")
-            .disabled(urlString.isEmpty)
-
-            Button(action: { findVisible.toggle() }) {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 10))
-                    .frame(width: 22, height: 22)
-                    .foregroundColor(findVisible ? .accentBlue : .textTertiary)
-            }
-            .buttonStyle(PlainButtonStyle())
-            .help("Find in page (⌘F)")
-
-            zoomMenu
-
             Button(action: onDownloadTap ?? { }) {}
                 .opacity(0)
                 .overlay(
@@ -218,32 +162,6 @@ struct BrowserToolbarView: View {
         )
     }
 
-    private var zoomMenu: some View {
-        Menu {
-            ForEach([0.5, 0.75, 0.9, 1.0, 1.1, 1.25, 1.5, 2.0], id: \.self) { zoom in
-                Button {
-                    webViewCoordinator?.setZoom(zoom)
-                } label: {
-                    HStack {
-                        Text("\(Int(zoom * 100))%")
-                        if abs((webViewCoordinator?.currentZoom ?? 1.0) - zoom) < 0.01 {
-                            Image(systemName: "checkmark")
-                        }
-                    }
-                }
-            }
-            Divider()
-            Button("Reset") { webViewCoordinator?.setZoom(1.0) }
-        } label: {
-            Image(systemName: "textformat.size")
-                .font(.system(size: 10))
-                .frame(width: 22, height: 22)
-                .foregroundColor(.textTertiary)
-        }
-        .menuStyle(BorderlessButtonMenuStyle())
-        .help("Zoom level")
-    }
-
     private var onDownloadTap: (() -> Void)? {
         guard activeDownloadsCount > 0 else { return nil }
         return { /* could navigate to downloads sidebar */ }
@@ -261,10 +179,6 @@ struct BrowserToolbarView: View {
         urlString = finalURL
     }
 
-    private func toggleBookmark() {
-        let title = pageTitle.isEmpty ? (URL(string: urlString)?.host ?? urlString) : pageTitle
-        bookmarkService.toggle(title: title, url: urlString)
-    }
 }
 
 struct DownloadIndicator: View {

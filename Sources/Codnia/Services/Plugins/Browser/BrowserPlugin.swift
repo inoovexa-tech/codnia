@@ -6,7 +6,7 @@ public final class BrowserPlugin: SidebarPlugin {
     public let id = "browser"
     public let name = "Browser"
     public let iconName = "globe"
-    public let description = "Bookmarks, history, downloads, and saved credentials for the integrated browser"
+    public let description = "History, downloads, and saved credentials for the integrated browser"
     public let author = "Codnia"
     public let version = "1.0.0"
 

@@ -28,12 +28,10 @@ public final class SettingsService: ObservableObject {
     @Published public var browserPersistData: Bool = true
     @Published public var browserAutoSaveCredentials: Bool = false
     @Published public var browserDownloadPath: String = "~/Downloads"
-    @Published public var browserDefaultZoom: Double = 1.0
     @Published public var browserBlockTrackers: Bool = false
     @Published public var browserBlockThirdPartyCookies: Bool = false
     @Published public var browserAcceptLanguages: String = "en-US,en;q=0.9"
     @Published public var browserDarkModeInjection: Bool = false
-    @Published public var browserRememberZoomPerDomain: Bool = true
     @Published public var browserCustomUserAgent: String = ""
 
     private let defaults = UserDefaults.standard
@@ -79,13 +77,10 @@ public final class SettingsService: ObservableObject {
         browserPersistData = defaults.object(forKey: prefix + "browserPersistData") as? Bool ?? true
         browserAutoSaveCredentials = defaults.object(forKey: prefix + "browserAutoSaveCredentials") as? Bool ?? false
         browserDownloadPath = defaults.string(forKey: prefix + "browserDownloadPath") ?? "~/Downloads"
-        let storedZoom = defaults.double(forKey: prefix + "browserDefaultZoom")
-        browserDefaultZoom = storedZoom == 0 ? 1.0 : storedZoom
         browserBlockTrackers = defaults.object(forKey: prefix + "browserBlockTrackers") as? Bool ?? false
         browserBlockThirdPartyCookies = defaults.object(forKey: prefix + "browserBlockThirdPartyCookies") as? Bool ?? false
         browserAcceptLanguages = defaults.string(forKey: prefix + "browserAcceptLanguages") ?? "en-US,en;q=0.9"
         browserDarkModeInjection = defaults.object(forKey: prefix + "browserDarkModeInjection") as? Bool ?? false
-        browserRememberZoomPerDomain = defaults.object(forKey: prefix + "browserRememberZoomPerDomain") as? Bool ?? true
         browserCustomUserAgent = defaults.string(forKey: prefix + "browserCustomUserAgent") ?? ""
 
         setupAutosave()
@@ -118,12 +113,10 @@ public final class SettingsService: ObservableObject {
             $browserPersistData.map { _ in () }.eraseToAnyPublisher(),
             $browserAutoSaveCredentials.map { _ in () }.eraseToAnyPublisher(),
             $browserDownloadPath.map { _ in () }.eraseToAnyPublisher(),
-            $browserDefaultZoom.map { _ in () }.eraseToAnyPublisher(),
             $browserBlockTrackers.map { _ in () }.eraseToAnyPublisher(),
             $browserBlockThirdPartyCookies.map { _ in () }.eraseToAnyPublisher(),
             $browserAcceptLanguages.map { _ in () }.eraseToAnyPublisher(),
             $browserDarkModeInjection.map { _ in () }.eraseToAnyPublisher(),
-            $browserRememberZoomPerDomain.map { _ in () }.eraseToAnyPublisher(),
             $browserCustomUserAgent.map { _ in () }.eraseToAnyPublisher(),
         ])
         group1
@@ -158,12 +151,10 @@ public final class SettingsService: ObservableObject {
         defaults.set(browserPersistData, forKey: prefix + "browserPersistData")
         defaults.set(browserAutoSaveCredentials, forKey: prefix + "browserAutoSaveCredentials")
         defaults.set(browserDownloadPath, forKey: prefix + "browserDownloadPath")
-        defaults.set(browserDefaultZoom, forKey: prefix + "browserDefaultZoom")
         defaults.set(browserBlockTrackers, forKey: prefix + "browserBlockTrackers")
         defaults.set(browserBlockThirdPartyCookies, forKey: prefix + "browserBlockThirdPartyCookies")
         defaults.set(browserAcceptLanguages, forKey: prefix + "browserAcceptLanguages")
         defaults.set(browserDarkModeInjection, forKey: prefix + "browserDarkModeInjection")
-        defaults.set(browserRememberZoomPerDomain, forKey: prefix + "browserRememberZoomPerDomain")
         defaults.set(browserCustomUserAgent, forKey: prefix + "browserCustomUserAgent")
     }
 }

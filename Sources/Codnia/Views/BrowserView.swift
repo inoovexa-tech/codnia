@@ -19,9 +19,6 @@ struct BrowserView: View {
     @State private var canGoBack: Bool = false
     @State private var canGoForward: Bool = false
     @State private var localURLText: String = ""
-    @State private var findVisible: Bool = false
-    @State private var zoomLevel: Double = 1.0
-
     @FocusState private var urlFieldFocused: Bool
 
     @StateObject private var devToolsService = BrowserDevToolsService()
@@ -46,33 +43,27 @@ struct BrowserView: View {
                             isLoading: $isLoading,
                             canGoBack: $canGoBack,
                             canGoForward: $canGoForward,
-                            estimatedProgress: $estimatedProgress,
-                            findVisible: $findVisible,
-                            bookmarkService: appState.bookmarkService,
-                            downloadService: appState.downloadService,
-                            settings: appState.settings,
-                            webViewCoordinator: webViewCoordinator,
-                            onClose: onClose,
-                            onPinToLeft: onPinToLeft,
-                            onPinToRight: onPinToRight,
-                            onPinToTab: onPinToTab,
-                            urlFieldFocused: $urlFieldFocused
-                        )
-                        progressBar
-                        if findVisible, let coord = webViewCoordinator {
-                            BrowserFindBarView(coordinator: coord, isVisible: $findVisible)
-                        }
-                        webViewRepresentable
-                            .frame(maxHeight: .infinity)
-                        HorizontalResizableDivider(
-                            height: $devToolsHeight,
-                            minHeight: 100,
-                            maxHeight: 600
-                        )
-                        BrowserDevToolsView(devToolsService: devToolsService)
-                            .frame(height: devToolsHeight)
-                    }
-                case .right:
+                             estimatedProgress: $estimatedProgress,
+                             downloadService: appState.downloadService,
+                             webViewCoordinator: webViewCoordinator,
+                             onClose: onClose,
+                             onPinToLeft: onPinToLeft,
+                             onPinToRight: onPinToRight,
+                             onPinToTab: onPinToTab,
+                             urlFieldFocused: $urlFieldFocused
+                         )
+                         progressBar
+                         webViewRepresentable
+                             .frame(maxHeight: .infinity)
+                         HorizontalResizableDivider(
+                             height: $devToolsHeight,
+                             minHeight: 100,
+                             maxHeight: 600
+                         )
+                         BrowserDevToolsView(devToolsService: devToolsService)
+                             .frame(height: devToolsHeight)
+                     }
+                 case .right:
                     VStack(spacing: 0) {
                         BrowserToolbarView(
                             devToolsService: devToolsService,
@@ -83,10 +74,7 @@ struct BrowserView: View {
                             canGoBack: $canGoBack,
                             canGoForward: $canGoForward,
                             estimatedProgress: $estimatedProgress,
-                            findVisible: $findVisible,
-                            bookmarkService: appState.bookmarkService,
                             downloadService: appState.downloadService,
-                            settings: appState.settings,
                             webViewCoordinator: webViewCoordinator,
                             onClose: onClose,
                             onPinToLeft: onPinToLeft,
@@ -95,9 +83,6 @@ struct BrowserView: View {
                             urlFieldFocused: $urlFieldFocused
                         )
                         progressBar
-                        if findVisible, let coord = webViewCoordinator {
-                            BrowserFindBarView(coordinator: coord, isVisible: $findVisible)
-                        }
                         HStack(spacing: 0) {
                             webViewRepresentable
                                 .frame(maxWidth: .infinity)
@@ -123,10 +108,7 @@ struct BrowserView: View {
                             canGoBack: $canGoBack,
                             canGoForward: $canGoForward,
                             estimatedProgress: $estimatedProgress,
-                            findVisible: $findVisible,
-                            bookmarkService: appState.bookmarkService,
                             downloadService: appState.downloadService,
-                            settings: appState.settings,
                             webViewCoordinator: webViewCoordinator,
                             onClose: onClose,
                             onPinToLeft: onPinToLeft,
@@ -135,9 +117,6 @@ struct BrowserView: View {
                             urlFieldFocused: $urlFieldFocused
                         )
                         progressBar
-                        if findVisible, let coord = webViewCoordinator {
-                            BrowserFindBarView(coordinator: coord, isVisible: $findVisible)
-                        }
                         HStack(spacing: 0) {
                             BrowserDevToolsView(devToolsService: devToolsService)
                                 .frame(width: devToolsService.devToolsWidth)
@@ -164,10 +143,7 @@ struct BrowserView: View {
                         canGoBack: $canGoBack,
                         canGoForward: $canGoForward,
                         estimatedProgress: $estimatedProgress,
-                        findVisible: $findVisible,
-                        bookmarkService: appState.bookmarkService,
                         downloadService: appState.downloadService,
-                        settings: appState.settings,
                         webViewCoordinator: webViewCoordinator,
                         onClose: onClose,
                         onPinToLeft: onPinToLeft,
@@ -176,9 +152,6 @@ struct BrowserView: View {
                         urlFieldFocused: $urlFieldFocused
                     )
                     progressBar
-                    if findVisible, let coord = webViewCoordinator {
-                        BrowserFindBarView(coordinator: coord, isVisible: $findVisible)
-                    }
                     webViewRepresentable
                 }
             }
@@ -262,21 +235,8 @@ struct BrowserView: View {
             historyService: appState.historyService,
             credentialService: appState.credentialService,
             downloadService: appState.downloadService,
-            settings: appState.settings,
-            onZoomChange: { newZoom in
-                zoomLevel = newZoom
-            }
+            settings: appState.settings
         )
-        .onAppear {
-            applyZoomIfNeeded()
-        }
-        .onChange(of: zoomLevel) { _ in
-            applyZoomIfNeeded()
-        }
-    }
-
-    private func applyZoomIfNeeded() {
-        webViewCoordinator?.setZoom(zoomLevel)
     }
 }
 
@@ -305,20 +265,12 @@ extension BrowserView {
                 .keyboardShortcut("2", modifiers: [.command, .shift])
             Button("Dock Left") { devToolsService.dockingPosition = .left }
                 .keyboardShortcut("3", modifiers: [.command, .shift])
-            Button("Find in Page") { findVisible.toggle() }
-                .keyboardShortcut("f", modifiers: .command)
             Button("Focus URL") { urlFieldFocused = true }
                 .keyboardShortcut("l", modifiers: .command)
             Button("Reload") { webViewCoordinator?.reload() }
                 .keyboardShortcut("r", modifiers: .command)
             Button("Hard Reload") { webViewCoordinator?.reloadFromOrigin() }
                 .keyboardShortcut("r", modifiers: [.command, .shift])
-            Button("Zoom In") { webViewCoordinator?.setZoom((webViewCoordinator?.currentZoom ?? 1.0) * 1.1) }
-                .keyboardShortcut("=", modifiers: .command)
-            Button("Zoom Out") { webViewCoordinator?.setZoom((webViewCoordinator?.currentZoom ?? 1.0) / 1.1) }
-                .keyboardShortcut("-", modifiers: .command)
-            Button("Reset Zoom") { webViewCoordinator?.setZoom(1.0) }
-                .keyboardShortcut("0", modifiers: .command)
         }
         .opacity(0)
         .frame(width: 0, height: 0)
@@ -340,7 +292,6 @@ struct WebViewRepresentable: NSViewRepresentable {
     let credentialService: BrowserCredentialService
     let downloadService: BrowserDownloadService
     let settings: SettingsService
-    let onZoomChange: (Double) -> Void
 
     func makeCoordinator() -> WebViewCoordinator {
         let coord = WebViewCoordinator(parent: self)
@@ -348,7 +299,6 @@ struct WebViewRepresentable: NSViewRepresentable {
         coord.historyService = historyService
         coord.credentialService = credentialService
         coord.downloadService = downloadService
-        coord.settings = settings
         return coord
     }
 
@@ -387,13 +337,6 @@ struct WebViewRepresentable: NSViewRepresentable {
         webView.allowsBackForwardNavigationGestures = true
         webView.setValue(false, forKey: "drawsBackground")
 
-        if settings.browserDefaultZoom != 1.0 {
-            let zoom = settings.browserDefaultZoom
-            let js = "document.body.style.zoom = '\(zoom)'"
-            let userScript = WKUserScript(source: js, injectionTime: .atDocumentEnd, forMainFrameOnly: true)
-            config.userContentController.addUserScript(userScript)
-        }
-
         context.coordinator.webView = webView
         context.coordinator.parent = self
         coordinator = context.coordinator
@@ -418,17 +361,21 @@ struct WebViewRepresentable: NSViewRepresentable {
         context.coordinator.parent = self
 
         guard urlString.hasPrefix("http://") || urlString.hasPrefix("https://") else {
+            print("[Browser] updateNSView skipping url=\(urlString) (not http/https)")
             return
         }
 
         guard !context.coordinator.navigating else {
+            print("[Browser] updateNSView skipping url=\(urlString) (navigating)")
             return
         }
         if let url = URL(string: urlString), url.scheme != nil {
             let webViewURL = webView.url?.absoluteString
             let isInitialLoad = webViewURL == nil || webViewURL == "about:blank" || webViewURL == "http://about:blank"
-            let needsReload = isInitialLoad || (webViewURL != urlString && !urlString.isEmpty)
+            let needsReload = isInitialLoad || (!context.coordinator.isInternalNavigation && webViewURL != urlString && !urlString.isEmpty)
+            print("[Browser] updateNSView urlString=\(urlString) webViewURL=\(webViewURL ?? "nil") isInitialLoad=\(isInitialLoad) isInternalNavigation=\(context.coordinator.isInternalNavigation) needsReload=\(needsReload)")
             if needsReload && !urlString.hasPrefix("about:") {
+                print("[Browser] updateNSView -> LOADING \(urlString)")
                 webView.load(URLRequest(url: url))
             }
         }
@@ -550,14 +497,11 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate {
     var parent: WebViewRepresentable
     weak var webView: WKWebView?
     private var isNavigating = false
-    private(set) var currentZoom: Double = 1.0
-    private var zoomPerDomain: [String: Double] = [:]
-
+    var isInternalNavigation = false
     weak var persistenceService: BrowserPersistenceService?
     weak var historyService: BrowserHistoryService?
     weak var credentialService: BrowserCredentialService?
     weak var downloadService: BrowserDownloadService?
-    weak var settings: SettingsService?
     private weak var devToolsService: BrowserDevToolsService?
     private let credentialHandlerBox = HandlerBox()
 
@@ -595,18 +539,9 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate {
     }
 
     func load(urlString: String) {
+        isInternalNavigation = false
         guard let url = URL(string: urlString) else { return }
         webView?.load(URLRequest(url: url))
-    }
-
-    func setZoom(_ zoom: Double) {
-        currentZoom = max(0.25, min(zoom, 5.0))
-        let js = "document.documentElement.style.zoom = '\(currentZoom)'"
-        webView?.evaluateJavaScript(js)
-        if let host = webView?.url?.host, let settings = settings, settings.browserRememberZoomPerDomain {
-            zoomPerDomain[host] = currentZoom
-        }
-        parent.onZoomChange(currentZoom)
     }
 
     func snapshot() {
@@ -622,36 +557,6 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate {
                 if panel.runModal() == .OK, let url = panel.url, let tiff = image.tiffRepresentation, let rep = NSBitmapImageRep(data: tiff), let data = rep.representation(using: .png, properties: [:]) {
                     try? data.write(to: url)
                 }
-            }
-        }
-    }
-
-    func printPage() {
-        guard let webView = webView else { return }
-        let printInfo = NSPrintInfo.shared
-        let op = webView.printOperation(with: printInfo)
-        if let window = webView.window {
-            op.runModal(for: window, delegate: nil, didRun: nil, contextInfo: nil)
-        }
-    }
-
-    func pdf() {
-        guard let webView = webView else { return }
-        let config = WKPDFConfiguration()
-        let host = webView.url?.host ?? "page"
-        Task {
-            do {
-                let data = try await webView.pdf(configuration: config)
-                await MainActor.run {
-                    let panel = NSSavePanel()
-                    panel.allowedContentTypes = [.pdf]
-                    panel.nameFieldStringValue = "\(host).pdf"
-                    if panel.runModal() == .OK, let url = panel.url {
-                        try? data.write(to: url)
-                    }
-                }
-            } catch {
-                // PDF generation failed
             }
         }
     }
@@ -710,11 +615,14 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate {
     }
 
     func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
+        print("[Browser] didCommit url=\(webView.url?.absoluteString ?? "nil")")
         parent.isLoading = true
         isNavigating = true
+        isInternalNavigation = true
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        print("[Browser] didFinish url=\(webView.url?.absoluteString ?? "nil")")
         parent.isLoading = false
         parent.estimatedProgress = 1.0
         parent.canGoBack = webView.canGoBack
@@ -729,56 +637,45 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate {
                 historyService.recordVisit(url: url, title: webView.title ?? "")
             }
         }
-        if let host = webView.url?.host, let zoom = zoomPerDomain[host], let settings = settings, settings.browserRememberZoomPerDomain {
-            currentZoom = zoom
-            let js = "document.documentElement.style.zoom = '\(zoom)'"
-            webView.evaluateJavaScript(js)
-        }
         if let worktreeId = persistenceService?.currentWorktreeId, !worktreeId.isEmpty {
             snapshotStorage(into: worktreeId)
         }
     }
 
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+        print("[Browser] didFail error=\(error.localizedDescription)")
         parent.isLoading = false
         isNavigating = false
     }
 
     func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+        print("[Browser] didStartProvisional url=\(webView.url?.absoluteString ?? "nil")")
         parent.isLoading = true
         isNavigating = true
     }
 
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+        print("[Browser] didFailProvisional url=\(webView.url?.absoluteString ?? "nil") error=\(error.localizedDescription)")
         parent.isLoading = false
         parent.estimatedProgress = 0
         isNavigating = false
     }
 
-    func webView(_ webView: WKWebView, decidePolicyFor navigationResponse: WKNavigationResponse, decisionHandler: @escaping @Sendable (WKNavigationResponsePolicy) -> Void) {
-        decisionHandler(.allow)
-        guard let response = navigationResponse.response as? HTTPURLResponse else { return }
-        let devTools = parent.devToolsService
-        if let url = response.url?.absoluteString {
-            devTools.addResource(
-                url: url,
-                mimeType: response.mimeType ?? "",
-                statusCode: response.statusCode
-            )
-        }
-    }
-
     @MainActor
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping @MainActor @Sendable (WKNavigationActionPolicy) -> Void) {
+        print("[Browser] decidePolicyFor navigationAction url=\(navigationAction.request.url?.absoluteString ?? "nil") type=\(navigationAction.navigationType.rawValue) targetFrame=\(navigationAction.targetFrame != nil)")
         if navigationAction.navigationType == .linkActivated && navigationAction.targetFrame == nil {
+            print("[Browser] -> loading in current frame, cancelling default")
             webView.load(navigationAction.request)
             decisionHandler(.cancel)
             return
         }
+        print("[Browser] -> allowing")
         decisionHandler(.allow)
     }
 
     func webView(_ webView: WKWebView, didReceiveServerRedirectForProvisionalNavigation navigation: WKNavigation!) {
+        print("[Browser] didReceiveServerRedirect url=\(webView.url?.absoluteString ?? "nil")")
         if let url = webView.url?.absoluteString {
             parent.urlString = url
         }
@@ -791,15 +688,6 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate {
         alert.addButton(withTitle: "OK")
         alert.addButton(withTitle: "Cancel")
         completionHandler(alert.runModal() == .alertFirstButtonReturn)
-    }
-
-    @MainActor
-    func webView(_ webView: WKWebView, runJavaScriptAlertPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping @MainActor @Sendable () -> Void) {
-        let alert = NSAlert()
-        alert.messageText = message
-        alert.addButton(withTitle: "OK")
-        alert.runModal()
-        completionHandler()
     }
 
     @MainActor
@@ -816,6 +704,33 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate {
         } else {
             completionHandler(nil)
         }
+    }
+}
+
+extension WebViewCoordinator {
+    func webView(_ webView: WKWebView, decidePolicyFor navigationResponse: WKNavigationResponse, decisionHandler: @escaping @Sendable (WKNavigationResponsePolicy) -> Void) {
+        print("[Browser] decidePolicyFor navigationResponse url=\(navigationResponse.response.url?.absoluteString ?? "nil")")
+        decisionHandler(.allow)
+        guard let response = navigationResponse.response as? HTTPURLResponse else { return }
+        let devTools = parent.devToolsService
+        if let url = response.url?.absoluteString {
+            devTools.addResource(
+                url: url,
+                mimeType: response.mimeType ?? "",
+                statusCode: response.statusCode
+            )
+        }
+    }
+}
+
+extension WebViewCoordinator {
+    @MainActor
+    func webView(_ webView: WKWebView, runJavaScriptAlertPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping @MainActor @Sendable () -> Void) {
+        let alert = NSAlert()
+        alert.messageText = message
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
+        completionHandler()
     }
 }
 

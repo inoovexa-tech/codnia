@@ -15,7 +15,6 @@ public final class AppState: ObservableObject {
     public let databaseService: DatabaseConnectionService
     public let notesVM: NotesViewModel
     public let browserService: BrowserService
-    @Published public var bookmarkService: BrowserBookmarkService
     @Published public var historyService: BrowserHistoryService
     @Published public var credentialService: BrowserCredentialService
     @Published public var downloadService: BrowserDownloadService
@@ -77,7 +76,6 @@ public final class AppState: ObservableObject {
         let db = DatabaseConnectionService()
         let nv = NotesViewModel()
         let bs = BrowserService()
-        let bookmarks = BrowserBookmarkService()
         let history = BrowserHistoryService()
         let credentials = BrowserCredentialService()
         let downloads = BrowserDownloadService()
@@ -95,7 +93,6 @@ public final class AppState: ObservableObject {
         self.databaseService = db
         self.notesVM = nv
         self.browserService = bs
-        self.bookmarkService = bookmarks
         self.historyService = history
         self.credentialService = credentials
         self.downloadService = downloads
@@ -174,7 +171,6 @@ public final class AppState: ObservableObject {
 
                 let worktreePath = worktree.path
                 self.persistenceService.prepareForWorktree(worktree.id)
-                self.bookmarkService.load(from: worktreePath)
                 self.historyService.load(from: worktreePath)
                 self.credentialService.load(from: worktreePath)
                 self.downloadService.load(from: worktreePath)

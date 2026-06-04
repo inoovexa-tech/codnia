@@ -2,10 +2,9 @@ import SwiftUI
 
 struct BrowserSidebarView: View {
     @EnvironmentObject var appState: AppState
-    @State private var selectedTab: BrowserSidebarTab = .bookmarks
+    @State private var selectedTab: BrowserSidebarTab = .history
 
     enum BrowserSidebarTab: String, CaseIterable, Identifiable {
-        case bookmarks = "Bookmarks"
         case history = "History"
         case downloads = "Downloads"
         case credentials = "Logins"
@@ -14,7 +13,6 @@ struct BrowserSidebarView: View {
 
         var icon: String {
             switch self {
-            case .bookmarks: return "star"
             case .history: return "clock.arrow.circlepath"
             case .downloads: return "arrow.down.circle"
             case .credentials: return "key"
@@ -26,8 +24,6 @@ struct BrowserSidebarView: View {
         VStack(spacing: 0) {
             tabBar
             switch selectedTab {
-            case .bookmarks:
-                BrowserBookmarksView()
             case .history:
                 BrowserHistoryView()
             case .downloads:
