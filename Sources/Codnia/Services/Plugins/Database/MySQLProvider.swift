@@ -377,6 +377,201 @@ final class MySQLProvider: DatabaseProvider, @unchecked Sendable {
         return "`\(escaped)`"
     }
 
+    // MARK: - Triggers
+
+    func fetchTriggers(handle: String, schema: String) async throws -> [TriggerInfo] {
+        let sql = """
+        SELECT TRIGGER_NAME, EVENT_OBJECT_TABLE, ACTION_TIMING, EVENT_MANIPULATION, ACTION_ORDER
+        FROM INFORMATION_SCHEMA.TRIGGERS
+        WHERE TRIGGER_SCHEMA = '\(escape(schema))'
+        ORDER BY TRIGGER_NAME
+        """
+        let rows = try await runQuery(handle: handle, sql: sql)
+        return rows.map { row in
+            let table = row[1] ?? ""
+            let timing = row[2] ?? ""
+            let event = row[3] ?? ""
+            let def = "\(timing) \(event) ON \(table)"
+            return TriggerInfo(name: row[0] ?? "?", table: table, schema: schema, definition: def)
+        }
+    }
+
+    func dropTrigger(handle: String, schema: String, trigger: String, table: String) async throws {
+        let sql = "DROP TRIGGER IF EXISTS `\(escapeIdentifier(schema))`.`\(escapeIdentifier(trigger))`"
+        try await runMutation(handle: handle, sql: sql)
+    }
+
+    // MARK: - Sequences (not native in MySQL, map to auto_increment info)
+
+    func fetchSequences(handle: String, schema: String) async throws -> [SequenceInfo] {
+        []
+    }
+
+    func dropSequence(handle: String, schema: String, sequence: String) async throws {
+        throw DDLMethodError.notImplemented("dropSequence")
+    }
+
+    // MARK: - Constraints
+
+    func fetchConstraints(handle: String, table: TableID) async throws -> [ConstraintInfo] {
+        let sql = """
+        SELECT tc.CONSTRAINT_NAME, tc.CONSTRAINT_TYPE,
+               GROUP_CONCAT(kcu.COLUMN_NAME ORDER BY kcu.ORDINAL_POSITION SEPARATOR ',')
+        FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
+        JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
+            ON tc.CONSTRAINT_SCHEMA = kcu.CONSTRAINT_SCHEMA
+            AND tc.CONSTRAINT_NAME = kcu.CONSTRAINT_NAME
+        WHERE tc.TABLE_SCHEMA = '\(escape(table.schema))'
+            AND tc.TABLE_NAME = '\(escape(table.table))'
+        GROUP BY tc.CONSTRAINT_NAME, tc.CONSTRAINT_TYPE
+        ORDER BY tc.CONSTRAINT_TYPE, tc.CONSTRAINT_NAME
+        """
+        let rows = try await runQuery(handle: handle, sql: sql)
+        return rows.compactMap { row in
+            guard let name = row[0], let typeStr = row[1] else { return nil }
+            let cols = (row[2] ?? "").split(separator: ",").map(String.init)
+            let type: ConstraintInfo.ConstraintType
+            switch typeStr {
+            case "PRIMARY KEY": type = .primaryKey
+            case "FOREIGN KEY": type = .foreignKey
+            case "UNIQUE": type = .unique
+            case "CHECK": type = .check
+            default: return nil
+            }
+            return ConstraintInfo(name: name, type: type, table: table.table, schema: table.schema, columns: cols, definition: nil)
+        }
+    }
+
+    func dropConstraint(handle: String, table: TableID, constraint: String) async throws {
+        let sql = "ALTER TABLE `\(escapeIdentifier(table.schema))`.`\(escapeIdentifier(table.table))` DROP CONSTRAINT `\(escapeIdentifier(constraint))`"
+        try await runMutation(handle: handle, sql: sql)
+    }
+
+    func addForeignKey(handle: String, table: TableID, name: String, columns: [String], refTable: TableID, refColumns: [String], onDelete: String?, onUpdate: String?) async throws {
+        let colList = columns.map { "`\(escapeIdentifier($0))`" }.joined(separator: ", ")
+        let refColList = refColumns.map { "`\(escapeIdentifier($0))`" }.joined(separator: ", ")
+        var options = ""
+        if let od = onDelete { options += " ON DELETE \(od)" }
+        if let ou = onUpdate { options += " ON UPDATE \(ou)" }
+        let sql = """
+        ALTER TABLE `\(escapeIdentifier(table.schema))`.`\(escapeIdentifier(table.table))`
+        ADD CONSTRAINT `\(escapeIdentifier(name))` FOREIGN KEY (\(colList))
+        REFERENCES `\(escapeIdentifier(refTable.schema))`.`\(escapeIdentifier(refTable.table))` (\(refColList))\(options)
+        """
+        try await runMutation(handle: handle, sql: sql)
+    }
+
+    // MARK: - Table Properties
+
+    func fetchTableStats(handle: String, table: TableID) async throws -> TableStats {
+        let sql = """
+        SELECT
+            TABLE_ROWS,
+            DATA_LENGTH + INDEX_LENGTH,
+            DATA_LENGTH,
+            INDEX_LENGTH,
+            TABLE_COMMENT
+        FROM INFORMATION_SCHEMA.TABLES
+        WHERE TABLE_SCHEMA = '\(escape(table.schema))' AND TABLE_NAME = '\(escape(table.table))'
+        """
+        let rows = try await runQuery(handle: handle, sql: sql)
+        guard let row = rows.first else { return TableStats() }
+        let totalBytes = row[1].flatMap { Int($0) }
+        let dataBytes = row[2].flatMap { Int($0) }
+        let indexBytes = row[3].flatMap { Int($0) }
+        return TableStats(
+            estimatedRowCount: row[0].flatMap { Int($0) },
+            exactRowCount: nil,
+            totalSize: totalBytes.map { byteCountFormatted($0) },
+            tableSize: dataBytes.map { byteCountFormatted($0) },
+            indexSize: indexBytes.map { byteCountFormatted($0) },
+            tableComment: row[4]
+        )
+    }
+
+    private func byteCountFormatted(_ bytes: Int) -> String {
+        let formatter = ByteCountFormatter()
+        formatter.countStyle = .file
+        return formatter.string(fromByteCount: Int64(bytes))
+    }
+
+    // MARK: - Routine Source
+
+    func fetchRoutineSource(handle: String, schema: String, name: String, type: RoutineType) async throws -> String {
+        let sql: String
+        switch type {
+        case .view:
+            sql = "SHOW CREATE VIEW `\(escapeIdentifier(schema))`.`\(escapeIdentifier(name))`"
+        case .function:
+            sql = "SHOW CREATE FUNCTION `\(escapeIdentifier(schema))`.`\(escapeIdentifier(name))`"
+        case .procedure:
+            sql = "SHOW CREATE PROCEDURE `\(escapeIdentifier(schema))`.`\(escapeIdentifier(name))`"
+        }
+        let rows = try await runQuery(handle: handle, sql: sql)
+        guard let row = rows.first, row.count > 1, let source = row[1] else {
+            throw DDLMethodError.notImplemented("fetchRoutineSource")
+        }
+        return source
+    }
+
+    func updateRoutine(handle: String, schema: String, name: String, type: RoutineType, source: String) async throws {
+        try await runMutation(handle: handle, sql: source)
+    }
+
+    // MARK: - Dependencies
+
+    func fetchDependencies(handle: String, schema: String, table: String) async throws -> [String] {
+        let sql = """
+        SELECT DISTINCT REFERENCED_TABLE_SCHEMA || '.' || REFERENCED_TABLE_NAME
+        FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
+        WHERE TABLE_SCHEMA = '\(escape(schema))' AND TABLE_NAME = '\(escape(table))'
+          AND REFERENCED_TABLE_NAME IS NOT NULL
+        UNION
+        SELECT DISTINCT TABLE_SCHEMA || '.' || TABLE_NAME
+        FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
+        WHERE REFERENCED_TABLE_SCHEMA = '\(escape(schema))' AND REFERENCED_TABLE_NAME = '\(escape(table))'
+        """
+        let rows = try await runQuery(handle: handle, sql: sql)
+        return rows.compactMap { $0.first ?? nil }
+    }
+
+    // MARK: - Table Operations
+
+    func renameTable(handle: String, table: TableID, newName: String) async throws {
+        let sql = "RENAME TABLE `\(escapeIdentifier(table.schema))`.`\(escapeIdentifier(table.table))` TO `\(escapeIdentifier(table.schema))`.`\(escapeIdentifier(newName))`"
+        try await runMutation(handle: handle, sql: sql)
+    }
+
+    func moveTable(handle: String, table: TableID, newSchema: String) async throws {
+        let sql = "RENAME TABLE `\(escapeIdentifier(table.schema))`.`\(escapeIdentifier(table.table))` TO `\(escapeIdentifier(newSchema))`.`\(escapeIdentifier(table.table))`"
+        try await runMutation(handle: handle, sql: sql)
+    }
+
+    func copyTable(handle: String, table: TableID, newName: String, copyData: Bool) async throws {
+        let sql = "CREATE TABLE `\(escapeIdentifier(table.schema))`.`\(escapeIdentifier(newName))` LIKE `\(escapeIdentifier(table.schema))`.`\(escapeIdentifier(table.table))`"
+        try await runMutation(handle: handle, sql: sql)
+        if copyData {
+            let insertSQL = "INSERT INTO `\(escapeIdentifier(table.schema))`.`\(escapeIdentifier(newName))` SELECT * FROM `\(escapeIdentifier(table.schema))`.`\(escapeIdentifier(table.table))`"
+            try await runMutation(handle: handle, sql: insertSQL)
+        }
+    }
+
+    // MARK: - Transactions
+
+    func beginTransaction(handle: String) async throws {
+        try await runMutation(handle: handle, sql: "START TRANSACTION")
+    }
+
+    func commitTransaction(handle: String) async throws {
+        try await runMutation(handle: handle, sql: "COMMIT")
+    }
+
+    func rollbackTransaction(handle: String) async throws {
+        try await runMutation(handle: handle, sql: "ROLLBACK")
+    }
+
+    var supportsTransactions: Bool { true }
+
     // MARK: - Helpers
 
     private func connection(for handle: String) throws -> MySQLConnection {

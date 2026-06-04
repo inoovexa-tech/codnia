@@ -49,6 +49,7 @@ public struct ConnectionConfig: Identifiable, Codable, Equatable, Sendable {
     public var sshConfig: SSHConfig?
     public var group: String?
     public var environment: String?
+    public var queryTimeout: Int = 30
 
     public init(
         id: String = UUID().uuidString,
@@ -62,7 +63,8 @@ public struct ConnectionConfig: Identifiable, Codable, Equatable, Sendable {
         filePath: String? = nil,
         sshConfig: SSHConfig? = nil,
         group: String? = nil,
-        environment: String? = nil
+        environment: String? = nil,
+        queryTimeout: Int = 30
     ) {
         self.id = id
         self.name = name
@@ -76,6 +78,7 @@ public struct ConnectionConfig: Identifiable, Codable, Equatable, Sendable {
         self.sshConfig = sshConfig
         self.group = group
         self.environment = environment
+        self.queryTimeout = queryTimeout
     }
 }
 

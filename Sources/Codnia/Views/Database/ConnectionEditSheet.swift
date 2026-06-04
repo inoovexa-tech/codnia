@@ -12,6 +12,7 @@ struct ConnectionEditSheet: View {
     @State private var password: String = ""
     @State private var database: String = ""
     @State private var useSSL: Bool = false
+    @State private var queryTimeout: Int = 30
     @State private var filePath: String = ""
 
     @State private var useSSH: Bool = false
@@ -170,6 +171,17 @@ struct ConnectionEditSheet: View {
         }
         .toggleStyle(.switch)
         .controlSize(.small)
+
+        HStack(spacing: 8) {
+            Text("Query Timeout (s)")
+                .font(.system(size: 12))
+                .foregroundColor(.textSecondary)
+            TextField("30", value: $queryTimeout, format: .number)
+                .textFieldStyle(.roundedBorder)
+                .font(.system(size: 12))
+                .frame(width: 60)
+                .multilineTextAlignment(.trailing)
+        }
     }
 
     @ViewBuilder
@@ -361,6 +373,7 @@ struct ConnectionEditSheet: View {
         user = config.user
         database = config.database ?? ""
         useSSL = config.useSSL
+        queryTimeout = config.queryTimeout
         filePath = config.filePath ?? ""
         group = config.group ?? ""
         environment = config.environment ?? ""
@@ -415,7 +428,7 @@ struct ConnectionEditSheet: View {
         let pw = resolvedPassword(for: config.id)
 
         if !pw.isEmpty {
-            KeychainHelper.save(account: config.id, password: pw)
+            DatabaseKeychainHelper.save(account: config.id, password: pw)
         }
         databaseService.addConnection(config)
 
@@ -449,7 +462,8 @@ struct ConnectionEditSheet: View {
             filePath: type == .sqlite ? (filePath.isEmpty ? nil : filePath) : nil,
             sshConfig: ssh,
             group: group.isEmpty ? nil : group,
-            environment: environment.isEmpty ? nil : environment
+            environment: environment.isEmpty ? nil : environment,
+            queryTimeout: max(1, queryTimeout)
         )
     }
 }

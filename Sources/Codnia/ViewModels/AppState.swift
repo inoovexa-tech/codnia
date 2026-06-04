@@ -15,6 +15,11 @@ public final class AppState: ObservableObject {
     public let databaseService: DatabaseConnectionService
     public let notesVM: NotesViewModel
     public let browserService: BrowserService
+    @Published public var bookmarkService: BrowserBookmarkService
+    @Published public var historyService: BrowserHistoryService
+    @Published public var credentialService: BrowserCredentialService
+    @Published public var downloadService: BrowserDownloadService
+    public let persistenceService: BrowserPersistenceService
     public var restApiVM: RESTApiViewModel
     @Published var rightSidebarExpanded: Bool = false
     @Published var rightSidebarTab: RightSidebarTab = .explorer
@@ -26,6 +31,7 @@ public final class AppState: ObservableObject {
     @Published var browserURL: String = ""
     @Published var browserTitle: String = ""
     @Published var browserWidth: CGFloat = 500
+    @Published var findVisible: Bool = false
     private var previousWorktreeId: String?
 
     public enum BrowserSide: String {
@@ -71,6 +77,11 @@ public final class AppState: ObservableObject {
         let db = DatabaseConnectionService()
         let nv = NotesViewModel()
         let bs = BrowserService()
+        let bookmarks = BrowserBookmarkService()
+        let history = BrowserHistoryService()
+        let credentials = BrowserCredentialService()
+        let downloads = BrowserDownloadService()
+        let persistence = BrowserPersistenceService.shared
         let rest = RESTApiViewModel(projectPath: ws.activeProject?.activeWorktree?.path)
         self.workspaceVM = ws
         self.settings = s
@@ -84,10 +95,16 @@ public final class AppState: ObservableObject {
         self.databaseService = db
         self.notesVM = nv
         self.browserService = bs
+        self.bookmarkService = bookmarks
+        self.historyService = history
+        self.credentialService = credentials
+        self.downloadService = downloads
+        self.persistenceService = persistence
         self.restApiVM = rest
 
         bs.editorVM = ed
         bs.settings = s
+        downloads.downloadPath = s.browserDownloadPath
 
         let tasksPlugin = TasksPlugin()
         tasksPlugin.onNewTask = { [weak tv] in
@@ -115,6 +132,20 @@ public final class AppState: ObservableObject {
         restApiPlugin.viewModel = rest
         ps.registerSidebarPlugin(restApiPlugin)
 
+        let browserPlugin = BrowserPlugin()
+        browserPlugin.onNewTab = { [weak self] in
+            guard let self = self else { return }
+            self.openURL("about:blank", in: .tab)
+        }
+        browserPlugin.onClearHistory = { [weak self] in
+            self?.historyService.clearAll()
+        }
+        browserPlugin.onShowDownloads = { [weak self] in
+            self?.rightSidebarTab = .plugin("browser")
+            self?.rightSidebarExpanded = true
+        }
+        ps.registerSidebarPlugin(browserPlugin)
+
         bs.appState = self
 
         ws.$activeProject.receive(on: DispatchQueue.main).sink { [weak self] project in
@@ -140,6 +171,13 @@ public final class AppState: ObservableObject {
                     self.browserSide = side
                 }
                 self.browserExpanded = worktree.sideBrowserExpanded
+
+                let worktreePath = worktree.path
+                self.persistenceService.prepareForWorktree(worktree.id)
+                self.bookmarkService.load(from: worktreePath)
+                self.historyService.load(from: worktreePath)
+                self.credentialService.load(from: worktreePath)
+                self.downloadService.load(from: worktreePath)
             } else {
                 self.browserExpanded = false
             }

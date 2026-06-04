@@ -34,6 +34,9 @@ struct PaginatedDataGridView: View {
     let onApplyChanges: () -> Void
     let onDiscardChanges: () -> Void
 
+    var foreignKeys: [ForeignKeyInfo] = []
+    var onFkDrillThrough: ((ForeignKeyInfo, String, String) -> Void)?
+
     @State private var hoveredCol: Int?
     @State private var columnWidths: [String: CGFloat] = [:]
     @State private var availableWidth: CGFloat = 800
@@ -44,6 +47,14 @@ struct PaginatedDataGridView: View {
 
     @State private var showDeleteConfirm = false
     @State private var confirmDeleteRow: Int?
+
+    @State private var columnFilters: [String: String] = [:]
+    @State private var visibleColumns: Set<String> = []
+    @State private var showColumnPicker = false
+    @State private var showCellEditor = false
+    @State private var cellEditorText = ""
+    @State private var cellEditorRow = 0
+    @State private var cellEditorCol = 0
 
     private let minColumnWidth: CGFloat = 60
     private let pageSizes = [100, 250, 500, 1000]
@@ -66,6 +77,11 @@ struct PaginatedDataGridView: View {
 
     private var totalChanges: Int {
         stagedEdits.count + stagedNewRows.count + stagedDeletions.count
+    }
+
+    private var displayColumns: [String] {
+        if visibleColumns.isEmpty { return columns }
+        return columns.filter { visibleColumns.contains($0) }
     }
 
     private var combination: (values: [[String?]], metas: [RowMeta]) {
@@ -119,6 +135,12 @@ struct PaginatedDataGridView: View {
         return rows[meta.sourceIndex][col]
     }
 
+    private func colIndexInDisplay(_ colIdx: Int) -> Int? {
+        let colName = colIdx < columns.count ? columns[colIdx] : nil
+        guard let name = colName else { return nil }
+        return displayColumns.firstIndex(of: name)
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             if let error = error {
@@ -148,6 +170,36 @@ struct PaginatedDataGridView: View {
         } message: { row in
             Text("Delete row \(startRow + row)? This will be applied when you save.")
         }
+        .sheet(isPresented: $showCellEditor) {
+            cellEditorSheet
+        }
+        .onAppear {
+            if visibleColumns.isEmpty { visibleColumns = Set(columns) }
+        }
+    }
+
+    private var cellEditorSheet: some View {
+        VStack(spacing: 12) {
+            HStack {
+                Text("Edit Cell: \(cellEditorCol < columns.count ? columns[cellEditorCol] : "")")
+                    .font(.system(size: 13, weight: .semibold))
+                Spacer()
+                Button("Done") {
+                    commitEdit(rowIdx: cellEditorRow, colIdx: cellEditorCol)
+                    showCellEditor = false
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+            }
+
+            TextEditor(text: $cellEditorText)
+                .font(.system(size: 12, design: .monospaced))
+                .frame(minHeight: 200, maxHeight: 400)
+                .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.borderDefault))
+                .background(Color.bgPrimary)
+        }
+        .padding(16)
+        .frame(width: 500, height: 350)
     }
 
     // MARK: - Error
@@ -215,13 +267,69 @@ struct PaginatedDataGridView: View {
                             alignment: .trailing
                         )
                 }
-                ForEach(Array(columns.enumerated()), id: \.offset) { idx, col in
-                    headerCell(column: col, type: idx < columnTypes.count ? columnTypes[idx] : "", index: idx)
+                if !displayColumns.isEmpty {
+                    ForEach(Array(displayColumns.enumerated()), id: \.offset) { idx, col in
+                        if let origIdx = columns.firstIndex(of: col) {
+                            headerCell(column: col, type: origIdx < columnTypes.count ? columnTypes[origIdx] : "", index: origIdx)
+                        }
+                    }
                 }
+            }
+            if hasActiveFilters {
+                filterRow
             }
             Divider().background(Color.borderDefault)
         }
         .background(Color.bgSecondary)
+    }
+
+    private var hasActiveFilters: Bool {
+        !columnFilters.isEmpty && columnFilters.contains(where: { !$0.value.isEmpty })
+    }
+
+    private var filterRow: some View {
+        HStack(spacing: 0) {
+            if isEditable {
+                Color.clear
+                    .frame(width: 28, height: 24)
+                    .overlay(
+                        Rectangle().fill(Color.borderDefault.opacity(0.5)).frame(width: 1),
+                        alignment: .trailing
+                    )
+            }
+            ForEach(Array(displayColumns.enumerated()), id: \.offset) { idx, col in
+                if let origIdx = columns.firstIndex(of: col) {
+                    filterCell(column: col, index: origIdx)
+                }
+            }
+        }
+    }
+
+    private func filterCell(column: String, index: Int) -> some View {
+        let width = columnWidth(for: column)
+        return HStack(spacing: 2) {
+            Image(systemName: "line.3.horizontal.decrease")
+                .font(.system(size: 8))
+                .foregroundColor(.textTertiary)
+            TextField("filter", text: Binding(
+                get: { columnFilters[column] ?? "" },
+                set: { columnFilters[column] = $0 }
+            ))
+            .textFieldStyle(.plain)
+            .font(.system(size: 10))
+            .foregroundColor(.textPrimary)
+            if !(columnFilters[column] ?? "").isEmpty {
+                Button(action: { columnFilters[column] = "" }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 8))
+                        .foregroundColor(.textTertiary)
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+        }
+        .frame(width: width - 8, height: 24, alignment: .leading)
+        .padding(.horizontal, 4)
+        .background(Color.bgTertiary.opacity(0.3))
     }
 
     private func headerCell(column: String, type: String, index: Int) -> some View {
@@ -250,6 +358,15 @@ struct PaginatedDataGridView: View {
         .padding(.horizontal, 8)
         .contentShape(Rectangle())
         .onTapGesture { toggleSort(column: column) }
+        .contextMenu {
+            Button(action: { toggleColumnVisibility(column) }) {
+                Label(visibleColumns.contains(column) ? "Hide Column" : "Show Column", systemImage: visibleColumns.contains(column) ? "eye.slash" : "eye")
+            }
+            Divider()
+            Button(action: { showColumnPicker = true }) {
+                Label("Show/Hide Columns...", systemImage: "list.bullet")
+            }
+        }
         .overlay(
             Rectangle()
                 .fill(Color.borderDefault)
@@ -268,6 +385,35 @@ struct PaginatedDataGridView: View {
                 ),
             alignment: .trailing
         )
+        .popover(isPresented: $showColumnPicker, arrowEdge: .bottom) {
+            columnPickerPopover
+        }
+    }
+
+    private var columnPickerPopover: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Columns").font(.system(size: 11, weight: .semibold)).padding(.bottom, 4)
+            ForEach(columns, id: \.self) { col in
+                Toggle(isOn: Binding(
+                    get: { visibleColumns.contains(col) },
+                    set: { on in if on { visibleColumns.insert(col) } else { visibleColumns.remove(col) } }
+                )) {
+                    Text(col).font(.system(size: 11))
+                }
+                .toggleStyle(.checkbox)
+                .controlSize(.small)
+            }
+        }
+        .padding(8)
+        .frame(width: 180)
+    }
+
+    private func toggleColumnVisibility(_ column: String) {
+        if visibleColumns.contains(column) {
+            if visibleColumns.count > 1 { visibleColumns.remove(column) }
+        } else {
+            visibleColumns.insert(column)
+        }
     }
 
     private func typeIcon(for type: String) -> String {
@@ -347,14 +493,14 @@ struct PaginatedDataGridView: View {
         }
 
         return HStack(spacing: 0) {
-            // Delete indicator
             if isEditable {
                 deleteCell(rowIdx: rowIdx, deleted: deleted)
             }
 
-            // Data cells
-            ForEach(0..<columns.count, id: \.self) { colIdx in
-                dataCell(rowIdx: rowIdx, colIdx: colIdx, deleted: deleted, newRow: newRow)
+            ForEach(Array(displayColumns.enumerated()), id: \.offset) { idx, col in
+                if let origIdx = columns.firstIndex(of: col) {
+                    dataCell(rowIdx: rowIdx, colIdx: origIdx, deleted: deleted, newRow: newRow)
+                }
             }
         }
         .background(bgColor)
@@ -415,16 +561,38 @@ struct PaginatedDataGridView: View {
                         Label("Delete Row", systemImage: "trash")
                     }
                 }
-            } else {
+            }
+
+            Divider()
+
+            Button(action: {
+                NSPasteboard.general.clearContents()
+                let allVals = (0..<columns.count).compactMap { displayValue(row: rowIdx, col: $0) }.joined(separator: "\t")
+                NSPasteboard.general.setString(allVals, forType: .string)
+            }) {
+                Label("Copy Row", systemImage: "doc.on.doc")
+            }
+
+            if !newRow, let tableName = tableContext {
                 Button(action: {
+                    let cols = (0..<columns.count).map { columns[$0] }
+                    let vals = (0..<columns.count).map { idx -> String in
+                        guard let val = displayValue(row: rowIdx, col: idx) else { return "NULL" }
+                        let escaped = val.replacingOccurrences(of: "'", with: "''")
+                        return "'\(escaped)'"
+                    }
+                    let insert = "INSERT INTO \(tableName) (\(cols.joined(separator: ", "))) VALUES (\(vals.joined(separator: ", ")));"
                     NSPasteboard.general.clearContents()
-                    let allVals = (0..<columns.count).compactMap { displayValue(row: rowIdx, col: $0) }.joined(separator: "\t")
-                    NSPasteboard.general.setString(allVals, forType: .string)
+                    NSPasteboard.general.setString(insert, forType: .string)
                 }) {
-                    Label("Copy Row", systemImage: "doc.on.doc")
+                    Label("Copy as INSERT", systemImage: "list.clipboard")
                 }
             }
         }
+    }
+
+    private var tableContext: String? {
+        nil
     }
 
     // MARK: - Delete Cell
@@ -446,7 +614,7 @@ struct PaginatedDataGridView: View {
                 }) {
                     Image(systemName: "xmark.circle.fill")
                         .font(.system(size: 12))
-                        .foregroundColor(isRowNew ? .accentRed : .accentRed)
+                        .foregroundColor(.accentRed)
                         .frame(width: width, alignment: .center)
                 }
                 .buttonStyle(PlainButtonStyle())
@@ -488,22 +656,26 @@ struct PaginatedDataGridView: View {
         let isNull = val == nil
         let isEditing = editingRow == rowIdx && editingCol == colIdx
         let hasEdit = !newRow && stagedEdits[key] != nil
+        let isFK = foreignKeys.contains { $0.table == currentTableName && $0.column == colName && !newRow }
 
         let textColor: Color = {
             if deleted { return .textTertiary }
             if isNull { return .textTertiary }
             if hasEdit { return .accentBlue }
+            if isFK { return .accentBlue }
             return .textPrimary
         }()
 
         let cellBg: Color = {
             if isEditing { return Color.accentBlue.opacity(0.08) }
             if hasEdit { return Color.accentBlue.opacity(0.05) }
+            if isFK { return Color.accentBlue.opacity(0.03) }
             return .clear
         }()
 
         return ZStack(alignment: .leading) {
             if isEditing {
+                let isLargeText = (val?.count ?? 0) > 100 || (columnTypes[safe: colIdx]?.lowercased().contains("json") ?? false) || (columnTypes[safe: colIdx]?.lowercased().contains("text") ?? false)
                 TextField("", text: $editBuffer)
                     .font(.system(size: 12, design: .monospaced))
                     .textFieldStyle(.plain)
@@ -515,6 +687,41 @@ struct PaginatedDataGridView: View {
                     .overlay(RoundedRectangle(cornerRadius: 3).stroke(Color.accentBlue, lineWidth: 1))
                     .onSubmit { commitEdit(rowIdx: rowIdx, colIdx: colIdx) }
                     .onExitCommand { cancelEdit() }
+                    .overlay(alignment: .topTrailing) {
+                        if isLargeText {
+                            Button(action: {
+                                cellEditorRow = rowIdx
+                                cellEditorCol = colIdx
+                                cellEditorText = editBuffer
+                                showCellEditor = true
+                            }) {
+                                Image(systemName: "arrow.up.backward.and.arrow.down.forward")
+                                    .font(.system(size: 9))
+                                    .foregroundColor(.accentBlue)
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                            .padding(2)
+                        }
+                    }
+            } else if isFK && !deleted && !newRow {
+                Button(action: {
+                    if let fk = foreignKeys.first(where: { $0.table == currentTableName && $0.column == colName }) {
+                        onFkDrillThrough?(fk, val ?? "", colName)
+                    }
+                }) {
+                    Text(isNull ? "NULL" : val ?? "")
+                        .font(.system(size: 12, design: .monospaced))
+                        .foregroundColor(.accentBlue)
+                        .underline()
+                        .lineLimit(1)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .buttonStyle(PlainButtonStyle())
+                .help("Click to open referenced row")
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(cellBg)
             } else {
                 HStack(spacing: 0) {
                     if hasEdit {
@@ -575,6 +782,10 @@ struct PaginatedDataGridView: View {
             Rectangle().fill(Color.borderDefault.opacity(0.5)).frame(width: 1),
             alignment: .trailing
         )
+    }
+
+    private var currentTableName: String {
+        ""
     }
 
     // MARK: - Edit Lifecycle

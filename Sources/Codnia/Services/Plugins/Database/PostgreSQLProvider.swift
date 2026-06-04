@@ -432,6 +432,251 @@ final class PostgreSQLProvider: DatabaseProvider, @unchecked Sendable {
             .map { $0.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: "\"", with: "") }
     }
 
+    // MARK: - Triggers
+
+    func fetchTriggers(handle: String, schema: String) async throws -> [TriggerInfo] {
+        let sql = """
+        SELECT
+            tg.tgname AS trigger_name,
+            c.relname AS table_name,
+            pg_get_triggerdef(tg.oid) AS trigger_definition
+        FROM pg_trigger tg
+        JOIN pg_class c ON tg.tgrelid = c.oid
+        JOIN pg_namespace n ON c.relnamespace = n.oid
+        WHERE n.nspname = '\(escape(schema))'
+          AND NOT tg.tgisinternal
+        ORDER BY tg.tgname
+        """
+        let rows = try await runQuery(handle: handle, sql: sql)
+        return rows.map {
+            TriggerInfo(name: $0[0] ?? "?", table: $0[1] ?? "", schema: schema, definition: $0[2])
+        }
+    }
+
+    func dropTrigger(handle: String, schema: String, trigger: String, table: String) async throws {
+        let sql = "DROP TRIGGER \"\(escapeIdentifier(trigger))\" ON \"\(escapeIdentifier(schema))\".\"\(escapeIdentifier(table))\" CASCADE"
+        try await runMutation(handle: handle, sql: sql)
+    }
+
+    // MARK: - Sequences
+
+    func fetchSequences(handle: String, schema: String) async throws -> [SequenceInfo] {
+        let sql = """
+        SELECT
+            sequence_name,
+            data_type
+        FROM information_schema.sequences
+        WHERE sequence_schema = '\(escape(schema))'
+        ORDER BY sequence_name
+        """
+        let rows = try await runQuery(handle: handle, sql: sql)
+        var result: [SequenceInfo] = []
+        for row in rows {
+            let name = row[0] ?? "?"
+            let dt = row[1]
+            let currSQL = "SELECT last_value FROM \"\(escapeIdentifier(schema))\".\"\(escapeIdentifier(name))\""
+            let currRows = try? await runQuery(handle: handle, sql: currSQL)
+            let currVal = currRows?.first?.first.flatMap { Int($0 ?? "0") }
+            result.append(SequenceInfo(name: name, schema: schema, dataType: dt, currentValue: currVal))
+        }
+        return result
+    }
+
+    func dropSequence(handle: String, schema: String, sequence: String) async throws {
+        let sql = "DROP SEQUENCE \"\(escapeIdentifier(schema))\".\"\(escapeIdentifier(sequence))\" CASCADE"
+        try await runMutation(handle: handle, sql: sql)
+    }
+
+    // MARK: - Constraints
+
+    func fetchConstraints(handle: String, table: TableID) async throws -> [ConstraintInfo] {
+        let sql = """
+        SELECT
+            tc.constraint_name,
+            tc.constraint_type,
+            STRING_AGG(kcu.column_name, ',' ORDER BY kcu.ordinal_position)
+        FROM information_schema.table_constraints tc
+        JOIN information_schema.key_column_usage kcu
+            ON tc.constraint_catalog = kcu.constraint_catalog
+            AND tc.constraint_schema = kcu.constraint_schema
+            AND tc.constraint_name = kcu.constraint_name
+        WHERE tc.table_schema = '\(escape(table.schema))'
+            AND tc.table_name = '\(escape(table.table))'
+        GROUP BY tc.constraint_name, tc.constraint_type
+        ORDER BY tc.constraint_type, tc.constraint_name
+        """
+        let rows = try await runQuery(handle: handle, sql: sql)
+        return rows.compactMap { row in
+            guard let name = row[0], let typeStr = row[1] else { return nil }
+            let cols = (row[2] ?? "").split(separator: ",").map(String.init)
+            let type: ConstraintInfo.ConstraintType
+            switch typeStr {
+            case "PRIMARY KEY": type = .primaryKey
+            case "FOREIGN KEY": type = .foreignKey
+            case "UNIQUE": type = .unique
+            case "CHECK": type = .check
+            case "EXCLUDE": type = .exclude
+            default: return nil
+            }
+            return ConstraintInfo(name: name, type: type, table: table.table, schema: table.schema, columns: cols, definition: nil)
+        }
+    }
+
+    func dropConstraint(handle: String, table: TableID, constraint: String) async throws {
+        let sql = "ALTER TABLE \"\(escapeIdentifier(table.schema))\".\"\(escapeIdentifier(table.table))\" DROP CONSTRAINT \"\(escapeIdentifier(constraint))\" CASCADE"
+        try await runMutation(handle: handle, sql: sql)
+    }
+
+    func addForeignKey(handle: String, table: TableID, name: String, columns: [String], refTable: TableID, refColumns: [String], onDelete: String?, onUpdate: String?) async throws {
+        let colList = columns.map { "\"\(escapeIdentifier($0))\"" }.joined(separator: ", ")
+        let refColList = refColumns.map { "\"\(escapeIdentifier($0))\"" }.joined(separator: ", ")
+        var options = ""
+        if let od = onDelete { options += " ON DELETE \(od)" }
+        if let ou = onUpdate { options += " ON UPDATE \(ou)" }
+        let sql = """
+        ALTER TABLE \"\(escapeIdentifier(table.schema))\".\"\(escapeIdentifier(table.table))\"
+        ADD CONSTRAINT \"\(escapeIdentifier(name))\" FOREIGN KEY (\(colList))
+        REFERENCES \"\(escapeIdentifier(refTable.schema))\".\"\(escapeIdentifier(refTable.table))\" (\(refColList))\(options)
+        """
+        try await runMutation(handle: handle, sql: sql)
+    }
+
+    // MARK: - Table Properties
+
+    func fetchTableStats(handle: String, table: TableID) async throws -> TableStats {
+        let sql = """
+        SELECT
+            c.reltuples::bigint AS estimated_row_count,
+            pg_size_pretty(pg_total_relation_size(c.oid)) AS total_size,
+            pg_size_pretty(pg_table_size(c.oid)) AS table_size,
+            pg_size_pretty(pg_indexes_size(c.oid)) AS index_size,
+            r.rolname AS table_owner,
+            pg_catalog.obj_description(c.oid, 'pg_class') AS table_comment,
+            pg_stat_all_tables.last_vacuum::text,
+            pg_stat_all_tables.last_analyze::text,
+            pg_stat_all_tables.last_autoanalyze::text,
+            pg_stat_all_tables.last_autovacuum::text
+        FROM pg_class c
+        JOIN pg_namespace n ON c.relnamespace = n.oid
+        JOIN pg_roles r ON c.relowner = r.oid
+        LEFT JOIN pg_stat_all_tables
+            ON pg_stat_all_tables.schemaname = n.nspname
+            AND pg_stat_all_tables.relname = c.relname
+        WHERE n.nspname = '\(escape(table.schema))' AND c.relname = '\(escape(table.table))'
+        """
+        let rows = try await runQuery(handle: handle, sql: sql)
+        guard let row = rows.first else {
+            return TableStats()
+        }
+        return TableStats(
+            estimatedRowCount: row[0].flatMap { Int($0) },
+            exactRowCount: nil,
+            totalSize: row[1],
+            tableSize: row[2],
+            indexSize: row[3],
+            tableOwner: row[4],
+            tableComment: row[5],
+            lastVacuum: row[6],
+            lastAnalyze: row[7],
+            lastAutoVacuum: row[9],
+            lastAutoAnalyze: row[8]
+        )
+    }
+
+    // MARK: - Routine Source
+
+    func fetchRoutineSource(handle: String, schema: String, name: String, type: RoutineType) async throws -> String {
+        switch type {
+        case .view:
+            let sql = """
+            SELECT pg_catalog.pg_get_viewdef(c.oid, true)
+            FROM pg_class c
+            JOIN pg_namespace n ON c.relnamespace = n.oid
+            WHERE n.nspname = '\(escape(schema))' AND c.relname = '\(escape(name))'
+            """
+            let rows = try await runQuery(handle: handle, sql: sql)
+            guard let row = rows.first, let source = row.first, let result = source else {
+                throw DDLMethodError.notImplemented("fetchRoutineSource: view not found")
+            }
+            let createSQL = "CREATE OR REPLACE VIEW \"\(escapeIdentifier(schema))\".\"\(escapeIdentifier(name))\" AS\n\(result)"
+            return createSQL
+        case .function, .procedure:
+            let sql = """
+            SELECT pg_catalog.pg_get_functiondef(p.oid)
+            FROM pg_proc p
+            JOIN pg_namespace n ON p.pronamespace = n.oid
+            WHERE n.nspname = '\(escape(schema))' AND p.proname = '\(escape(name))'
+            ORDER BY p.oid ASC
+            """
+            let rows = try await runQuery(handle: handle, sql: sql)
+            guard let row = rows.first, let source = row.first, let result = source else {
+                throw DDLMethodError.notImplemented("fetchRoutineSource: routine not found")
+            }
+            return result
+        }
+    }
+
+    func updateRoutine(handle: String, schema: String, name: String, type: RoutineType, source: String) async throws {
+        try await runMutation(handle: handle, sql: source)
+    }
+
+    // MARK: - Dependencies
+
+    func fetchDependencies(handle: String, schema: String, table: String) async throws -> [String] {
+        let sql = """
+        SELECT DISTINCT
+            n.nspname || '.' || c.relname AS dependent
+        FROM pg_depend d
+        JOIN pg_class c ON d.refobjid = c.oid
+        JOIN pg_namespace n ON c.relnamespace = n.oid
+        WHERE d.objid IN (
+            SELECT c.oid FROM pg_class c
+            JOIN pg_namespace n ON c.relnamespace = n.oid
+            WHERE n.nspname = '\(escape(schema))' AND c.relname = '\(escape(table))'
+        )
+        AND c.relname != '\(escape(table))'
+        ORDER BY dependent
+        """
+        let rows = try await runQuery(handle: handle, sql: sql)
+        return rows.compactMap { $0.first ?? nil }
+    }
+
+    // MARK: - Table Operations
+
+    func renameTable(handle: String, table: TableID, newName: String) async throws {
+        let sql = "ALTER TABLE \"\(escapeIdentifier(table.schema))\".\"\(escapeIdentifier(table.table))\" RENAME TO \"\(escapeIdentifier(newName))\""
+        try await runMutation(handle: handle, sql: sql)
+    }
+
+    func moveTable(handle: String, table: TableID, newSchema: String) async throws {
+        let sql = "ALTER TABLE \"\(escapeIdentifier(table.schema))\".\"\(escapeIdentifier(table.table))\" SET SCHEMA \"\(escapeIdentifier(newSchema))\""
+        try await runMutation(handle: handle, sql: sql)
+    }
+
+    func copyTable(handle: String, table: TableID, newName: String, copyData: Bool) async throws {
+        let include = copyData ? "" : "INCLUDING ALL"
+        let sql = "CREATE TABLE \"\(escapeIdentifier(table.schema))\".\"\(escapeIdentifier(newName))\" (LIKE \"\(escapeIdentifier(table.schema))\".\"\(escapeIdentifier(table.table))\" \(include))"
+        try await runMutation(handle: handle, sql: sql)
+        if copyData {
+            let insertSQL = "INSERT INTO \"\(escapeIdentifier(table.schema))\".\"\(escapeIdentifier(newName))\" SELECT * FROM \"\(escapeIdentifier(table.schema))\".\"\(escapeIdentifier(table.table))\""
+            try await runMutation(handle: handle, sql: insertSQL)
+        }
+    }
+
+    // MARK: - Transactions
+
+    func beginTransaction(handle: String) async throws {
+        try await runMutation(handle: handle, sql: "BEGIN")
+    }
+
+    func commitTransaction(handle: String) async throws {
+        try await runMutation(handle: handle, sql: "COMMIT")
+    }
+
+    func rollbackTransaction(handle: String) async throws {
+        try await runMutation(handle: handle, sql: "ROLLBACK")
+    }
+
     // MARK: - DML
 
     func fetchPrimaryKeyColumns(handle: String, table: TableID) async throws -> [String] {

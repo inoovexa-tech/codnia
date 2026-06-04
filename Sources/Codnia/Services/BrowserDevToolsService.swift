@@ -134,6 +134,7 @@ final class BrowserDevToolsService: NSObject, ObservableObject {
     @Published var dockingPosition: DockingPosition = .bottom
     @Published var devToolsWidth: CGFloat = 400
     @Published var isFloating: Bool = false
+    @Published var isOpen: Bool = false
 
     enum DockingPosition: String, CaseIterable {
         case bottom = "Bottom"
