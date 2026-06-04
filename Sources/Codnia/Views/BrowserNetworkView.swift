@@ -4,11 +4,20 @@ struct BrowserNetworkView: View {
     @ObservedObject var devToolsService: BrowserDevToolsService
     @State private var showOptions: Bool = false
     @State private var searchText: String = ""
+    @State private var hostFilter: String = ""
+
+    private var availableHosts: [String] {
+        let hosts = Set(devToolsService.networkEntries.map { $0.host })
+        return hosts.sorted()
+    }
 
     private var filteredEntries: [BrowserNetworkEntry] {
         var result = devToolsService.networkEntries
         if devToolsService.networkFilter != .all {
             result = result.filter { devToolsService.networkFilter.matches($0) }
+        }
+        if !hostFilter.isEmpty {
+            result = result.filter { $0.host == hostFilter }
         }
         if !searchText.isEmpty {
             result = result.filter { $0.url.localizedCaseInsensitiveContains(searchText) }
@@ -44,6 +53,45 @@ struct BrowserNetworkView: View {
                 .padding(.vertical, 2)
                 .background(Color.bgTertiary)
                 .cornerRadius(3)
+
+            Menu {
+                Button(action: { hostFilter = "" }) {
+                    HStack {
+                        Text("All hosts")
+                        if hostFilter.isEmpty {
+                            Image(systemName: "checkmark")
+                        }
+                    }
+                }
+                Divider()
+                ForEach(availableHosts, id: \.self) { host in
+                    Button(action: { hostFilter = host }) {
+                        HStack {
+                            Text(host)
+                            if hostFilter == host {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                }
+            } label: {
+                HStack(spacing: 2) {
+                    Image(systemName: "globe")
+                        .font(.system(size: 9))
+                    Text(hostFilter.isEmpty ? "All" : hostFilter)
+                        .font(.system(size: 9, design: .monospaced))
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
+                .padding(.horizontal, 4)
+                .padding(.vertical, 2)
+                .background(Color.bgTertiary)
+                .cornerRadius(3)
+                .frame(maxWidth: 110)
+                .foregroundColor(.textSecondary)
+            }
+            .menuStyle(BorderlessButtonMenuStyle())
+            .menuIndicator(.hidden)
 
             Text("\(devToolsService.networkEntries.count) requests")
                 .font(.system(size: 10))
@@ -228,6 +276,33 @@ struct NetworkEntryRow: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(PlainButtonStyle())
+            .contextMenu {
+                Button("Copy URL") {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(entry.url, forType: .string)
+                }
+                Button("Copy as cURL") {
+                    entry.copyAsCurlToPasteboard()
+                }
+                Divider()
+                Button("Copy Response Body") {
+                    if let body = entry.responseBody {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(body, forType: .string)
+                    }
+                }
+                .disabled(entry.responseBody == nil)
+                Button("Copy Request Body") {
+                    if let body = entry.requestBody {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(body, forType: .string)
+                    }
+                }
+                .disabled(entry.requestBody == nil)
+                Divider()
+                Button(entry.host) {}
+                    .disabled(true)
+            }
 
             if showDetails {
                 detailPanel
