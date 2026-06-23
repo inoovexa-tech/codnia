@@ -1,3 +1,14 @@
+## [0.19.1] — 2026-06-23
+
+### Added
+- Browser persistence with history, downloads, logins, and network monitoring
+
+### Removed
+- Browser favorites/bookmarks, print, zoom, find-in-page, and screenshot features
+
+### Fixed
+- SPA pushState navigation causing page reload
+
 ## [0.19.0] — 2026-06-03
 
 ### Added
