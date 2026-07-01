@@ -23,7 +23,7 @@ struct EditorPaneView: View {
         ZStack {
             contentView
 
-            if splitVM.root.leafCount > 1 && tab?.type != .browser {
+            if splitVM.root.leafCount > 1 {
                 VStack {
                     HStack {
                         Spacer()
@@ -83,55 +83,6 @@ struct EditorPaneView: View {
             case .pdf:
                 PDFPreviewView(path: tab.path)
 
-            case .queryResult:
-                QueryResultTabView(tabId: tab.id)
-                    .id(tab.id)
-
-            case .restApi:
-                RESTApiTabView(
-                    tabId: tab.id,
-                    restApiRequestId: tab.restApiRequestId,
-                    endpointStore: appState.restApiVM.endpointStore,
-                    environmentStore: appState.restApiVM.environmentStore
-                )
-                .id(tab.id)
-
-            case .diagram:
-                if let configID = tab.queryConnectionId, let schema = tab.queryTableSchema {
-                    let config = appState.databaseService.config(withID: configID)
-                    let dbName = config?.database ?? config?.name ?? ""
-                    ERDiagramView(configID: configID, schema: schema, databaseName: dbName)
-                        .environmentObject(appState.databaseService)
-                }
-
-            case .browser:
-                BrowserView(
-                    tabId: tab.id,
-                    urlString: Binding(
-                        get: { editorVM.browserURLs[tab.id] ?? tab.url ?? "about:blank" },
-                        set: { editorVM.updateBrowserURL(tabId: tab.id, url: $0) }
-                    ),
-                    pageTitle: Binding(
-                        get: { editorVM.browserTitles[tab.id] ?? "" },
-                        set: { editorVM.updateBrowserTitle(tabId: tab.id, title: $0) }
-                    ),
-                    onNavigate: { url in
-                        editorVM.updateBrowserURL(tabId: tab.id, url: url)
-                    },
-                    onClose: {
-                        editorVM.closeTab(tab.id)
-                    },
-                    onPinToLeft: {
-                        let url = editorVM.browserURLs[tab.id] ?? tab.url ?? "about:blank"
-                        appState.openURL(url, in: .leftPanel)
-                        editorVM.closeTab(tab.id)
-                    },
-                    onPinToRight: {
-                        let url = editorVM.browserURLs[tab.id] ?? tab.url ?? "about:blank"
-                        appState.openURL(url, in: .rightPanel)
-                        editorVM.closeTab(tab.id)
-                    }
-                )
             }
         } else {
             emptyTabView

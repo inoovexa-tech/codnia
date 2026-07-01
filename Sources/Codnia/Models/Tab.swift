@@ -9,10 +9,6 @@ public enum TabType: String, Codable, Equatable, Sendable {
     case diff
     case image
     case pdf
-    case queryResult
-    case browser
-    case restApi
-    case diagram
 
     public var isAI: Bool {
         switch self {
@@ -36,12 +32,6 @@ public struct Tab: Identifiable, Codable, Equatable, Sendable {
     public var language: String
     public var type: TabType
     public var terminalId: String?
-    public var queryConnectionId: String?
-    public var querySql: String?
-    public var queryTableSchema: String?
-    public var queryTableName: String?
-    public var url: String?
-    public var restApiRequestId: String?
 
     public init(
         id: String = UUID().uuidString,
@@ -50,13 +40,7 @@ public struct Tab: Identifiable, Codable, Equatable, Sendable {
         isModified: Bool = false,
         language: String = "Plain Text",
         type: TabType = .file,
-        terminalId: String? = nil,
-        queryConnectionId: String? = nil,
-        querySql: String? = nil,
-        queryTableSchema: String? = nil,
-        queryTableName: String? = nil,
-        url: String? = nil,
-        restApiRequestId: String? = nil
+        terminalId: String? = nil
     ) {
         self.id = id
         self.path = path
@@ -65,12 +49,6 @@ public struct Tab: Identifiable, Codable, Equatable, Sendable {
         self.language = language
         self.type = type
         self.terminalId = terminalId
-        self.queryConnectionId = queryConnectionId
-        self.querySql = querySql
-        self.queryTableSchema = queryTableSchema
-        self.queryTableName = queryTableName
-        self.url = url
-        self.restApiRequestId = restApiRequestId
     }
 
     public static func == (lhs: Tab, rhs: Tab) -> Bool {
@@ -81,11 +59,5 @@ public struct Tab: Identifiable, Codable, Equatable, Sendable {
             && lhs.language == rhs.language
             && lhs.type == rhs.type
             && lhs.terminalId == rhs.terminalId
-            && lhs.queryConnectionId == rhs.queryConnectionId
-            && lhs.querySql == rhs.querySql
-            && lhs.queryTableSchema == rhs.queryTableSchema
-            && lhs.queryTableName == rhs.queryTableName
-            && lhs.url == rhs.url
-            && lhs.restApiRequestId == rhs.restApiRequestId
     }
 }

@@ -11,7 +11,7 @@ struct ActivityBarView: View {
     @EnvironmentObject var pluginService: PluginService
     @EnvironmentObject var notesVM: NotesViewModel
 
-    @State private var selectedPath: String? = nil
+    @State private var selectedPaths: Set<String> = []
     @State private var headerAction: FileTreeHeaderAction? = nil
 
     var body: some View {
@@ -37,12 +37,12 @@ struct ActivityBarView: View {
     private func syncSelectionWithEditor() {
         guard let tab = editorVM.currentTab else {
             if tab != .search && tab != .sourceControl {
-                selectedPath = nil
+                selectedPaths = []
             }
             return
         }
         guard tab.type == .file || tab.type == .image || tab.type == .pdf else { return }
-        selectedPath = tab.path
+        selectedPaths = [tab.path]
     }
 
     // MARK: - Top Tab Bar
@@ -192,7 +192,7 @@ struct ActivityBarView: View {
                 onRefresh: {
                     workspaceVM.refreshFileTree()
                 },
-                selectedPath: $selectedPath,
+                selectedPaths: $selectedPaths,
                 activeFilePath: editorVM.currentTab?.path,
                 rootPath: workspaceVM.activeProject?.activeWorktree?.path ?? "",
                 modifiedPaths: editorVM.modifiedFilePaths,

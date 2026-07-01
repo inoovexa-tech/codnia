@@ -24,34 +24,6 @@ struct ContentView: View {
                         .environmentObject(appState.gitVM)
                         .environmentObject(settings)
 
-                    if appState.browserExpanded && appState.browserSide == .left {
-                        BrowserView(
-                            tabId: "browser-panel",
-                            urlString: $appState.browserURL,
-                            pageTitle: $appState.browserTitle,
-                            onNavigate: { appState.browserURL = $0 },
-                            onClose: { appState.closeBrowser() },
-                            onPinToLeft: { appState.closeBrowser() },
-                            onPinToRight: { appState.browserSide = .right },
-                            onPinToTab: {
-                                appState.openURL(appState.browserURL, in: .tab)
-                                appState.closeBrowser()
-                            }
-                        )
-                        .frame(width: appState.browserWidth)
-                        .background(Color.bgSecondary)
-
-                        ResizableDivider(
-                            width: $appState.browserWidth,
-                            minWidth: 250,
-                            maxWidth: 1800,
-                            side: .left
-                        )
-                        .frame(width: 8)
-                        .background(Color.borderDefault.opacity(0.15))
-                        .zIndex(10)
-                    }
-
                     SplitEditorView()
                         .background(Color.bgPrimary)
                         .environmentObject(appState)
@@ -59,36 +31,6 @@ struct ContentView: View {
                         .environmentObject(appState.editorVM)
                         .environmentObject(appState.terminalVM)
                         .environmentObject(settings)
-                        .environmentObject(appState.databaseService)
-
-                    if appState.browserExpanded && appState.browserSide == .right {
-                        ResizableDivider(
-                            width: $appState.browserWidth,
-                            minWidth: 250,
-                            maxWidth: 1800,
-                            side: .right
-                        )
-                        .frame(width: 8)
-                        .background(Color.borderDefault.opacity(0.15))
-                        .zIndex(10)
-
-                        BrowserView(
-                            tabId: "browser-panel",
-                            urlString: $appState.browserURL,
-                            pageTitle: $appState.browserTitle,
-                            onNavigate: { appState.browserURL = $0 },
-                            onClose: { appState.closeBrowser() },
-                            onPinToLeft: { appState.browserSide = .left },
-                            onPinToRight: { appState.closeBrowser() },
-                            onPinToTab: {
-                                appState.openURL(appState.browserURL, in: .tab)
-                                appState.closeBrowser()
-                            }
-                        )
-                        .frame(width: appState.browserWidth)
-                        .background(Color.bgSecondary)
-                    }
-
                     if appState.rightSidebarExpanded {
                         ResizableDivider(
                             width: $settings.activityBarWidth,
@@ -111,7 +53,6 @@ struct ContentView: View {
                         .environmentObject(appState.gitVM)
                         .environmentObject(appState.tasksVM)
                         .environmentObject(appState.pluginService)
-                        .environmentObject(appState.databaseService)
                         .environmentObject(appState.notesVM)
                     }
                 }
@@ -126,11 +67,6 @@ struct ContentView: View {
                 settings: appState.settings,
                 onToggleRightSidebar: { appState.rightSidebarExpanded.toggle() },
                 isRightSidebarExpanded: appState.rightSidebarExpanded,
-                isDatabaseEnabled: appState.databaseService.hasConnections,
-                onNewSQLQuery: {
-                    let connId = appState.databaseService.connections.first?.id
-                    appState.editorVM.newQueryTab(connectionId: connId)
-                },
                 onToggleExplorer: {
                     if appState.rightSidebarExpanded && appState.rightSidebarTab == .explorer {
                         appState.rightSidebarExpanded = false
@@ -157,11 +93,6 @@ struct ContentView: View {
                         appState.rightSidebarExpanded = true
                     }
                 },
-                onOpenBrowser: {
-                    let url = appState.settings.browserDefaultURL.isEmpty ? "about:blank" : appState.settings.browserDefaultURL
-                    let location = BrowserOpenIn(rawValue: appState.settings.browserDefaultLocation) ?? .tab
-                    appState.openURL(url, in: location)
-                }
             )
             .frame(height: 36)
         }

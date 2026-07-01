@@ -11,7 +11,7 @@ struct FileTreeView: View {
     let entries: [FileEntry]
     let onSelect: (String) -> Void
     let onRefresh: () -> Void
-    @Binding var selectedPath: String?
+    @Binding var selectedPaths: Set<String>
     let activeFilePath: String?
     let rootPath: String
     let modifiedPaths: Set<String>
@@ -31,7 +31,7 @@ struct FileTreeView: View {
                             depth: 0,
                             expandedPaths: $expandedPaths,
                             inlineEdit: $inlineEdit,
-                            selectedPath: $selectedPath,
+                            selectedPaths: $selectedPaths,
                             focusPath: $focusPath,
                             modifiedPaths: modifiedPaths,
                             rootPath: rootPath,
@@ -69,16 +69,18 @@ struct FileTreeView: View {
                         .frame(height: 22)
                     }
             }
-            .onChange(of: selectedPath) { newPath in
-                guard let path = newPath else { return }
+            .onChange(of: selectedPaths) { newPaths in
+                guard newPaths.count == 1, let path = newPaths.first else { return }
                 expandAncestors(of: path)
                 withAnimation(.none) {
                     proxy.scrollTo(path, anchor: .center)
                 }
             }
             .onChange(of: activeFilePath) { newPath in
-                guard let path = newPath, path != selectedPath else { return }
-                selectedPath = path
+                guard let path = newPath else { return }
+                if selectedPaths.count != 1 || !selectedPaths.contains(path) {
+                    selectedPaths = [path]
+                }
             }
             .onChange(of: headerAction) { action in
                 guard let action = action else { return }
@@ -117,9 +119,9 @@ struct FileTreeView: View {
     }
 
     private func handleMoveCommand(_ direction: MoveCommandDirection) {
-        guard let current = selectedPath ?? focusPath else {
+        guard let current = focusPath ?? selectedPaths.first else {
             if let first = entries.first {
-                selectedPath = first.path
+                selectedPaths = [first.path]
                 focusPath = first.path
             }
             return
@@ -149,7 +151,7 @@ struct FileTreeView: View {
             if parent.path != "/" {
                 let parentURL = URL(fileURLWithPath: rootPath).standardized
                 if parent.path != parentURL.path {
-                    selectedPath = parent.path
+                    selectedPaths = [parent.path]
                     focusPath = parent.path
                 }
             }
@@ -161,7 +163,7 @@ struct FileTreeView: View {
         guard flat.indices.contains(targetIndex) else { return }
         let target = flat[targetIndex]
         if let entry = findEntry(for: target, in: entries), !entry.isDirectory {
-            selectedPath = target
+            selectedPaths = [target]
         }
         focusPath = target
     }
@@ -192,7 +194,7 @@ struct TreeNode: View {
     let depth: Int
     @Binding var expandedPaths: Set<String>
     @Binding var inlineEdit: InlineEdit?
-    @Binding var selectedPath: String?
+    @Binding var selectedPaths: Set<String>
     @Binding var focusPath: String?
     let modifiedPaths: Set<String>
     let rootPath: String
@@ -206,11 +208,17 @@ struct TreeNode: View {
 
     private var isExpanded: Bool { expandedPaths.contains(entry.path) }
     private var isSelected: Bool {
-        selectedPath == entry.path && !entry.isDirectory
+        selectedPaths.contains(entry.path) && !entry.isDirectory
     }
     private var isFocused: Bool { focusPath == entry.path }
     private var isEditing: Bool { inlineEdit?.path == entry.path }
     private var isModified: Bool { modifiedPaths.contains(entry.path) }
+    private var contextTargets: [String] {
+        if selectedPaths.contains(entry.path) {
+            return Array(selectedPaths).sorted()
+        }
+        return [entry.path]
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -289,12 +297,24 @@ struct TreeNode: View {
                         if entry.isDirectory {
                             toggleExpand()
                         } else {
-                            selectedPath = entry.path
-                            onSelect(entry.path)
+                            let flags = NSEvent.modifierFlags
+                            if flags.contains(.command) {
+                                if selectedPaths.contains(entry.path) {
+                                    selectedPaths.remove(entry.path)
+                                } else {
+                                    selectedPaths.insert(entry.path)
+                                }
+                            } else {
+                                selectedPaths = [entry.path]
+                                onSelect(entry.path)
+                            }
                         }
                     }
             )
-            .contextMenu { contextMenuContent }
+            .contextMenu {
+                contextMenuSelectionUpdater
+                contextMenuContent
+            }
 
             if isExpanded && loaded {
                 ForEach(children) { child in
@@ -303,7 +323,7 @@ struct TreeNode: View {
                         depth: depth + 1,
                         expandedPaths: $expandedPaths,
                         inlineEdit: $inlineEdit,
-                        selectedPath: $selectedPath,
+                        selectedPaths: $selectedPaths,
                         focusPath: $focusPath,
                         modifiedPaths: modifiedPaths,
                         rootPath: rootPath,
@@ -355,78 +375,100 @@ struct TreeNode: View {
     }
 
     @ViewBuilder
+    private var contextMenuSelectionUpdater: some View {
+        Color.clear.frame(width: 0, height: 0)
+            .onAppear {
+                if !selectedPaths.contains(entry.path) {
+                    selectedPaths = [entry.path]
+                }
+            }
+    }
+
+    @ViewBuilder
     private var contextMenuContent: some View {
+        let targets = contextTargets
+
         Button("Reveal in Finder") {
-            NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: entry.path)])
+            let urls = targets.map(URL.init(fileURLWithPath:))
+            NSWorkspace.shared.activateFileViewerSelecting(urls)
         }
 
-        if entry.isDirectory {
-            Button("New File") {
-                let parentPath = entry.path
-                if !expandedPaths.contains(entry.path) {
-                    expandedPaths.insert(entry.path)
+        if contextTargets.count == 1 {
+            if entry.isDirectory {
+                Button("New File") {
+                    let parentPath = entry.path
+                    if !expandedPaths.contains(entry.path) {
+                        expandedPaths.insert(entry.path)
+                    }
+                    inlineEdit = InlineEdit(type: .newFile, parentPath: parentPath)
                 }
-                inlineEdit = InlineEdit(type: .newFile, parentPath: parentPath)
-            }
-            Button("New Folder") {
-                let parentPath = entry.path
-                if !expandedPaths.contains(entry.path) {
-                    expandedPaths.insert(entry.path)
+                Button("New Folder") {
+                    let parentPath = entry.path
+                    if !expandedPaths.contains(entry.path) {
+                        expandedPaths.insert(entry.path)
+                    }
+                    inlineEdit = InlineEdit(type: .newDirectory, parentPath: parentPath)
                 }
-                inlineEdit = InlineEdit(type: .newDirectory, parentPath: parentPath)
-            }
-        } else {
-            Button("New File") {
-                let parentPath = URL(fileURLWithPath: entry.path).deletingLastPathComponent().path
-                expandedPaths.insert(parentPath)
-                inlineEdit = InlineEdit(type: .newFile, parentPath: parentPath)
-            }
-            Button("New Folder") {
-                let parentPath = URL(fileURLWithPath: entry.path).deletingLastPathComponent().path
-                expandedPaths.insert(parentPath)
-                inlineEdit = InlineEdit(type: .newDirectory, parentPath: parentPath)
+            } else {
+                Button("New File") {
+                    let parentPath = URL(fileURLWithPath: entry.path).deletingLastPathComponent().path
+                    expandedPaths.insert(parentPath)
+                    inlineEdit = InlineEdit(type: .newFile, parentPath: parentPath)
+                }
+                Button("New Folder") {
+                    let parentPath = URL(fileURLWithPath: entry.path).deletingLastPathComponent().path
+                    expandedPaths.insert(parentPath)
+                    inlineEdit = InlineEdit(type: .newDirectory, parentPath: parentPath)
+                }
             }
         }
 
         Divider()
 
-        Button("Duplicate") {
-            _ = try? FileSystemService.shared.duplicate(path: entry.path)
+        Button(targets.count > 1 ? "Duplicate (\(targets.count))" : "Duplicate") {
+            for path in targets {
+                _ = try? FileSystemService.shared.duplicate(path: path)
+            }
             onRefresh()
         }
-        Button("Copy Path") {
+        Button(targets.count > 1 ? "Copy Path (\(targets.count))" : "Copy Path") {
+            let paths = targets.joined(separator: "\n")
             NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(entry.path, forType: .string)
+            NSPasteboard.general.setString(paths, forType: .string)
         }
 
-        let relativePath = computeRelativePath()
-        if !relativePath.isEmpty {
-            Button("Copy Relative Path") {
+        if !rootPath.isEmpty {
+            Button(targets.count > 1 ? "Copy Relative Path (\(targets.count))" : "Copy Relative Path") {
+                let paths = targets.map { relativePath(for: $0) }.joined(separator: "\n")
                 NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(relativePath, forType: .string)
+                NSPasteboard.general.setString(paths, forType: .string)
             }
         }
 
         Divider()
 
-        Button("Rename") {
-            inlineEdit = InlineEdit(
-                type: .rename,
-                path: entry.path,
-                originalName: entry.name,
-                parentPath: URL(fileURLWithPath: entry.path).deletingLastPathComponent().path
-            )
+        if targets.count == 1 {
+            Button("Rename") {
+                inlineEdit = InlineEdit(
+                    type: .rename,
+                    path: entry.path,
+                    originalName: entry.name,
+                    parentPath: URL(fileURLWithPath: entry.path).deletingLastPathComponent().path
+                )
+            }
         }
-        Button("Delete") {
-            try? FileSystemService.shared.delete(path: entry.path)
+        Button(targets.count > 1 ? "Delete (\(targets.count))" : "Delete") {
+            for path in targets {
+                try? FileSystemService.shared.delete(path: path)
+            }
             onRefresh()
         }
     }
 
-    private func computeRelativePath() -> String {
+    private func relativePath(for path: String) -> String {
         guard !rootPath.isEmpty else { return "" }
         let root = URL(fileURLWithPath: rootPath).standardized.path
-        let filePath = URL(fileURLWithPath: entry.path).standardized.path
+        let filePath = URL(fileURLWithPath: path).standardized.path
         guard filePath.hasPrefix(root) else { return "" }
         return String(filePath.dropFirst(root.count + 1))
     }

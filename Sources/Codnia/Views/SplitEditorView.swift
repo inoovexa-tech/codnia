@@ -175,7 +175,7 @@ struct SplitEditorView: View {
                     if range.location == NSNotFound { break }
                     let fullRange = NSRange(location: lineRange.location + range.location, length: range.length)
                     ranges.append(fullRange)
-                    searchStart = lineRange.location + range.location + range.length
+                    searchStart = range.location + range.length
                 }
             }
         }

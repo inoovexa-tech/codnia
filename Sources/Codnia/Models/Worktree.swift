@@ -14,12 +14,6 @@ public struct Worktree: Identifiable, Codable, Equatable, Sendable {
     public var tabScrollPositions: [String: Double] = [:]
     public var tabSelectedRanges: [String: String] = [:]
     public var tabOrder: [String] = []
-    public var browserURLs: [String: String] = [:]
-    public var browserTitles: [String: String] = [:]
-    public var sideBrowserURL: String = ""
-    public var sideBrowserTitle: String = ""
-    public var sideBrowserSide: String = "right"
-    public var sideBrowserExpanded: Bool = false
 
     public var displayName: String {
         let cleaned = branch
@@ -41,13 +35,7 @@ public struct Worktree: Identifiable, Codable, Equatable, Sendable {
         tabActivePaneIds: [String: UUID] = [:],
         tabScrollPositions: [String: Double] = [:],
         tabSelectedRanges: [String: String] = [:],
-        browserURLs: [String: String] = [:],
-        browserTitles: [String: String] = [:],
-        tabOrder: [String] = [],
-        sideBrowserURL: String = "",
-        sideBrowserTitle: String = "",
-        sideBrowserSide: String = "right",
-        sideBrowserExpanded: Bool = false
+        tabOrder: [String] = []
     ) {
         self.id = id
         self.name = name
@@ -61,19 +49,13 @@ public struct Worktree: Identifiable, Codable, Equatable, Sendable {
         self.tabActivePaneIds = tabActivePaneIds
         self.tabScrollPositions = tabScrollPositions
         self.tabSelectedRanges = tabSelectedRanges
-        self.browserURLs = browserURLs
-        self.browserTitles = browserTitles
         self.tabOrder = tabOrder
-        self.sideBrowserURL = sideBrowserURL
-        self.sideBrowserTitle = sideBrowserTitle
-        self.sideBrowserSide = sideBrowserSide
-        self.sideBrowserExpanded = sideBrowserExpanded
     }
 
     enum CodingKeys: String, CodingKey {
         case id, name, path, branch, isMain, fileTabs, terminalTabs, activeTabId
-        case tabSplitRoots, tabActivePaneIds, tabScrollPositions, tabSelectedRanges, browserURLs, browserTitles
-        case tabOrder, sideBrowserURL, sideBrowserTitle, sideBrowserSide, sideBrowserExpanded
+        case tabSplitRoots, tabActivePaneIds, tabScrollPositions, tabSelectedRanges
+        case tabOrder
     }
 
     public init(from decoder: Decoder) throws {
@@ -90,13 +72,7 @@ public struct Worktree: Identifiable, Codable, Equatable, Sendable {
         tabActivePaneIds = try container.decodeIfPresent([String: UUID].self, forKey: .tabActivePaneIds) ?? [:]
         tabScrollPositions = try container.decodeIfPresent([String: Double].self, forKey: .tabScrollPositions) ?? [:]
         tabSelectedRanges = try container.decodeIfPresent([String: String].self, forKey: .tabSelectedRanges) ?? [:]
-        browserURLs = try container.decodeIfPresent([String: String].self, forKey: .browserURLs) ?? [:]
-        browserTitles = try container.decodeIfPresent([String: String].self, forKey: .browserTitles) ?? [:]
         tabOrder = try container.decodeIfPresent([String].self, forKey: .tabOrder) ?? []
-        sideBrowserURL = try container.decodeIfPresent(String.self, forKey: .sideBrowserURL) ?? ""
-        sideBrowserTitle = try container.decodeIfPresent(String.self, forKey: .sideBrowserTitle) ?? ""
-        sideBrowserSide = try container.decodeIfPresent(String.self, forKey: .sideBrowserSide) ?? "right"
-        sideBrowserExpanded = try container.decodeIfPresent(Bool.self, forKey: .sideBrowserExpanded) ?? false
     }
 
     public static func == (lhs: Worktree, rhs: Worktree) -> Bool {

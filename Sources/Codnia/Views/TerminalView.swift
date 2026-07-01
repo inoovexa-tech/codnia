@@ -21,9 +21,6 @@ class CodniaTerminalView: LocalProcessTerminalView {
     }
 
     func requestOpenLink(source: TerminalView, link: String, params: [String: String]) {
-        if let url = URL(string: link) {
-            BrowserService.handleTerminalURLClick(url)
-        }
     }
 
     override func menu(for event: NSEvent) -> NSMenu? {

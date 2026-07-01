@@ -10,13 +10,10 @@ struct TabBarView: View {
 
     var onToggleRightSidebar: () -> Void
     var isRightSidebarExpanded: Bool
-    var isDatabaseEnabled: Bool = false
-    var onNewSQLQuery: () -> Void = {}
 
     var onToggleExplorer: () -> Void = {}
     var onToggleSearch: () -> Void = {}
     var onToggleSourceControl: () -> Void = {}
-    var onOpenBrowser: (() -> Void)?
 
     @State private var draggedTabId: String?
     @State private var showTabDropdown = false
@@ -119,10 +116,6 @@ struct TabBarView: View {
                         popoverItem("New File", shortcutKey: "newFile") { editorVM.newFile() }
                         popoverItem("New Terminal", shortcutKey: "newTerminal") { editorVM.createTerminalTab(type: .terminal) }
                         Color.borderDefault.frame(height: 1).padding(.horizontal, 8)
-                        if isDatabaseEnabled {
-                            popoverItem("New SQL Query", shortcutKey: "newSQLQuery") { onNewSQLQuery() }
-                            Color.borderDefault.frame(height: 1).padding(.horizontal, 8)
-                        }
                         popoverItem("OpenCode", shortcutKey: "openOpenCode") { editorVM.createTerminalTab(type: .opencode) }
                         popoverItem("Claude Code", shortcutKey: "openClaude") { editorVM.createTerminalTab(type: .claude) }
                         popoverItem("Codex", shortcutKey: "openCodex") { editorVM.createTerminalTab(type: .codex) }
@@ -196,7 +189,7 @@ struct TabBarView: View {
                 }
 
                 HStack(spacing: 4) {
-                    if editorVM.currentTab != nil && editorVM.currentTab?.type != .browser {
+                    if editorVM.currentTab != nil {
                         Button(action: {
                             splitVM.splitActivePane(.horizontal, editorVM: editorVM, terminalVM: terminalVM)
                         }) {
@@ -217,17 +210,6 @@ struct TabBarView: View {
                         .buttonStyle(PlainButtonStyle())
                         .foregroundColor(.textSecondary)
                         .help("Split top/bottom")
-                        .trackInteractiveFrame()
-                    }
-
-                    if let onOpenBrowser {
-                        Button(action: onOpenBrowser) {
-                            Image(systemName: "globe")
-                                .font(.system(size: 13))
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                        .foregroundColor(.textSecondary)
-                        .help("Open browser")
                         .trackInteractiveFrame()
                     }
 
@@ -301,28 +283,18 @@ struct TabButton: View {
     @Binding var draggedTabId: String?
     var onMoveLeft: (() -> Void)? = nil
     var onMoveRight: (() -> Void)? = nil
-    @EnvironmentObject var appState: AppState
 
     @State private var isHovered = false
 
     var body: some View {
         HStack(spacing: 4) {
             Group {
-                if tab.type == .browser {
-                } else if tab.type == .file {
+                if tab.type == .file {
                     fileIcon(for: tab.name)
                         .foregroundColor(iconColor)
                         .font(.system(size: 13))
                 } else if tab.type == .diff {
                     Image(systemName: "plus.forwardslash.minus")
-                        .foregroundColor(iconColor)
-                        .font(.system(size: 13))
-                } else if tab.type == .queryResult {
-                    Image(systemName: "tablecells")
-                        .foregroundColor(iconColor)
-                        .font(.system(size: 13))
-                } else if tab.type == .diagram {
-                    Image(systemName: "square.stack.3d.up")
                         .foregroundColor(iconColor)
                         .font(.system(size: 13))
                 } else {
@@ -372,17 +344,6 @@ struct TabButton: View {
             moveAction: moveAction
         ))
         .contextMenu {
-            if tab.type == .browser {
-                Button("Pin to Left Panel") {
-                    appState.openURL(tab.url ?? "about:blank", in: .leftPanel)
-                    onClose()
-                }
-                Button("Pin to Right Panel") {
-                    appState.openURL(tab.url ?? "about:blank", in: .rightPanel)
-                    onClose()
-                }
-                Divider()
-            }
             Button("Close Tab") { onClose() }
             if onMoveLeft != nil {
                 Button("Move Left") { onMoveLeft?() }
@@ -403,10 +364,6 @@ struct TabButton: View {
         case .file: return fileColor(for: tab.name)
         case .image: return .accentBlue
         case .pdf: return .accentRed
-        case .queryResult: return .accentBlue
-        case .browser: return .accentBlue
-        case .restApi: return .accentGreen
-        case .diagram: return .accentBlue
         }
     }
 

@@ -12,9 +12,7 @@ public final class AppState: ObservableObject {
     public let splitVM: SplitViewModel
     public let pluginService: PluginService
     public let tasksVM: TasksViewModel
-    public let databaseService: DatabaseConnectionService
     public let notesVM: NotesViewModel
-    public var restApiVM: RESTApiViewModel
     @Published var rightSidebarExpanded: Bool = false
     @Published var rightSidebarTab: RightSidebarTab = .explorer
     @Published var showGlobalSearchModal: Bool = false
@@ -33,9 +31,7 @@ public final class AppState: ObservableObject {
         let sp = SplitViewModel()
         ed.splitVM = sp
         let tv = TasksViewModel(workspace: ws)
-        let db = DatabaseConnectionService()
         let nv = NotesViewModel()
-        let rest = RESTApiViewModel(projectPath: ws.activeProject?.activeWorktree?.path)
         self.workspaceVM = ws
         self.settings = s
         self.searchVM = sr
@@ -45,22 +41,13 @@ public final class AppState: ObservableObject {
         self.gitVM = gv
         self.splitVM = sp
         self.tasksVM = tv
-        self.databaseService = db
         self.notesVM = nv
-        self.restApiVM = rest
 
         let tasksPlugin = TasksPlugin()
         tasksPlugin.onNewTask = { [weak tv] in
             tv?.addTask(title: "New task")
         }
         ps.registerSidebarPlugin(tasksPlugin)
-
-        let dbPlugin = DatabasePlugin(databaseService: db, editorVM: ed)
-        dbPlugin.onNewQuery = { [weak ed, weak db] in
-            guard let ed = ed, db?.hasConnections == true else { return }
-            ed.newQueryTab(connectionId: db?.connections.first?.id)
-        }
-        ps.registerSidebarPlugin(dbPlugin)
 
         let notesPlugin = NotesPlugin()
         notesPlugin.onNewNote = { [weak nv] in
@@ -71,13 +58,8 @@ public final class AppState: ObservableObject {
         }
         ps.registerSidebarPlugin(notesPlugin)
 
-        let restApiPlugin = RESTApiPlugin()
-        restApiPlugin.viewModel = rest
-        ps.registerSidebarPlugin(restApiPlugin)
-
         ws.$activeProject.receive(on: DispatchQueue.main).sink { [weak self] project in
             guard let self = self else { return }
-            self.restApiVM.reloadForProject(projectPath: project?.activeWorktree?.path)
 
             if let prevId = self.previousWorktreeId,
                let prevProject = self.workspaceVM.projects.first(where: { $0.worktrees.contains { $0.id == prevId } }),

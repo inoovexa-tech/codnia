@@ -38,12 +38,6 @@ public final class EditorViewModel: ObservableObject {
     public var cursorPositions: [String: String] = [:]
     public weak var activeTextView: NSTextView?
     @Published public var diffData: [String: [DiffLine]] = [:]
-    @Published public var queryResults: [String: QueryPageResult] = [:]
-    @Published public var querySql: [String: String] = [:]
-    @Published public var browserURLs: [String: String] = [:]
-    @Published public var browserTitles: [String: String] = [:]
-    @Published var restApiTabStates: [String: RESTApiTabState] = [:]
-    @Published var queryHistory: [String: [QueryHistoryItem]] = [:]
     private var autoSaveTimer: AnyCancellable?
     private var markdownPreviewTabs: Set<String> = []
     private var htmlPreviewTabs: Set<String> = []
@@ -153,8 +147,6 @@ public final class EditorViewModel: ObservableObject {
                      self.workspace.projects[projIdx].worktrees[prevWtIdx].activeTabId = self.activeTabId
                      self.workspace.projects[projIdx].worktrees[prevWtIdx].tabScrollPositions = self.scrollPositions.mapValues { Double($0) }
                      self.workspace.projects[projIdx].worktrees[prevWtIdx].tabSelectedRanges = self.selectedRanges.mapValues { "\($0.location),\($0.length)" }
-                     self.workspace.projects[projIdx].worktrees[prevWtIdx].browserURLs = self.browserURLs
-                     self.workspace.projects[projIdx].worktrees[prevWtIdx].browserTitles = self.browserTitles
                      self.workspace.saveProjects()
                 }
 
@@ -195,9 +187,6 @@ public final class EditorViewModel: ObservableObject {
             guard parts.count == 2 else { return nil }
             return NSRange(location: parts[0], length: parts[1])
         }
-        browserURLs = worktree.browserURLs
-        browserTitles = worktree.browserTitles
-
         if tabs.isEmpty && terminal.tabs.isEmpty,
            let tabType = TabType(rawValue: settings.defaultTabOnProjectOpen) {
             createTerminalTab(type: tabType)
@@ -212,12 +201,6 @@ public final class EditorViewModel: ObservableObject {
                     let content = fs.readFile(path: tab.path)
                     fileContents[tab.id] = content
                 }
-            }
-        }
-
-        for tab in worktree.fileTabs where tab.type == .queryResult {
-            if querySql[tab.id] == nil {
-                querySql[tab.id] = tab.querySql ?? ""
             }
         }
 
@@ -259,10 +242,6 @@ public final class EditorViewModel: ObservableObject {
               let projIdx = workspace.projects.firstIndex(where: { $0.id == project.id }),
               let wtIdx = workspace.projects[projIdx].worktrees.firstIndex(where: { $0.id == worktreeId }) else { return }
 
-        for i in tabs.indices where tabs[i].type == .queryResult {
-            tabs[i].querySql = querySql[tabs[i].id]
-        }
-
         splitVM?.saveToWorktree(&workspace.projects[projIdx].worktrees[wtIdx])
         workspace.projects[projIdx].worktrees[wtIdx].tabOrder = tabOrder
         workspace.projects[projIdx].worktrees[wtIdx].fileTabs = tabs
@@ -270,8 +249,6 @@ public final class EditorViewModel: ObservableObject {
         workspace.projects[projIdx].worktrees[wtIdx].activeTabId = activeTabId
         workspace.projects[projIdx].worktrees[wtIdx].tabScrollPositions = scrollPositions.mapValues { Double($0) }
         workspace.projects[projIdx].worktrees[wtIdx].tabSelectedRanges = selectedRanges.mapValues { "\($0.location),\($0.length)" }
-        workspace.projects[projIdx].worktrees[wtIdx].browserURLs = browserURLs
-        workspace.projects[projIdx].worktrees[wtIdx].browserTitles = browserTitles
         workspace.saveProjects()
     }
 
@@ -430,115 +407,6 @@ public final class EditorViewModel: ObservableObject {
         openFile(entry.path)
     }
 
-    // MARK: - Browser Tabs
-
-    public func openURL(_ urlString: String) {
-        let normalized = normalizeURL(urlString)
-
-        let existingTab = tabs.first { tab in
-            guard tab.type == .browser else { return false }
-            let tabURL = browserURLs[tab.id] ?? tab.url ?? ""
-            let normalizedTabURL = normalizeURL(tabURL)
-            return normalizedTabURL == normalized
-        }
-
-        if let existing = existingTab {
-            activateTab(existing.id)
-            return
-        }
-        let displayName = URL(string: normalized)?.host ?? normalized
-        let tab = Tab(
-            name: displayName,
-            type: .browser,
-            url: normalized
-        )
-        tabs.append(tab)
-        activeTabId = tab.id
-        browserURLs[tab.id] = normalized
-        browserTitles[tab.id] = ""
-        saveTabsToWorktree()
-    }
-
-    public func updateBrowserURL(tabId: String, url: String) {
-        let normalizedNew = normalizeURL(url)
-        guard browserURLs[tabId] != normalizedNew else {
-            return
-        }
-        browserURLs[tabId] = normalizedNew
-        if let idx = tabs.firstIndex(where: { $0.id == tabId }) {
-            tabs[idx].url = normalizedNew
-        }
-    }
-
-    public func updateBrowserTitle(tabId: String, title: String) {
-        browserTitles[tabId] = title
-        if !title.isEmpty, let idx = tabs.firstIndex(where: { $0.id == tabId }) {
-            tabs[idx].name = title
-            saveTabsToWorktree()
-        }
-    }
-
-    private func normalizeURL(_ urlString: String) -> String {
-        let trimmed = urlString.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.hasPrefix("http://") || trimmed.hasPrefix("https://") {
-            return trimmed
-        }
-        return "http://" + trimmed
-    }
-
-    // MARK: - Diagram Tab
-
-    public func openDiagramTab(configID: String, schema: String, databaseName: String) {
-        let name = "ER - \(databaseName):\(schema)"
-        if let existing = tabs.first(where: { $0.type == .diagram && $0.queryTableSchema == schema && $0.queryConnectionId == configID }) {
-            activateTab(existing.id)
-            return
-        }
-        let tab = Tab(
-            name: name,
-            type: .diagram,
-            queryConnectionId: configID,
-            queryTableSchema: schema
-        )
-        tabs.append(tab)
-        activeTabId = tab.id
-        saveTabsToWorktree()
-    }
-
-    // MARK: - Query Result Tabs
-
-    public func newQueryTab(connectionId: String?) {
-        let tab = Tab(name: "SQL Query", type: .queryResult, queryConnectionId: connectionId)
-        tabs.append(tab)
-        activeTabId = tab.id
-        querySql[tab.id] = ""
-        saveTabsToWorktree()
-    }
-
-    public func setQueryResult(_ result: QueryPageResult, forTab tabId: String) {
-        var updated = queryResults
-        updated[tabId] = result
-        queryResults = updated
-    }
-
-    public func addQueryHistory(forTab tabId: String, sql: String, connectionName: String, duration: TimeInterval, rowCount: Int, isError: Bool) {
-        let item = QueryHistoryItem(
-            id: UUID(),
-            sql: sql,
-            timestamp: Date(),
-            connectionName: connectionName,
-            duration: duration,
-            rowCount: rowCount,
-            isError: isError
-        )
-        var history = queryHistory[tabId] ?? []
-        history.insert(item, at: 0)
-        if history.count > 200 {
-            history = Array(history.prefix(200))
-        }
-        queryHistory[tabId] = history
-    }
-
     public func activateTab(_ id: String) {
         searchHighlightQuery = ""
         searchHighlightRanges = []
@@ -569,15 +437,6 @@ public final class EditorViewModel: ObservableObject {
                     editorContent = ""
                 }
                 currentLanguage = "Diff"
-            } else if tab.type == .queryResult {
-                editorContent = ""
-                currentLanguage = "SQL"
-            } else if tab.type == .browser {
-                editorContent = ""
-                currentLanguage = "Browser"
-            } else if tab.type == .diagram {
-                editorContent = ""
-                currentLanguage = "ER Diagram"
             } else {
                 if let savedContent = fileContents[tab.id] {
                     editorContent = savedContent
@@ -606,12 +465,6 @@ public final class EditorViewModel: ObservableObject {
             selectedRanges.removeValue(forKey: id)
             cursorPositions.removeValue(forKey: id)
             diffData.removeValue(forKey: id)
-            queryResults.removeValue(forKey: id)
-            querySql.removeValue(forKey: id)
-            queryHistory.removeValue(forKey: id)
-            browserURLs.removeValue(forKey: id)
-            browserTitles.removeValue(forKey: id)
-            restApiTabStates.removeValue(forKey: id)
 
             if activeTabId == id {
                 let newActiveId = tabs.last?.id ?? terminal.tabs.last?.id

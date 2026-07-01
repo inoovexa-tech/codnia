@@ -5,7 +5,6 @@ struct EditorAreaView: View {
     @EnvironmentObject var editorVM: EditorViewModel
     @EnvironmentObject var terminalVM: TerminalViewModel
     @EnvironmentObject var settings: SettingsService
-    @EnvironmentObject var databaseService: DatabaseConnectionService
     @EnvironmentObject var appState: AppState
 
     private var isTerminalVisible: Bool {
@@ -44,56 +43,6 @@ struct EditorAreaView: View {
             // PDF preview
             if let activeTab = editorVM.currentTab, activeTab.type == .pdf {
                 PDFPreviewView(path: activeTab.path)
-            }
-
-            // Query result tab
-            if let activeTab = editorVM.currentTab, activeTab.type == .queryResult {
-                QueryResultTabView(tabId: activeTab.id)
-                    .id(activeTab.id)
-            }
-
-            // Browser tab
-            if let activeTab = editorVM.currentTab, activeTab.type == .browser {
-                BrowserView(
-                    tabId: activeTab.id,
-                    urlString: Binding(
-                        get: { editorVM.browserURLs[activeTab.id] ?? activeTab.url ?? "about:blank" },
-                        set: { editorVM.updateBrowserURL(tabId: activeTab.id, url: $0) }
-                    ),
-                    pageTitle: Binding(
-                        get: { editorVM.browserTitles[activeTab.id] ?? "" },
-                        set: { editorVM.updateBrowserTitle(tabId: activeTab.id, title: $0) }
-                    ),
-                    onNavigate: { url in
-                        editorVM.updateBrowserURL(tabId: activeTab.id, url: url)
-                    },
-                    onClose: {
-                        editorVM.closeTab(activeTab.id)
-                    },
-                    onPinToLeft: {
-                        let url = editorVM.browserURLs[activeTab.id] ?? activeTab.url ?? "about:blank"
-                        appState.browserURL = url
-                        appState.browserSide = .left
-                        appState.browserExpanded = true
-                        editorVM.closeTab(activeTab.id)
-                    },
-                    onPinToRight: {
-                        let url = editorVM.browserURLs[activeTab.id] ?? activeTab.url ?? "about:blank"
-                        appState.browserURL = url
-                        appState.browserSide = .right
-                        appState.browserExpanded = true
-                        editorVM.closeTab(activeTab.id)
-                    }
-                )
-            }
-
-            // ER Diagram
-            if let activeTab = editorVM.currentTab, activeTab.type == .diagram {
-                if let configID = activeTab.queryConnectionId, let schema = activeTab.queryTableSchema {
-                    let dbName = databaseService.config(withID: configID)?.name ?? ""
-                    ERDiagramView(configID: configID, schema: schema, databaseName: dbName)
-                        .environmentObject(databaseService)
-                }
             }
 
             // File editor
@@ -315,7 +264,7 @@ struct EditorAreaView: View {
                     if range.location == NSNotFound { break }
                     let fullRange = NSRange(location: lineRange.location + range.location, length: range.length)
                     ranges.append(fullRange)
-                    searchStart = lineRange.location + range.location + range.length
+                    searchStart = range.location + range.length
                 }
             }
         }
