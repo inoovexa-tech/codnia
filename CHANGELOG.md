@@ -1,3 +1,13 @@
+## [0.19.3] — 2026-07-02
+
+### Fixed
+- Crash when reordering tabs with terminal tabs open
+
+## [0.19.2] — 2026-07-02
+
+### Removed
+- Database management implementation
+
 ## [0.19.1] — 2026-06-23
 
 ### Added
