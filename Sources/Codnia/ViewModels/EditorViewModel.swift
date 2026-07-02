@@ -649,6 +649,10 @@ public final class EditorViewModel: ObservableObject {
         guard source < all.count, source != destination else { return }
         if tabOrder.isEmpty {
             tabOrder = all.map(\.id)
+        } else {
+            for tab in all where !tabOrder.contains(tab.id) {
+                tabOrder.append(tab.id)
+            }
         }
         let tabId = all[source].id
         tabOrder.remove(at: source)
