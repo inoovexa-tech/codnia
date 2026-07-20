@@ -105,23 +105,138 @@ extension Color {
 }
 
 extension NSColor {
-    static var bgPrimary: NSColor { NSColor(Color.bgPrimary) }
-    static var bgSecondary: NSColor { NSColor(Color.bgSecondary) }
-    static var bgTertiary: NSColor { NSColor(Color.bgTertiary) }
-    static var textPrimary: NSColor { NSColor(Color.textPrimary) }
-    static var textSecondary: NSColor { NSColor(Color.textSecondary) }
-    static var accentBlue: NSColor { NSColor(Color.accentBlue) }
-    static var accentOrange: NSColor { NSColor(Color.accentOrange) }
-    static var borderLight: NSColor { NSColor(Color.borderLight) }
-    static var textTertiary: NSColor { NSColor(Color.textTertiary) }
-    static var selectionBg: NSColor { NSColor(Color.selectionBg) }
-    static var syntaxKeyword: NSColor { NSColor(Color.syntaxKeyword) }
-    static var syntaxString: NSColor { NSColor(Color.syntaxString) }
-    static var syntaxComment: NSColor { NSColor(Color.syntaxComment) }
-    static var syntaxNumber: NSColor { NSColor(Color.syntaxNumber) }
-    static var syntaxType: NSColor { NSColor(Color.syntaxType) }
-    static var syntaxFunction: NSColor { NSColor(Color.syntaxFunction) }
-    static var syntaxProperty: NSColor { NSColor(Color.syntaxProperty) }
-    static var syntaxConstant: NSColor { NSColor(Color.syntaxConstant) }
-    static var syntaxOperator: NSColor { NSColor(Color.syntaxOperator) }
+    private static var cachedBgPrimary: NSColor?
+    private static var cachedBgSecondary: NSColor?
+    private static var cachedBgTertiary: NSColor?
+    private static var cachedTextPrimary: NSColor?
+    private static var cachedTextSecondary: NSColor?
+    private static var cachedAccentBlue: NSColor?
+    private static var cachedAccentOrange: NSColor?
+    private static var cachedBorderLight: NSColor?
+    private static var cachedTextTertiary: NSColor?
+    private static var cachedSelectionBg: NSColor?
+    private static var cachedSyntaxKeyword: NSColor?
+    private static var cachedSyntaxString: NSColor?
+    private static var cachedSyntaxComment: NSColor?
+    private static var cachedSyntaxNumber: NSColor?
+    private static var cachedSyntaxType: NSColor?
+    private static var cachedSyntaxFunction: NSColor?
+    private static var cachedSyntaxProperty: NSColor?
+    private static var cachedSyntaxConstant: NSColor?
+    private static var cachedSyntaxOperator: NSColor?
+
+    static var bgPrimary: NSColor {
+        if let cached = cachedBgPrimary { return cached }
+        let color = NSColor(Color.bgPrimary)
+        cachedBgPrimary = color
+        return color
+    }
+    static var bgSecondary: NSColor {
+        if let cached = cachedBgSecondary { return cached }
+        let color = NSColor(Color.bgSecondary)
+        cachedBgSecondary = color
+        return color
+    }
+    static var bgTertiary: NSColor {
+        if let cached = cachedBgTertiary { return cached }
+        let color = NSColor(Color.bgTertiary)
+        cachedBgTertiary = color
+        return color
+    }
+    static var textPrimary: NSColor {
+        if let cached = cachedTextPrimary { return cached }
+        let color = NSColor(Color.textPrimary)
+        cachedTextPrimary = color
+        return color
+    }
+    static var textSecondary: NSColor {
+        if let cached = cachedTextSecondary { return cached }
+        let color = NSColor(Color.textSecondary)
+        cachedTextSecondary = color
+        return color
+    }
+    static var accentBlue: NSColor {
+        if let cached = cachedAccentBlue { return cached }
+        let color = NSColor(Color.accentBlue)
+        cachedAccentBlue = color
+        return color
+    }
+    static var accentOrange: NSColor {
+        if let cached = cachedAccentOrange { return cached }
+        let color = NSColor(Color.accentOrange)
+        cachedAccentOrange = color
+        return color
+    }
+    static var borderLight: NSColor {
+        if let cached = cachedBorderLight { return cached }
+        let color = NSColor(Color.borderLight)
+        cachedBorderLight = color
+        return color
+    }
+    static var textTertiary: NSColor {
+        if let cached = cachedTextTertiary { return cached }
+        let color = NSColor(Color.textTertiary)
+        cachedTextTertiary = color
+        return color
+    }
+    static var selectionBg: NSColor {
+        if let cached = cachedSelectionBg { return cached }
+        let color = NSColor(Color.selectionBg)
+        cachedSelectionBg = color
+        return color
+    }
+    static var syntaxKeyword: NSColor {
+        if let cached = cachedSyntaxKeyword { return cached }
+        let color = NSColor(Color.syntaxKeyword)
+        cachedSyntaxKeyword = color
+        return color
+    }
+    static var syntaxString: NSColor {
+        if let cached = cachedSyntaxString { return cached }
+        let color = NSColor(Color.syntaxString)
+        cachedSyntaxString = color
+        return color
+    }
+    static var syntaxComment: NSColor {
+        if let cached = cachedSyntaxComment { return cached }
+        let color = NSColor(Color.syntaxComment)
+        cachedSyntaxComment = color
+        return color
+    }
+    static var syntaxNumber: NSColor {
+        if let cached = cachedSyntaxNumber { return cached }
+        let color = NSColor(Color.syntaxNumber)
+        cachedSyntaxNumber = color
+        return color
+    }
+    static var syntaxType: NSColor {
+        if let cached = cachedSyntaxType { return cached }
+        let color = NSColor(Color.syntaxType)
+        cachedSyntaxType = color
+        return color
+    }
+    static var syntaxFunction: NSColor {
+        if let cached = cachedSyntaxFunction { return cached }
+        let color = NSColor(Color.syntaxFunction)
+        cachedSyntaxFunction = color
+        return color
+    }
+    static var syntaxProperty: NSColor {
+        if let cached = cachedSyntaxProperty { return cached }
+        let color = NSColor(Color.syntaxProperty)
+        cachedSyntaxProperty = color
+        return color
+    }
+    static var syntaxConstant: NSColor {
+        if let cached = cachedSyntaxConstant { return cached }
+        let color = NSColor(Color.syntaxConstant)
+        cachedSyntaxConstant = color
+        return color
+    }
+    static var syntaxOperator: NSColor {
+        if let cached = cachedSyntaxOperator { return cached }
+        let color = NSColor(Color.syntaxOperator)
+        cachedSyntaxOperator = color
+        return color
+    }
 }

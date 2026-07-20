@@ -28,6 +28,7 @@ public final class GitViewModel: ObservableObject {
     @Published public var fileChangesCounts: [String: (added: Int, deleted: Int)] = [:]
     @Published public var hasRemote: Bool = false
     @Published public var isAmending: Bool = false
+    @Published public var isPanelOpen: Bool = false
 
     private let git = GitService.shared
     private weak var workspace: WorkspaceService?
@@ -35,6 +36,8 @@ public final class GitViewModel: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     private var refreshTask: Task<Void, Never>?
     private var autoDismissTask: Task<Void, Never>?
+    private var lastRefreshTime: Date?
+    private let minRefreshInterval: TimeInterval = 3.0
 
     public init(workspace: WorkspaceService, editorVM: EditorViewModel) {
         self.workspace = workspace
@@ -64,7 +67,7 @@ public final class GitViewModel: ObservableObject {
             .store(in: &cancellables)
 
         workspace.objectWillChange
-            .debounce(for: .seconds(1), scheduler: DispatchQueue.main)
+            .debounce(for: .seconds(2), scheduler: DispatchQueue.main)
             .sink { [weak self] in
                 self?.refreshIfNeeded()
             }
@@ -72,9 +75,26 @@ public final class GitViewModel: ObservableObject {
     }
 
     private func refreshIfNeeded() {
-        guard !isRefreshing, !isLoading, !isCommitting else { return }
+        guard isPanelOpen, !isRefreshing, !isLoading, !isCommitting else { return }
+
+        if let lastRefresh = lastRefreshTime,
+           Date().timeIntervalSince(lastRefresh) < minRefreshInterval {
+            return
+        }
+
         isAutoRefreshing = true
+        lastRefreshTime = Date()
         refreshAll()
+    }
+
+    public func openPanel() {
+        isPanelOpen = true
+        lastRefreshTime = nil
+        refreshIfNeeded()
+    }
+
+    public func closePanel() {
+        isPanelOpen = false
     }
 
     public func refreshAll(for path: String? = nil) {

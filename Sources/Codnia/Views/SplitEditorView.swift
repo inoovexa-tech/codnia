@@ -10,6 +10,7 @@ struct SplitEditorView: View {
     @EnvironmentObject var appState: AppState
 
     @FocusState private var inFileSearchFocused: Bool
+    @State private var searchTask: DispatchWorkItem?
 
     var body: some View {
         ZStack {
@@ -111,7 +112,35 @@ struct SplitEditorView: View {
                             performInFileSearch()
                         }
                     }
-                    .onChange(of: editorVM.inFileSearchQuery) { _ in performInFileSearch() }
+                    .onChange(of: editorVM.inFileSearchQuery) { _ in
+                        searchTask?.cancel()
+                        let task = DispatchWorkItem { [weak editorVM] in
+                            guard let editorVM = editorVM else { return }
+                            guard !editorVM.inFileSearchQuery.isEmpty else {
+                                editorVM.inFileSearchResults = []
+                                return
+                            }
+                            let content = editorVM.editorContent as NSString
+                            var ranges: [NSRange] = []
+                            let searchRange = NSRange(location: 0, length: content.length)
+                            content.enumerateSubstrings(in: searchRange, options: .byLines) { substring, lineRange, _, _ in
+                                if let line = substring {
+                                    var searchStart = 0
+                                    while searchStart < line.count {
+                                        let range = (line as NSString).range(of: editorVM.inFileSearchQuery, options: .caseInsensitive, range: NSRange(location: searchStart, length: line.count - searchStart))
+                                        if range.location == NSNotFound { break }
+                                        let fullRange = NSRange(location: lineRange.location + range.location, length: range.length)
+                                        ranges.append(fullRange)
+                                        searchStart = range.location + range.length
+                                    }
+                                }
+                            }
+                            editorVM.inFileSearchResults = ranges
+                            editorVM.inFileSearchCurrentIndex = ranges.isEmpty ? 0 : 0
+                        }
+                        searchTask = task
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2, execute: task)
+                    }
 
                 if !editorVM.inFileSearchQuery.isEmpty {
                     Text("\(editorVM.inFileSearchResults.isEmpty ? 0 : editorVM.inFileSearchCurrentIndex + 1)/\(editorVM.inFileSearchResults.count)")

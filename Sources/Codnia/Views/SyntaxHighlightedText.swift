@@ -62,7 +62,7 @@ struct SyntaxHighlightedTextView: NSViewRepresentable {
         ])
 
         context.coordinator.textView = textView
-        updateContent(textView)
+        updateContent(textView, context: context)
 
         // Apply opacity to container
         container.alphaValue = CGFloat(opacity)
@@ -72,29 +72,43 @@ struct SyntaxHighlightedTextView: NSViewRepresentable {
 
     func updateNSView(_ nsView: NSView, context: Context) {
         guard let textView = context.coordinator.textView else { return }
-        updateContent(textView)
+        updateContent(textView, context: context)
         nsView.alphaValue = CGFloat(opacity)
     }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator()
+        Coordinator(language: language)
     }
 
     class Coordinator: NSObject {
         weak var textView: NSTextView?
+        var highlighter: SyntaxHighlighter
+        var currentLanguage: String
+
+        init(language: String) {
+            self.highlighter = SyntaxHighlighter(language: language)
+            self.currentLanguage = language
+        }
+
+        func updateHighlighter(language: String) {
+            if currentLanguage != language {
+                currentLanguage = language
+                highlighter = SyntaxHighlighter(language: language)
+            }
+        }
     }
 
-    private func updateContent(_ textView: NSTextView) {
+    private func updateContent(_ textView: NSTextView, context: Context) {
         guard let textStorage = textView.textStorage else { return }
+
+        context.coordinator.updateHighlighter(language: language)
 
         let fullRange = NSRange(location: 0, length: textStorage.length)
         textStorage.beginEditing()
 
-        // Clear and set base text
         textStorage.deleteCharacters(in: fullRange)
         textStorage.append(NSAttributedString(string: text))
 
-        // Base styling
         let baseAttributes: [NSAttributedString.Key: Any] = [
             .font: NSFont.monospacedSystemFont(ofSize: CGFloat(fontSize), weight: .regular),
             .foregroundColor: NSColor.textPrimary,
@@ -106,9 +120,7 @@ struct SyntaxHighlightedTextView: NSViewRepresentable {
             textStorage.addAttribute(.strikethroughColor, value: NSColor.textSecondary, range: NSRange(location: 0, length: textStorage.length))
         }
 
-        // Apply syntax highlighting
-        let highlighter = SyntaxHighlighter(language: language)
-        highlighter.highlight(textStorage)
+        context.coordinator.highlighter.highlight(textStorage)
 
         textStorage.endEditing()
     }

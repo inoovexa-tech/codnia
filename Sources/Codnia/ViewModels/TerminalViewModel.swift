@@ -33,8 +33,15 @@ public final class TerminalViewModel: ObservableObject {
         pollingTask?.cancel()
         pollingTask = Task { [weak self] in
             while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: 1_000_000_000)
-                await self?.checkProcessStatesIfNeeded()
+                guard let self = self else { return }
+
+                if self.terminalWorktreeMap.isEmpty || !AppActivityMonitor.shared.isActive {
+                    try? await Task.sleep(nanoseconds: 3_000_000_000)
+                    continue
+                }
+
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                await self.checkProcessStatesIfNeeded()
             }
         }
     }

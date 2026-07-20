@@ -1,5 +1,7 @@
 import Foundation
 
+private var iconCache: [String: String?] = [:]
+
 public struct Project: Identifiable, Codable, Equatable {
     public let id: String
     public var name: String
@@ -39,7 +41,14 @@ public struct Project: Identifiable, Codable, Equatable {
     }
 
     var detectedIconPath: String? {
+        let cacheKey = "\(id)-\(customIconPath ?? "")"
+
+        if let cached = iconCache[cacheKey] {
+            return cached
+        }
+
         if let custom = customIconPath, FileManager.default.fileExists(atPath: custom) {
+            iconCache[cacheKey] = custom
             return custom
         }
         let commonIcons = [
@@ -64,9 +73,11 @@ public struct Project: Identifiable, Codable, Equatable {
         for iconName in commonIcons {
             let iconPath = (path as NSString).appendingPathComponent(iconName)
             if FileManager.default.fileExists(atPath: iconPath) {
+                iconCache[cacheKey] = iconPath
                 return iconPath
             }
         }
+        iconCache[cacheKey] = nil
         return nil
     }
 

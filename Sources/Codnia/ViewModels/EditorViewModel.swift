@@ -42,6 +42,10 @@ public final class EditorViewModel: ObservableObject {
     private var markdownPreviewTabs: Set<String> = []
     private var htmlPreviewTabs: Set<String> = []
     private var autoSaveTabId: String?
+    private var cachedAllTabs: [Tab]?
+    private var cachedAllTabsKey: String?
+    private var cachedModifiedFilePaths: Set<String>?
+    private var cachedModifiedFilePathsKey: String?
 
     public var isCurrentTabMarkdown: Bool {
         currentTab?.language == "Markdown"
@@ -52,7 +56,14 @@ public final class EditorViewModel: ObservableObject {
     }
 
     public var modifiedFilePaths: Set<String> {
-        Set(tabs.filter(\.isModified).map(\.path).filter { !$0.isEmpty })
+        let key = "\(tabs.count)-\(tabs.map { "\($0.id):\($0.isModified)" }.joined(separator: ","))"
+        if let cached = cachedModifiedFilePaths, cachedModifiedFilePathsKey == key {
+            return cached
+        }
+        let result = Set(tabs.filter(\.isModified).map(\.path).filter { !$0.isEmpty })
+        cachedModifiedFilePaths = result
+        cachedModifiedFilePathsKey = key
+        return result
     }
 
     private struct PendingOpenFile {
@@ -253,8 +264,16 @@ public final class EditorViewModel: ObservableObject {
     }
 
     public var allTabs: [Tab] {
+        let key = "\(tabs.count)-\(terminal.tabs.count)-\(tabOrder.joined(separator: ","))"
+        if let cached = cachedAllTabs, cachedAllTabsKey == key {
+            return cached
+        }
         let combined = tabs + terminal.tabs
-        guard !tabOrder.isEmpty else { return combined }
+        guard !tabOrder.isEmpty else {
+            cachedAllTabs = combined
+            cachedAllTabsKey = key
+            return combined
+        }
         var known: [Tab] = []
         var unknown: [Tab] = []
         for tab in combined {
@@ -269,7 +288,10 @@ public final class EditorViewModel: ObservableObject {
             let bIdx = tabOrder.firstIndex(of: b.id) ?? Int.max
             return aIdx < bIdx
         }
-        return known + unknown
+        let result = known + unknown
+        cachedAllTabs = result
+        cachedAllTabsKey = key
+        return result
     }
 
     public var currentTab: Tab? {
@@ -284,6 +306,7 @@ public final class EditorViewModel: ObservableObject {
     public func newFile(name: String, content: String) {
         let tab = Tab(name: name, type: .file)
         tabs.append(tab)
+        invalidateCache()
         activeTabId = tab.id
         editorContent = content
         currentLanguage = detectedLanguageName(from: name)
@@ -323,6 +346,7 @@ public final class EditorViewModel: ObservableObject {
         searchHighlightRanges = []
         searchHighlightIndex = 0
         showInFileSearch = false
+        invalidateCache()
         let name = URL(fileURLWithPath: path).lastPathComponent
         let ext = URL(fileURLWithPath: path).pathExtension.lowercased()
 
@@ -375,6 +399,7 @@ public final class EditorViewModel: ObservableObject {
 
     @discardableResult
     public func openFileInNewTab(_ path: String) -> Tab {
+        invalidateCache()
         let name = URL(fileURLWithPath: path).lastPathComponent
         let ext = URL(fileURLWithPath: path).pathExtension.lowercased()
 
@@ -458,6 +483,10 @@ public final class EditorViewModel: ObservableObject {
 
     public func closeTab(_ id: String) {
         tabOrder.removeAll { $0 == id }
+        cachedAllTabs = nil
+        cachedAllTabsKey = nil
+        cachedModifiedFilePaths = nil
+        cachedModifiedFilePathsKey = nil
         if tabs.firstIndex(where: { $0.id == id }) != nil {
             tabs.removeAll { $0.id == id }
             fileContents.removeValue(forKey: id)
@@ -498,7 +527,15 @@ public final class EditorViewModel: ObservableObject {
         if let idx = tabs.firstIndex(where: { $0.id == tabId }) {
             let original = fileContents[tabId] ?? ""
             tabs[idx].isModified = (editorContent != original)
+            invalidateCache()
         }
+    }
+
+    private func invalidateCache() {
+        cachedAllTabs = nil
+        cachedAllTabsKey = nil
+        cachedModifiedFilePaths = nil
+        cachedModifiedFilePathsKey = nil
     }
 
     public func saveCurrentFile() {

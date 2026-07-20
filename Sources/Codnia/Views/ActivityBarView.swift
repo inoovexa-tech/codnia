@@ -29,8 +29,13 @@ struct ActivityBarView: View {
         .onChange(of: editorVM.activeTabId) { _ in
             syncSelectionWithEditor()
         }
-        .onChange(of: tab) { _ in
+        .onChange(of: tab) { newTab in
             tasksVM.loadFromDisk()
+            if newTab == .sourceControl {
+                gitVM.openPanel()
+            } else {
+                gitVM.closePanel()
+            }
         }
     }
 

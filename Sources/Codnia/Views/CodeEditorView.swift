@@ -147,6 +147,7 @@ struct EditorNSTextView: NSViewRepresentable {
         private var scrollObserver: NSObjectProtocol?
         private var searchHighlightColor = NSColor(red: 255/255, green: 213/255, blue: 0/255, alpha: 0.3)
         private var currentHighlightColor = NSColor(red: 255/255, green: 140/255, blue: 0/255, alpha: 0.5)
+        private var highlightTask: DispatchWorkItem?
 
         init(text: Binding<String>, language: String, onChange: @escaping () -> Void, tabId: String, editorVM: EditorViewModel) {
             self._text = text
@@ -225,7 +226,12 @@ extension EditorNSTextView.Coordinator: NSTextViewDelegate {
     func textDidChange(_ notification: Notification) {
         guard let textView = notification.object as? NSTextView else { return }
         text = textView.string
-        applyHighlighting(textView)
+        highlightTask?.cancel()
+        let task = DispatchWorkItem { [weak self] in
+            self?.applyHighlighting(textView)
+        }
+        highlightTask = task
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15, execute: task)
         onChange()
     }
 

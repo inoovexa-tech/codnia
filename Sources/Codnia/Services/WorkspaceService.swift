@@ -13,6 +13,7 @@ public final class WorkspaceService: ObservableObject {
     private var refreshTask: Task<Void, Never>?
     private var gitTasks: [String: Task<Void, Never>] = [:]
     private var fileObservers: [String: DispatchSourceFileSystemObject] = [:]
+    private var pendingRefreshTasks: [String: Task<Void, Never>] = [:]
 
     public init() {
         loadProjects()
@@ -25,6 +26,8 @@ public final class WorkspaceService: ObservableObject {
         gitTasks.removeAll()
         fileObservers.values.forEach { $0.cancel() }
         fileObservers.removeAll()
+        pendingRefreshTasks.values.forEach { $0.cancel() }
+        pendingRefreshTasks.removeAll()
     }
 
     public func stopAutoRefresh() {
@@ -34,14 +37,21 @@ public final class WorkspaceService: ObservableObject {
         gitTasks.removeAll()
         fileObservers.values.forEach { $0.cancel() }
         fileObservers.removeAll()
+        pendingRefreshTasks.values.forEach { $0.cancel() }
+        pendingRefreshTasks.removeAll()
     }
 
     private func startAutoRefresh() {
         refreshTask?.cancel()
         refreshTask = Task { [weak self] in
             while !Task.isCancelled {
-                await self?.refreshAllChanges()
-                try? await Task.sleep(nanoseconds: 30_000_000_000)
+                guard let self = self else { return }
+
+                if AppActivityMonitor.shared.isActive {
+                    await self.refreshAllChanges()
+                }
+
+                try? await Task.sleep(nanoseconds: 120_000_000_000)
             }
         }
     }
@@ -60,8 +70,13 @@ public final class WorkspaceService: ObservableObject {
         )
 
         source.setEventHandler { [weak self] in
-            Task { @MainActor in
-                self?.refreshChanges(for: project)
+            guard let self = self else { return }
+            self.pendingRefreshTasks[project.id]?.cancel()
+            self.pendingRefreshTasks[project.id] = Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                guard !Task.isCancelled else { return }
+                self.refreshChanges(for: project)
+                self.pendingRefreshTasks.removeValue(forKey: project.id)
             }
         }
 
