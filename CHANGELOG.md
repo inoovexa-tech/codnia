@@ -1,3 +1,17 @@
+## [0.19.4] — 2026-07-11
+
+### Performance
+- Terminal polling: increased interval from 1s to 2s, pause when no terminals or app in background
+- Git auto-refresh: increased interval from 30s to 120s, foreground-only execution
+- File observer: added 2s debounce to prevent git commands on every file save
+- Git panel: lazy loading with 3s throttle on auto-refresh
+- Syntax highlighting: added 150ms debounce to reduce CPU usage during typing
+- In-file search: added 200ms debounce for smoother search experience
+- Computed properties: memoized `allTabs` and `modifiedFilePaths` in EditorViewModel
+- Icon detection: cached `detectedIconPath` results to avoid repeated filesystem calls
+- NSColor: cached static color properties to avoid re-creation on each access
+- SyntaxHighlightedText: reuse SyntaxHighlighter via Coordinator
+
 ## [0.19.3] — 2026-07-02
 
 ### Fixed
