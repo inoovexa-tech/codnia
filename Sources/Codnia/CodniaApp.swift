@@ -52,12 +52,13 @@ class CodniaApplicationDelegate: NSObject, NSApplicationDelegate {
             defer: false
         )
         hostingView.wantsLayer = false
-        window.title = "Codnia"
+        window.title = ""
         window.contentView = hostingView
         window.minSize = NSSize(width: 900, height: 600)
         window.backgroundColor = NSColor(Color.bgPrimary)
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
+        window.titlebarSeparatorStyle = .none
         window.isOpaque = true
         window.isMovableByWindowBackground = false
         window.isMovable = false

@@ -75,10 +75,25 @@ public final class FileSystemService {
             .isDirectoryKey, .isHiddenKey, .contentModificationDateKey,
             .fileSizeKey, .totalFileSizeKey, .fileResourceTypeKey
         ]
-        guard let contents = try? fm.contentsOfDirectory(
+
+        var contents: [URL]
+        if let urls = try? fm.contentsOfDirectory(
             at: url,
             includingPropertiesForKeys: keys
-        ) else { return [] }
+        ) {
+            contents = urls
+        } else {
+            contents = []
+        }
+
+        // iCloud Drive folders can fail (or return empty) on the property-based
+        // enumeration when items are dataless placeholders. Fall back to a
+        // plain string enumeration and resolve properties best-effort.
+        if contents.isEmpty, let names = try? fm.contentsOfDirectory(atPath: path), !names.isEmpty {
+            contents = names.map { URL(fileURLWithPath: $0, relativeTo: url) }
+        }
+
+        guard !contents.isEmpty else { return [] }
 
         var entries: [FileEntry] = []
         for child in contents {

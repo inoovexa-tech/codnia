@@ -594,12 +594,36 @@ struct AddProjectModalView: View {
     private func loadEntries() {
         let path = currentPath
         let showHidden = self.showHidden
+        let fileManager = self.fileManager
         DispatchQueue.global(qos: .userInitiated).async {
             let result = FileSystemService.shared.listDirectory(path: path)
             DispatchQueue.main.async {
                 if self.currentPath == path {
                     self.entries = showHidden ? result : result.filter { !$0.isHidden }
                     self.primeIconCache(for: path)
+                    if result.isEmpty {
+                        var isDir: ObjCBool = false
+                        if fileManager.fileExists(atPath: path, isDirectory: &isDir), isDir.boolValue {
+                            self.retryEmptyListing(path: path, showHidden: showHidden, attempt: 0)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// iCloud Drive folders can briefly report empty while the file provider
+    /// materializes their contents. Retry a few times before giving up.
+    private func retryEmptyListing(path: String, showHidden: Bool, attempt: Int) {
+        guard attempt < 3, currentPath == path else { return }
+        DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + Double(attempt + 1)) {
+            let result = FileSystemService.shared.listDirectory(path: path)
+            DispatchQueue.main.async {
+                guard self.currentPath == path else { return }
+                self.entries = showHidden ? result : result.filter { !$0.isHidden }
+                self.primeIconCache(for: path)
+                if result.isEmpty {
+                    self.retryEmptyListing(path: path, showHidden: showHidden, attempt: attempt + 1)
                 }
             }
         }

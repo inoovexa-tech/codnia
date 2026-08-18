@@ -8,7 +8,7 @@ let package = Package(
         .executable(name: "Codnia", targets: ["Codnia"])
     ],
     dependencies: [
-        .package(url: "https://github.com/migueldeicaza/SwiftTerm", from: "1.2.0"),
+        .package(path: "Packages/SwiftTerm"),
         .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.6.0"),
     ],
     targets: [

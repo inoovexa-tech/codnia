@@ -1,3 +1,12 @@
+## [0.19.5] — 2026-08-18
+
+### Fixed
+- Terminal: scrolling with touchpad (precise deltas) not working in OpenCode/Claude/Codex tabs and regular terminals; converted pixel deltas to line units with accumulation so touchpad gestures scroll smoothly and proportionally
+- Add Project modal: iCloud Drive folders showing empty contents; added fallback enumeration for dataless/placeholder items and auto-retry while iCloud materializes
+
+### Changed
+- Removed native window title text next to the traffic-light buttons
+
 ## [0.19.4] — 2026-07-11
 
 ### Performance

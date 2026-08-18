@@ -1,12 +1,12 @@
 # Swift / SPM
 .build/
 .build-*/
-Package.resolved
 *.xcodeproj
 *.xcworkspace
 DerivedData/
 
-# macOS
+# Release artifacts
+*.dmg
 *.app
 *.dSYM
 .DS_Store

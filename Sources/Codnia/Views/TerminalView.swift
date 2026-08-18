@@ -4,6 +4,7 @@ import Carbon
 
 class CodniaTerminalView: LocalProcessTerminalView {
     var onDataReceived: ((Int) -> Void)?
+    private var scrollEndTimer: Timer?
 
     override init(frame: NSRect) {
         super.init(frame: frame)
@@ -13,6 +14,44 @@ class CodniaTerminalView: LocalProcessTerminalView {
     required init?(coder: NSCoder) {
         super.init(coder: coder)
         _ = Self.prepareSwizzling
+    }
+
+    func beginUserScroll() {
+        terminal?.userScrolling = true
+        scrollEndTimer?.invalidate()
+    }
+
+    func scheduleScrollEndReset() {
+        scrollEndTimer?.invalidate()
+        scrollEndTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.terminal?.userScrolling = false
+            }
+        }
+    }
+
+    func handleUserScroll(with event: NSEvent) {
+        terminal?.userScrolling = true
+        scrollEndTimer?.invalidate()
+
+        let gestureActive: Bool
+        if #available(macOS 10.13, *) {
+            let phase = event.phase
+            let momentumPhase = event.momentumPhase
+            gestureActive = phase == .began || phase == .changed ||
+                           momentumPhase == .began || momentumPhase == .changed
+        } else {
+            gestureActive = true
+        }
+
+        if !gestureActive {
+            let delay: TimeInterval = 0.05
+            scrollEndTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
+                Task { @MainActor [weak self] in
+                    self?.terminal?.userScrolling = false
+                }
+            }
+        }
     }
 
     override func dataReceived(slice: ArraySlice<UInt8>) {
@@ -67,6 +106,7 @@ class CodniaTerminalView: LocalProcessTerminalView {
             let scrollInterval = 0.05
             var lastScrollTime = Date.distantPast
             var tracking = true
+            var preciseAccum: CGFloat = 0
             let eventMask: NSEvent.EventTypeMask = [
                 .leftMouseDown, .leftMouseUp, .leftMouseDragged,
                 .rightMouseDown, .rightMouseUp, .rightMouseDragged,
@@ -91,17 +131,34 @@ class CodniaTerminalView: LocalProcessTerminalView {
                         tv.mouseDragged(with: event)
                         lastScrollTime = .distantPast
                     case .scrollWheel:
-                        let delta = Int(abs(event.deltaY))
-                        guard delta > 0 else { break }
-                        let rows = tv.terminal?.rows ?? 25
-                        let velocity: Int
-                        if delta > 9 { velocity = max(rows, 20) }
-                        else if delta > 5 { velocity = 10 }
-                        else if delta > 1 { velocity = 3 }
-                        else { velocity = 1 }
+                        let scrollDelta: CGFloat
+                        let lineUnits: Int
+                        if event.hasPreciseScrollingDeltas {
+                            let rows = tv.terminal?.rows ?? 25
+                            let rowHeight = max(tv.bounds.height / CGFloat(rows), 1)
+                            preciseAccum += event.scrollingDeltaY
+                            let lines = Int(preciseAccum / rowHeight)
+                            guard lines != 0 else { break }
+                            preciseAccum = preciseAccum.truncatingRemainder(dividingBy: rowHeight)
+                            lineUnits = lines
+                            scrollDelta = CGFloat(lines)
+                        } else {
+                            let delta = abs(event.deltaY)
+                            guard delta > 0 else { break }
+                            let rows = tv.terminal?.rows ?? 25
+                            let velocity: Int
+                            if delta > 9 { velocity = max(rows, 20) }
+                            else if delta > 5 { velocity = 10 }
+                            else if delta > 1 { velocity = 3 }
+                            else { velocity = 1 }
+                            lineUnits = velocity
+                            scrollDelta = event.deltaY
+                        }
 
-                        if event.deltaY > 0 { tv.scrollUp(lines: velocity) }
-                        else { tv.scrollDown(lines: velocity) }
+                        tv.beginUserScroll()
+                        if scrollDelta > 0 { tv.scrollUp(lines: lineUnits) }
+                        else { tv.scrollDown(lines: lineUnits) }
+                        tv.handleUserScroll(with: event)
 
                         if tv.selectionActive, let w = tv.window {
                             let wp = w.convertPoint(fromScreen: NSEvent.mouseLocation)
@@ -127,8 +184,10 @@ class CodniaTerminalView: LocalProcessTerminalView {
                         let now = Date()
                         if now.timeIntervalSince(lastScrollTime) >= scrollInterval {
                             lastScrollTime = now
+                            tv.beginUserScroll()
                             if mouseRow <= 0 { tv.scrollUp(lines: 1) }
                             else { tv.scrollDown(lines: 1) }
+                            tv.scheduleScrollEndReset()
 
                             if let w = tv.window {
                                 let wp = w.convertPoint(fromScreen: NSEvent.mouseLocation)
@@ -274,6 +333,7 @@ class TerminalEventMonitor {
     static let shared = TerminalEventMonitor()
     private var monitor: Any?
     private static var installed = false
+    private var scrollAccumulators: [ObjectIdentifier: CGFloat] = [:]
 
     func install() {
         guard !Self.installed else { return }
@@ -304,12 +364,38 @@ class TerminalEventMonitor {
                 let row = max(0, min(Int(viewPoint.y / cellH), rows - 1))
                 let pixelX = Int(viewPoint.x)
                 let pixelY = Int(viewPoint.y)
-                let button = event.deltaY > 0 ? 4 : 5
+
+                let button: Int
+                if event.hasPreciseScrollingDeltas {
+                    let key = ObjectIdentifier(terminal)
+                    let rowHeight = max(cellH, 1)
+                    let accumulated = (scrollAccumulators[key] ?? 0) + event.scrollingDeltaY
+                    let lines = Int(accumulated / rowHeight)
+                    let ended = event.phase == .ended || event.phase == .cancelled ||
+                                event.momentumPhase == .ended || event.momentumPhase == .cancelled
+                    if lines == 0 {
+                        if ended {
+                            scrollAccumulators[key] = nil
+                        } else {
+                            scrollAccumulators[key] = accumulated
+                        }
+                        return true
+                    }
+                    scrollAccumulators[key] = accumulated.truncatingRemainder(dividingBy: rowHeight)
+                    if ended && abs(scrollAccumulators[key] ?? 0) < 1 {
+                        scrollAccumulators[key] = nil
+                    }
+                    button = lines > 0 ? 4 : 5
+                } else {
+                    button = event.deltaY > 0 ? 4 : 5
+                }
+
                 let flags = term.encodeButton(button: button, release: false, shift: false, meta: false, control: false)
                 term.sendEvent(buttonFlags: flags, x: col, y: row, pixelX: pixelX, pixelY: pixelY)
                 return true
             }
 
+            terminal.handleUserScroll(with: event)
             return false
         }
         return false
@@ -436,6 +522,7 @@ struct TerminalHostView: NSViewRepresentable {
     @Binding var tabs: [Tab]
     @Binding var activeTabId: String?
     let fontSize: Double
+    let scrollback: Int
 
     func makeNSView(context: Context) -> NSView {
         let container = TerminalContainerManager.shared.getContainer()
@@ -459,7 +546,7 @@ struct TerminalHostView: NSViewRepresentable {
                 existing.frame = nsView.bounds
                 existing.autoresizingMask = [.width, .height]
             } else {
-                createTerminal(cwd: tab.path, fontSize: fontSize, type: tab.type, terminalId: termId, in: nsView)
+                createTerminal(cwd: tab.path, fontSize: fontSize, type: tab.type, terminalId: termId, scrollback: scrollback, in: nsView)
             }
         }
 
@@ -489,7 +576,7 @@ struct TerminalHostView: NSViewRepresentable {
         }
     }
 
-    private func createTerminal(cwd: String, fontSize: Double, type: TabType, terminalId: String, in container: NSView) {
+    private func createTerminal(cwd: String, fontSize: Double, type: TabType, terminalId: String, scrollback: Int, in container: NSView) {
         let terminal = CodniaTerminalView(frame: container.bounds)
         TerminalManager.shared.set(terminal, for: terminalId)
         TerminalSessionManager.shared.attachTerminal(terminal, to: terminalId)
@@ -498,6 +585,7 @@ struct TerminalHostView: NSViewRepresentable {
         terminal.nativeForegroundColor = NSColor(Color.textPrimary)
         terminal.font = NSFont.monospacedSystemFont(ofSize: CGFloat(fontSize), weight: .regular)
         terminal.isHidden = true
+        terminal.changeScrollback(scrollback)
 
         var env = ProcessInfo.processInfo.environment
         if env["HOME"] == nil { env["HOME"] = NSHomeDirectory() }
@@ -546,7 +634,8 @@ struct TerminalView: View {
         TerminalHostView(
             tabs: $tabs,
             activeTabId: $activeTabId,
-            fontSize: settings.terminalFontSize
+            fontSize: settings.terminalFontSize,
+            scrollback: settings.terminalScrollback
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.bgPrimary)
